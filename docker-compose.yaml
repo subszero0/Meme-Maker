@@ -1,120 +1,70 @@
-version: '3.8'
-
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:7.2.5-alpine
     container_name: meme-maker-redis
+    restart: always
     ports:
       - "6379:6379"
-    command: redis-server --save ""  # no persistence for dev
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+    command: ["redis-server"]
 
   minio:
-    image: minio/minio:latest
+    image: minio/minio
     container_name: meme-maker-minio
     environment:
-      MINIO_ROOT_USER: clip
-      MINIO_ROOT_PASSWORD: secret
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin12345
     ports:
-      - "9000:9000"  # S3 API
-      - "9001:9001"  # Console
+      - "9002:9000"  # Changed to avoid port conflicts
+      - "9003:9001"  # Changed to avoid port conflicts
+    command: server /data --console-address ":9001"
     volumes:
       - minio-data:/data
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-
-  prometheus:
-    image: prom/prometheus:v2.45.0
-    container_name: meme-maker-prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus-data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=200h'
-      - '--web.enable-lifecycle'
-    depends_on:
-      - backend
-
-  grafana:
-    image: grafana/grafana:10.0.0
-    container_name: meme-maker-grafana
-    ports:
-      - "3002:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=grafana
-      - GF_USERS_ALLOW_SIGN_UP=false
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./infra/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
-      - ./infra/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./infra/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
-    depends_on:
-      - prometheus
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
     container_name: meme-maker-backend
+    depends_on:
+      - redis
+      - minio
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=admin12345
+      - AWS_ENDPOINT_URL=http://minio:9000
     ports:
       - "8000:8000"
-    environment:
-      # Redis
-      - REDIS_URL=redis://redis:6379
-      # S3/MinIO
-      - AWS_ACCESS_KEY_ID=clip
-      - AWS_SECRET_ACCESS_KEY=secret
-      - S3_BUCKET=clips
-      - AWS_ENDPOINT_URL=http://minio:9000
-      - AWS_ALLOW_HTTP=true
-      # App
-      - DEBUG=true
-    depends_on:
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-    restart: on-failure
-    volumes:
-      - ./backend/app:/app/app:ro
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
   worker:
     build:
       context: .
       dockerfile: Dockerfile.worker
     container_name: meme-maker-worker
-    environment:
-      # Redis
-      - REDIS_URL=redis://redis:6379
-      # S3/MinIO
-      - AWS_ACCESS_KEY_ID=clip
-      - AWS_SECRET_ACCESS_KEY=secret
-      - S3_BUCKET=clips
-      - AWS_ENDPOINT_URL=http://minio:9000
-      - AWS_ALLOW_HTTP=true
     depends_on:
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-    restart: on-failure
+      - redis
+      - backend
+
+  prometheus:
+    image: prom/prometheus
+    container_name: meme-maker-prometheus
+    volumes:
+      - prometheus-data:/prometheus
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana
+    container_name: meme-maker-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
 
 volumes:
   minio-data:
   prometheus-data:
-  grafana-data: 
+  grafana-data:

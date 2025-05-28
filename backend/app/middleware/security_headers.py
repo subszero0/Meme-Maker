@@ -14,14 +14,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         
         # Cache CSP string to avoid rebuilding on each request
+        # More permissive CSP for Swagger UI to work
         self.csp_header = (
-            "default-src 'none'; "
+            "default-src 'self'; "
+            "img-src 'self' data: https:; "
+            "style-src 'self' 'unsafe-inline' https:; "
+            "script-src 'self' 'unsafe-inline' https:; "
+            "font-src 'self' https:; "
+            "connect-src 'self' https:; "
             "frame-ancestors 'none'; "
-            "base-uri 'none'; "
-            "img-src 'self'; "
-            "style-src 'self'; "
-            "script-src 'self'; "
-            "connect-src 'self'"
+            "base-uri 'self'"
         )
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -46,17 +48,30 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         
         response = await call_next(request)
         
-        # Add security headers
-        self._add_security_headers(response)
+        # Add security headers (but skip CSP for Swagger UI endpoints)
+        self._add_security_headers(response, request)
         self._add_cors_headers(response, request, settings)
         
         return response
     
-    def _add_security_headers(self, response: Response) -> None:
+    def _add_security_headers(self, response: Response, request: Request) -> None:
         """Add all security headers to the response"""
+        
+        # Skip ALL security headers for Swagger UI, ReDoc and OpenAPI endpoints
+        swagger_paths = ["/docs", "/redoc", "/openapi.json"]
+        if any(request.url.path.startswith(path) for path in swagger_paths):
+            return
+        
+        # Also skip for any static resources that Swagger UI might need
+        if "/swagger-ui" in request.url.path or "/redoc" in request.url.path:
+            return
+        
+        # More lenient CSP for development docs endpoints
+        csp_header = self.csp_header
+        
         security_headers = {
             "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
-            "Content-Security-Policy": self.csp_header,
+            "Content-Security-Policy": csp_header,
             "X-Content-Type-Options": "nosniff",
             "X-Frame-Options": "DENY",
             "Referrer-Policy": "no-referrer",
