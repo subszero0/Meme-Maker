@@ -114,7 +114,10 @@
 
 ## ✅ Done
 - [x] **Fix circular import in metrics package** – Moved Prometheus metrics definitions to separate module to eliminate circular dependencies.
+- [x] **Set up deploy script** – Created one-command VPS deployment script with SSH automation and health checks.
 
 ### Follow-ups
 - [ ] Add pytest regression test that imports app.metrics to catch future circular-import regressions.
-- [ ] Ensure deploy/memeit.service stays in sync with docker compose ports & environment. 
+- [ ] Ensure deploy/memeit.service stays in sync with docker compose ports & environment.
+- [ ] **CI/CD via GitHub Actions** – Automate testing and deployment pipeline.
+- [ ] **Cron job for automated testing** – Set up scheduled health checks and smoke tests. 
