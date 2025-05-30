@@ -1,0 +1,29 @@
+[Unit]
+Description=Meme Maker FastAPI Application
+After=network.target
+Wants=network.target
+
+[Service]
+Type=exec
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/backend
+ExecStart=/home/ubuntu/backend/app/venv/bin/uvicorn app.main:app --proxy-headers --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=memeit
+
+# Environment variables
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/home/ubuntu/backend
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/home/ubuntu/backend
+
+[Install]
+WantedBy=multi-user.target 

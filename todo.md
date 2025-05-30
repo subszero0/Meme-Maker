@@ -108,4 +108,13 @@
 - [ ] Weekly cron job to rebuild worker image (gets latest yt-dlp).  
 - [ ] Rotate S3 bucket keys quarterly.  
 - [ ] Add cron Lambda → purge S3 objects older than 1 h as fallback to instant delete.  
-- [ ] Collect anonymised metrics (clip durations, sources) for future capacity planning. 
+- [ ] Collect anonymised metrics (clip durations, sources) for future capacity planning.
+
+---
+
+## ✅ Done
+- [x] **Fix circular import in metrics package** – Moved Prometheus metrics definitions to separate module to eliminate circular dependencies.
+
+### Follow-ups
+- [ ] Add pytest regression test that imports app.metrics to catch future circular-import regressions.
+- [ ] Ensure deploy/memeit.service stays in sync with docker compose ports & environment. 
