@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import axios, { AxiosError, CancelTokenSource } from 'axios';
 import { useToast } from '@/components/ToastProvider';
 
 interface PollResult {
@@ -11,7 +10,7 @@ interface PollResult {
   errorCode?: string;
 }
 
-const DEFAULT_POLL_INTERVAL = 2000;
+const DEFAULT_POLL_INTERVAL = 3000;
 const MAX_POLL_INTERVAL = 10000;
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -21,7 +20,7 @@ export default function useJobPoller(
 ): PollResult {
   const [result, setResult] = useState<PollResult>({ status: 'queued' });
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const cancelTokenRef = useRef<CancelTokenSource | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const currentIntervalRef = useRef<number>(pollIntervalMs);
   const { pushToast } = useToast();
 
@@ -30,9 +29,9 @@ export default function useJobPoller(
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    if (cancelTokenRef.current) {
-      cancelTokenRef.current.cancel('Component unmounted or polling stopped');
-      cancelTokenRef.current = null;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
   }, []);
 
@@ -42,19 +41,25 @@ export default function useJobPoller(
       return;
     }
 
-    if (cancelTokenRef.current) {
-      cancelTokenRef.current.cancel('New request initiated');
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
 
-    cancelTokenRef.current = axios.CancelToken.source();
+    abortControllerRef.current = new AbortController();
 
     try {
-      const response = await axios.get(`${BASE_URL}/api/v1/jobs/${jobId}`, {
-        cancelToken: cancelTokenRef.current.token,
-        timeout: 5000,
+      const response = await fetch(`${BASE_URL}/api/v1/jobs/${jobId}`, {
+        signal: abortControllerRef.current.signal,
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
-      const jobData = response.data;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const jobData = await response.json();
       currentIntervalRef.current = pollIntervalMs;
 
       const newResult: PollResult = {
@@ -76,14 +81,13 @@ export default function useJobPoller(
         }
       }
     } catch (error) {
-      if (axios.isCancel(error)) return;
+      if (error instanceof Error && error.name === 'AbortError') return;
 
-      const axiosError = error as AxiosError;
       let errorCode = 'NETWORK';
       let shouldRetry = true;
 
-      if (axiosError.response) {
-        const status = axiosError.response.status;
+      if (error instanceof Error && error.message.startsWith('HTTP ')) {
+        const status = parseInt(error.message.replace('HTTP ', ''));
         if (status >= 500) {
           currentIntervalRef.current = Math.min(currentIntervalRef.current * 2, MAX_POLL_INTERVAL);
         } else if (status === 404) {
@@ -92,7 +96,7 @@ export default function useJobPoller(
         } else if (status === 429) {
           errorCode = 'QUEUE_FULL';
         }
-      } else if (axiosError.code === 'ECONNABORTED') {
+      } else {
         currentIntervalRef.current = Math.min(currentIntervalRef.current * 2, MAX_POLL_INTERVAL);
       }
 

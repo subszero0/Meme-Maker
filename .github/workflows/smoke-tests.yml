@@ -1,0 +1,220 @@
+name: E2E Smoke Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run smoke tests daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test against'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+          - custom
+      custom_url:
+        description: 'Custom API URL (if environment is custom)'
+        required: false
+        type: string
+      test_video_url:
+        description: 'Custom test video URL'
+        required: false
+        type: string
+
+jobs:
+  smoke-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest-xdist  # For parallel test execution
+    
+    - name: Determine test environment
+      id: env-config
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event.inputs.environment }}" = "custom" ]; then
+            echo "BASE_URL=${{ github.event.inputs.custom_url }}" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.environment }}" = "production" ]; then
+            echo "BASE_URL=${{ secrets.PRODUCTION_API_URL }}" >> $GITHUB_ENV
+          else
+            echo "BASE_URL=${{ secrets.STAGING_API_URL }}" >> $GITHUB_ENV
+          fi
+          
+          if [ -n "${{ github.event.inputs.test_video_url }}" ]; then
+            echo "TEST_VIDEO_URL=${{ github.event.inputs.test_video_url }}" >> $GITHUB_ENV
+          fi
+        else
+          # Default to staging for scheduled and PR builds
+          echo "BASE_URL=${{ secrets.STAGING_API_URL || 'http://localhost:8000' }}" >> $GITHUB_ENV
+        fi
+        
+        # Set test video URL from secrets if available
+        if [ -z "$TEST_VIDEO_URL" ]; then
+          echo "TEST_VIDEO_URL=${{ secrets.TEST_VIDEO_URL || 'https://www.youtube.com/watch?v=BaW_jenozKc' }}" >> $GITHUB_ENV
+        fi
+    
+    - name: Wait for deployment (if needed)
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: |
+        echo "Waiting for deployment to complete..."
+        sleep 30  # Give deployment time to complete
+    
+    - name: Run API health check
+      run: |
+        echo "Testing API availability at: $BASE_URL"
+        timeout 60 bash -c 'until curl -f "$BASE_URL/health"; do sleep 5; done'
+        echo "API is responding!"
+    
+    - name: Run quick smoke tests
+      run: |
+        cd backend
+        python -m pytest tests/test_e2e_smoke.py -m "smoke and not slow" -v
+      env:
+        BASE_URL: ${{ env.BASE_URL }}
+        TEST_VIDEO_URL: ${{ env.TEST_VIDEO_URL }}
+        MAX_WAIT_TIMEOUT_SECONDS: 90
+        POLL_INTERVAL_SECONDS: 3
+    
+    - name: Run full E2E flow test
+      # Only run full E2E on main branch and manual triggers
+      if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+      run: |
+        cd backend
+        python -m pytest tests/test_e2e_smoke.py::TestE2EUserFlow::test_complete_user_flow -v -s
+      env:
+        BASE_URL: ${{ env.BASE_URL }}
+        TEST_VIDEO_URL: ${{ env.TEST_VIDEO_URL }}
+        MAX_WAIT_TIMEOUT_SECONDS: 120
+        POLL_INTERVAL_SECONDS: 2
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: smoke-test-results
+        path: |
+          backend/pytest.log
+          backend/.pytest_cache/
+        retention-days: 7
+    
+    - name: Notify on failure
+      if: failure() && (github.ref == 'refs/heads/main' || github.event_name == 'schedule')
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { owner, repo } = context.repo;
+          const { sha } = context;
+          
+          await github.rest.issues.create({
+            owner,
+            repo,
+            title: `🔥 E2E Smoke Tests Failed - ${new Date().toISOString().split('T')[0]}`,
+            body: `
+            ## Smoke Test Failure Report
+            
+            **Environment:** ${{ env.BASE_URL }}
+            **Commit:** ${sha}
+            **Workflow:** ${{ github.workflow }}
+            **Run:** ${{ github.run_number }}
+            
+            The E2E smoke tests have failed. Please investigate:
+            
+            - Check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - Verify the API is responding at ${{ env.BASE_URL }}
+            - Check if the test video URL is accessible
+            - Review recent deployments for issues
+            
+            ### Quick Debug Commands
+            \`\`\`bash
+            # Test API health
+            curl ${{ env.BASE_URL }}/health
+            
+            # Run smoke tests locally
+            cd backend
+            BASE_URL=${{ env.BASE_URL }} python -m pytest tests/test_e2e_smoke.py -m smoke -v
+            \`\`\`
+            `,
+            labels: ['bug', 'e2e-failure', 'urgent']
+          });
+
+  # Run tests against local development stack
+  local-dev-test:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+    
+    - name: Install dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Start API server
+      run: |
+        cd backend
+        python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+        
+        # Wait for server to start
+        timeout 30 bash -c 'until curl -f http://localhost:8000/health; do sleep 2; done'
+      env:
+        DEBUG: true
+        REDIS_URL: redis://localhost:6379
+    
+    - name: Run smoke tests against local server
+      run: |
+        cd backend
+        python -m pytest tests/test_e2e_smoke.py -m "smoke and not slow" -v
+      env:
+        BASE_URL: http://localhost:8000
+        MAX_WAIT_TIMEOUT_SECONDS: 60 

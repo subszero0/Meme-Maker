@@ -12,8 +12,10 @@ A simple tool to download and trim video clips from social media platforms with 
 - 🎯 **Real-Time Preview**: Live video preview during trimming
 - ⚡ **Fast Processing**: Efficient video processing with yt-dlp + FFmpeg
 - 🔒 **Anonymous**: No signup required, files self-destruct after download
-- 🚦 **Rate Limited**: Guests can submit up to 40 clips per day per IP
+- 🚦 **Rate Limited**: IP-based rate limiting with user-friendly notifications
 - 📊 **Monitoring**: Comprehensive monitoring with Prometheus and Grafana
+- 🚨 **Alerting**: Robust alerting for uptime and error rate monitoring
+- ⚖️ **Legal Compliance**: Terms of Use and Privacy Policy with mandatory acceptance
 
 ## Supported Platforms
 YouTube, Instagram, Facebook, Threads, and Reddit
@@ -25,6 +27,7 @@ YouTube, Instagram, Facebook, Threads, and Reddit
 - **Storage**: AWS S3 with presigned URLs
 - **Processing**: yt-dlp + FFmpeg
 - **Monitoring**: Prometheus + Grafana
+- **Alerting**: Alertmanager with Slack and Email notifications
 
 ## Quick Start
 
@@ -48,16 +51,88 @@ docker-compose -f docker-compose.dev.yaml up -d
 # Backend API at http://localhost:8000
 ```
 
-## 🔁 One-Command VPS Deploy
+## 🚀 Deployment
 
-For production deployment to VPS:
+### VPS Deployment with Caddy
+
+The application uses a hybrid approach where FastAPI serves the frontend SPA while Caddy handles reverse proxying and caching:
+
+1. **Frontend**: Static Next.js build served by FastAPI from `/app/static`
+2. **Backend**: FastAPI container with API routes at `/api/v1/*`
+3. **Caddy**: Reverse proxy with caching and security headers
+
+#### Quick Deploy
 
 ```bash
-export DEPLOY_SSH="ubuntu@13.127.249.36 -i ~/.ssh/meme_vps"
-./scripts/deploy_to_vps.sh
+# Build and deploy to VPS
+make deploy
 ```
 
-**Best practice**: Keep production deploys idempotent, scriptable, and environment-driven to avoid human error.
+#### Manual Deployment Steps
+
+1. **Build Frontend Locally**:
+   ```bash
+   cd frontend
+   npm run build  # Creates frontend/out/ directory
+   ```
+
+2. **Deploy to VPS**:
+   ```bash
+   # The deployment script handles everything:
+   # - Pulls latest code (including Caddyfile)
+   # - Builds Docker containers (includes frontend build)
+   # - Restarts services
+   # - Restarts Caddy with new configuration
+   ./scripts/deploy_to_vps.sh
+   ```
+
+#### Architecture Overview
+
+```
+Internet → Caddy (memeit.pro) → FastAPI Container
+           ├── Cache static assets (/_next/*, *.js, *.css)
+           ├── Proxy API routes (/api/*, /health, /docs)
+           └── Proxy SPA routes (/, client-side routes)
+```
+
+**FastAPI Static Serving**:
+- Mounts `/app/static` directory (contains frontend build)
+- Serves `index.html` for SPA routes
+- Serves static assets directly
+- API routes take precedence
+
+**Caddy Configuration**:
+- **API Routes**: `/api/*`, `/health`, `/metrics`, `/docs` → Proxy to FastAPI
+- **Static Assets**: `/_next/*`, `*.js`, `*.css` → Cache 1 year
+- **HTML/SPA**: `/`, client routes → No cache, proxy to FastAPI
+- **Security**: HSTS, CSP, X-Frame-Options headers
+
+#### Environment Variables
+
+Create `.env` file:
+
+```bash
+# API Configuration
+CORS_ORIGINS=https://memeit.pro
+
+# For development
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+#### Health Check
+
+After deployment, verify the setup:
+
+```bash
+# Check backend health
+curl -f https://memeit.pro/health
+
+# Check frontend (should return HTML)
+curl -f https://memeit.pro/
+
+# Check API
+curl -f https://memeit.pro/api/v1/jobs
+```
 
 ## Development
 
@@ -91,6 +166,7 @@ Services available:
 - **MinIO S3 API**: http://localhost:9002
 - **Redis**: localhost:6379
 - **Prometheus**: http://localhost:9090
+- **Alertmanager**: http://localhost:9093
 - **Grafana**: http://localhost:3000 (user: `admin`, password: `admin`)
 
 ### Frontend Development
@@ -110,13 +186,42 @@ The frontend includes:
 - **Auto-copy functionality** for download links
 - **Bundle size < 250kB** gzipped
 
-### Monitoring
+### Monitoring & Alerting
 
-The application includes comprehensive monitoring:
+The application includes comprehensive monitoring and alerting:
 
+#### Monitoring Stack
 - **Prometheus** scrapes metrics from the backend API every 10 seconds
 - **Grafana** provides dashboards for visualizing job metrics
+- **Alertmanager** handles alert routing and notifications
 - **Custom metrics** track job latency, queue depth, and error rates
+
+#### Alerting Rules
+- **API_Uptime_Failure**: Triggers when `/health` fails for 3+ minutes
+- **API_Error_Rate_High**: Triggers when error rate exceeds 5% over 5 minutes
+- **Worker_Not_Processing**: Triggers when no jobs complete for 10+ minutes
+- **Job_Queue_High**: Warning when queue depth exceeds 15 jobs for 5+ minutes
+
+#### Quick Setup
+```bash
+# Set up monitoring with alerting
+./scripts/setup-monitoring.sh
+
+# Test alert conditions
+./scripts/test-alerts.sh
+```
+
+#### Alert Configuration
+Configure notifications in `.env`:
+```bash
+# Slack notifications (required)
+ALERT_SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+
+# Email notifications (optional)
+ALERT_EMAIL_USER=your-smtp-username
+ALERT_EMAIL_PASS=your-smtp-password
+ALERT_EMAIL_RECIPIENT=admin@yourdomain.com
+```
 
 Access the **Clip Overview** dashboard at http://localhost:3000 after starting the services. The dashboard includes:
 - Jobs in flight (real-time gauge)
@@ -136,19 +241,26 @@ curl -X POST http://localhost:8000/api/v1/metadata \
   -H "Content-Type: application/json" \
   -d '{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}'
 
-# Create a clip job
+# Create a clip job (requires terms acceptance)
 curl -X POST http://localhost:8000/api/v1/jobs \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "in": 5, "out": 15, "rights": true}'
+  -d '{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "start": "00:00:05", "end": "00:00:15", "accepted_terms": true}'
 
 # Check job status
 curl http://localhost:8000/api/v1/jobs/{job_id}
 ```
 
+**Note**: All job creation requests require `accepted_terms: true` to comply with Terms of Use.
+
 ## Project documentation
 
 - [Wireframes](docs/wireframes/README.md)
 - [Frontend Documentation](frontend/README.md)
+- [Visual Regression Testing](frontend/cypress/VISUAL_TESTING.md)
+- [Accessibility Guide](docs/accessibility.md)
+- [Legal Compliance Guide](docs/legal.md)
+- [Monitoring & Alerting Guide](docs/monitoring.md)
+- [Rate Limiting & Abuse Protection](docs/rate-limiting.md)
 
 ## License
 

@@ -1,0 +1,39 @@
+# Meme Maker - Development Caddy Configuration
+# For local development and testing
+
+{
+    # Global options for development
+    auto_https off
+    admin localhost:2019
+}
+
+# Development site (localhost)
+localhost {
+    # API routes - proxy to FastAPI backend
+    @api path /api/* /health /metrics /docs /redoc /openapi.json
+    handle @api {
+        reverse_proxy 127.0.0.1:8000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    
+    # Static assets - cache headers for performance
+    @static path /_next/* /static/* *.js *.css *.ico *.png *.jpg *.jpeg *.gif *.svg *.woff *.woff2
+    handle @static {
+        header Cache-Control "public, max-age=3600"
+        reverse_proxy 127.0.0.1:8000
+    }
+    
+    # HTML files and SPA routes - no cache
+    handle {
+        header Cache-Control "no-cache, no-store, must-revalidate"
+        reverse_proxy 127.0.0.1:8000
+    }
+}
+
+# Alternative binding for port 3001 (if port 3000 conflicts with Next.js dev server)
+:3001 {
+    import localhost
+} 

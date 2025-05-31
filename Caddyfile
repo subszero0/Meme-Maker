@@ -1,0 +1,84 @@
+# Meme Maker - Caddy Configuration
+# Serves frontend UI (via FastAPI static handling) and proxies API requests
+
+{
+    # Global options
+    auto_https off
+    admin off
+}
+
+# Main site configuration
+memeit.pro {
+    # Add security headers
+    header {
+        # Security headers
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+        
+        # Remove server header for security
+        -Server
+    }
+    
+    # API routes - proxy to FastAPI backend
+    @api path /api/* /health /metrics /docs /redoc /openapi.json
+    handle @api {
+        reverse_proxy 127.0.0.1:8000 {
+            # Forward real client IP
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            
+            # Health check
+            health_uri /health
+            health_interval 30s
+            health_timeout 5s
+        }
+    }
+    
+    # Static assets (JS, CSS, images) - cache headers for performance
+    @static path /_next/* /static/* *.js *.css *.ico *.png *.jpg *.jpeg *.gif *.svg *.woff *.woff2
+    handle @static {
+        header Cache-Control "public, max-age=31536000, immutable"
+        reverse_proxy 127.0.0.1:8000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    
+    # HTML files and SPA routes - no cache
+    @html path *.html /
+    handle @html {
+        header Cache-Control "no-cache, no-store, must-revalidate"
+        header Pragma "no-cache"
+        header Expires "0"
+        reverse_proxy 127.0.0.1:8000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    
+    # All other routes - proxy to FastAPI (which serves SPA)
+    # This includes any client-side routes not matched above
+    handle {
+        reverse_proxy 127.0.0.1:8000 {
+            # Forward real client IP
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            
+            # Health check
+            health_uri /health
+            health_interval 30s
+            health_timeout 5s
+        }
+    }
+}
+
+# HTTP redirect to HTTPS (optional - only if you want to enforce HTTPS)
+http://memeit.pro {
+    redir https://memeit.pro{uri} permanent
+} 

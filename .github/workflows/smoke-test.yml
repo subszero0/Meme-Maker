@@ -1,0 +1,142 @@
+name: Smoke Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  smoke-test:
+    name: End-to-End Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Create test docker-compose
+        run: |
+          cat > docker-compose.test.yml << 'EOF'
+          services:
+            redis:
+              image: redis:7-alpine
+              ports:
+                - "6379:6379"
+              healthcheck:
+                test: ["CMD", "redis-cli", "ping"]
+                interval: 5s
+                timeout: 3s
+                retries: 5
+
+            minio:
+              image: minio/minio:latest
+              environment:
+                MINIO_ROOT_USER: admin
+                MINIO_ROOT_PASSWORD: admin12345
+              ports:
+                - "9000:9000"
+                - "9001:9001"
+              command: server /data --console-address ":9001"
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+                interval: 5s
+                timeout: 3s
+                retries: 10
+
+            backend:
+              build:
+                context: .
+                dockerfile: Dockerfile.backend
+              depends_on:
+                redis:
+                  condition: service_healthy
+                minio:
+                  condition: service_healthy
+              environment:
+                - REDIS_URL=redis://redis:6379
+                - AWS_ACCESS_KEY_ID=admin
+                - AWS_SECRET_ACCESS_KEY=admin12345
+                - AWS_ENDPOINT_URL=http://minio:9000
+                - S3_BUCKET=clips
+              ports:
+                - "8000:8000"
+              healthcheck:
+                test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+                interval: 10s
+                timeout: 5s
+                retries: 5
+
+            worker:
+              build:
+                context: .
+                dockerfile: Dockerfile.worker
+              depends_on:
+                redis:
+                  condition: service_healthy
+                minio:
+                  condition: service_healthy
+              environment:
+                - REDIS_URL=redis://redis:6379
+                - AWS_ACCESS_KEY_ID=admin
+                - AWS_SECRET_ACCESS_KEY=admin12345
+                - AWS_ENDPOINT_URL=http://minio:9000
+                - S3_BUCKET=clips
+          EOF
+
+      - name: Start services
+        run: |
+          docker-compose -f docker-compose.test.yml up -d --build
+          
+          # Wait for all services to be healthy
+          echo "Waiting for services to be ready..."
+          timeout 120 bash -c 'until docker-compose -f docker-compose.test.yml ps | grep -q "healthy.*healthy.*healthy"; do sleep 5; echo "Still waiting..."; done'
+
+      - name: Setup MinIO bucket
+        run: |
+          # Install MinIO client
+          wget https://dl.min.io/client/mc/release/linux-amd64/mc
+          chmod +x mc
+          sudo mv mc /usr/local/bin/
+          
+          # Create bucket
+          mc alias set test http://localhost:9000 admin admin12345
+          mc mb test/clips || echo "Bucket already exists"
+
+      - name: Run smoke test
+        run: python tools/smoke.py
+
+      - name: Show service logs on failure
+        if: failure()
+        run: |
+          echo "=== Service Status ==="
+          docker-compose -f docker-compose.test.yml ps
+          echo "=== Backend logs ==="
+          docker-compose -f docker-compose.test.yml logs backend
+          echo "=== Worker logs ==="
+          docker-compose -f docker-compose.test.yml logs worker
+          echo "=== Redis logs ==="
+          docker-compose -f docker-compose.test.yml logs redis
+          echo "=== MinIO logs ==="
+          docker-compose -f docker-compose.test.yml logs minio
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose -f docker-compose.test.yml down -v 

@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { en } from '@/i18n/en';
 import getPlatform, { Platform } from '@/lib/getPlatform';
+import Notification from './Notification';
 
 interface URLInputPanelProps {
   onSubmit: (url: string) => void;
   loading?: boolean;
+  disabled?: boolean;
 }
 
 type ComponentPlatform = Exclude<Platform, 'unknown'> | null;
@@ -35,7 +37,7 @@ const isValidUrl = (url: string): boolean => {
   }
 };
 
-export default function URLInputPanel({ onSubmit, loading = false }: URLInputPanelProps) {
+export default function URLInputPanel({ onSubmit, loading = false, disabled = false }: URLInputPanelProps) {
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const [platform, setPlatform] = useState<ComponentPlatform>(null);
@@ -92,7 +94,7 @@ export default function URLInputPanel({ onSubmit, loading = false }: URLInputPan
         <div>
           <label 
             htmlFor="video-url" 
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            className="block text-sm font-medium text-text-primary dark:text-gray-200 mb-2"
           >
             {en.urlInputPanel.labels.videoUrl}
           </label>
@@ -111,6 +113,7 @@ export default function URLInputPanel({ onSubmit, loading = false }: URLInputPan
               aria-invalid={hasError}
               aria-describedby={hasError ? 'url-error' : undefined}
               data-testid="url-input"
+              data-cy="url-input"
               className={`
                 block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm
                 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500
@@ -124,24 +127,24 @@ export default function URLInputPanel({ onSubmit, loading = false }: URLInputPan
             />
           </div>
           {hasError && (
-            <p 
-              id="url-error" 
-              className="mt-1 text-sm text-red-600 dark:text-red-400"
-              data-testid="url-error"
-            >
-              {error}
-            </p>
+            <Notification
+              type="error"
+              message={error}
+              position="inline"
+              data-cy="url-error"
+            />
           )}
         </div>
 
         <button
           type="submit"
-          disabled={!url.trim() || hasError || loading}
+          disabled={!url.trim() || hasError || loading || disabled}
           data-testid="start-button"
+          data-cy="start-button"
           className="
-            w-full py-2 px-4 border border-transparent rounded-md shadow-sm
-            text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700
-            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+            w-full min-h-[44px] py-3 px-4 border border-transparent rounded-md shadow-sm
+            text-sm font-medium text-white bg-primary-800 hover:bg-primary-900
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500
             disabled:opacity-50 disabled:cursor-not-allowed
             transition-colors duration-200
           "

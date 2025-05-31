@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "audit:contrast": "BASE_URL=http://localhost:3000 node scripts/contrast-audit.js",
+    "audit:contrast:report": "BASE_URL=http://localhost:3000 node scripts/contrast-audit.js --output=contrast-audit-report.md"
+  },
+  "dependencies": {
+    "@axe-core/puppeteer": "^4.10.1",
+    "puppeteer": "^24.9.0"
+  }
+}

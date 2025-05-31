@@ -24,8 +24,8 @@
   - api (FastAPI)  
   - redis (cache + queue)  
   - worker (RQ)  
-- [ ] Provision **AWS**: S3 bucket (`clip-files-dev`), an IAM role with presign permissions.  
-- [ ] Terraform (or CloudFormation) files in `infra/` for S3, ECS Cluster, CloudWatch log group.  
+- [x] Provision **AWS**: S3 bucket (`clip-files-dev`), an IAM role with presign permissions.  
+- [x] Terraform (or CloudFormation) files in `infra/` for S3, ECS Cluster, CloudWatch log group.  
 
 ---
 
@@ -115,6 +115,11 @@
 ## ✅ Done
 - [x] **Fix circular import in metrics package** – Moved Prometheus metrics definitions to separate module to eliminate circular dependencies.
 - [x] **Set up deploy script** – Created one-command VPS deployment script with SSH automation and health checks.
+- [x] **Serve Frontend via Caddy + FastAPI** – Updated deployment to properly serve the frontend UI built in Next.js as a static SPA alongside the FastAPI backend.
+- [x] **End-to-End Smoke Tests** – Created comprehensive E2E test suite that verifies the complete user flow: metadata fetch → job creation → job completion → clip download. Includes automated test script and CI/CD integration.
+- [x] **Line Counting Script** – Created `scripts/line_counts.sh` with cloc/wc fallback, component analysis, and cross-platform support. Shows ~3,883 total lines across backend (2,113), frontend (~800), and other components.
+- [x] **DRY Deployment Infrastructure (IaC)** – Created comprehensive Infrastructure-as-Code using Terraform v1.5+ for core AWS resources (S3 bucket with lifecycle policies, IAM role with S3 permissions, optional Route53 DNS). Includes validation scripts for both Linux/macOS and Windows, comprehensive documentation, and example configurations for dev/staging/prod environments.
+- [x] **S3 Cost & Usage Guardrails** – Implemented comprehensive Prometheus-based monitoring for S3 storage and egress with Alertmanager rules that fire when monthly thresholds are exceeded. Created S3 metrics exporter (`infra/monitoring/s3_metrics_exporter.py`) that fetches CloudWatch metrics and exposes `S3_STORAGE_BYTES` and `S3_EGRESS_BYTES` gauges. Added cost-guardrails alert group with `S3StorageTooHigh` (>200 GB for 12h) and `S3EgressTooHigh` (>50 GB/hour) alerts routed to Slack. Includes verification script (`infra/monitoring/test_s3_metrics.sh`) and comprehensive runbooks in monitoring documentation.
 
 ### Follow-ups
 - [ ] Add pytest regression test that imports app.metrics to catch future circular-import regressions.

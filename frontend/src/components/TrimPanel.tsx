@@ -1,15 +1,28 @@
 'use client';
 
-import { useReducer, useCallback, useState, useEffect } from 'react';
-import ReactPlayer from 'react-player';
-import { Range, getTrackBackground } from 'react-range';
+import { useReducer, useCallback, useState, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useDebouncedCallback } from 'use-debounce';
 import { formatTime, parseTime } from '@/lib/formatTime';
 import { useToast } from './ToastProvider';
+import Notification from './Notification';
+import SimpleRange from './ui/SimpleRange';
+
+// Dynamically import ReactPlayer to reduce initial bundle size
+const ReactPlayer = dynamic(() => import('react-player/lazy'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-64 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg flex items-center justify-center">
+      <span className="text-gray-500 dark:text-gray-400">Loading video player...</span>
+    </div>
+  )
+});
 
 interface TrimPanelProps {
   jobMeta: { url: string; title: string; duration: number }; // duration in seconds
   onSubmit(params: { in: number; out: number; rights: boolean }): void;
+  disabled?: boolean;
+  stepSize?: number; // @accessibility - Parameterized step size for keyboard navigation
 }
 
 interface TrimState {
@@ -39,7 +52,12 @@ function trimReducer(state: TrimState, action: TrimAction): TrimState {
   }
 }
 
-export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
+export default function TrimPanel({ 
+  jobMeta, 
+  onSubmit, 
+  disabled,
+  stepSize = 0.1 // @accessibility - Default 0.1 second increment
+}: TrimPanelProps) {
   const { pushToast } = useToast();
   const [state, dispatch] = useReducer(trimReducer, {
     in: 0,
@@ -49,6 +67,10 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
 
   const [inTimeInput, setInTimeInput] = useState(formatTime(state.in));
   const [outTimeInput, setOutTimeInput] = useState(formatTime(state.out));
+  
+  // @accessibility - Refs for screen reader announcements
+  const announcementRef = useRef<HTMLDivElement>(null);
+  const lastAnnouncedValues = useRef<{ in: number; out: number }>({ in: state.in, out: state.out });
 
   // Update time inputs when state changes
   useEffect(() => {
@@ -62,6 +84,16 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
   // Validation
   const isValidClip = state.out > state.in && clipDuration <= maxDuration;
   const canSubmit = isValidClip && state.rights;
+
+  // @accessibility - Debounced screen reader announcement on handle release
+  const announceValue = useDebouncedCallback((index: number, value: number) => {
+    const label = index === 0 ? 'Start time' : 'End time';
+    const announcement = `${label}: ${formatTime(value)}`;
+    
+    if (announcementRef.current) {
+      announcementRef.current.textContent = announcement;
+    }
+  }, 250); // Announce only after handle release
 
   // Debounced input handlers
   const debouncedInChange = useDebouncedCallback((value: string) => {
@@ -87,8 +119,70 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
     // Ensure minimum gap of 0.1s
     if (snappedOut - snappedIn >= 0.1) {
       dispatch({ type: 'SET_RANGE', payload: { in: snappedIn, out: snappedOut } });
+      
+      // @accessibility - Announce value changes for significant moves only
+      if (Math.abs(snappedIn - lastAnnouncedValues.current.in) >= 1 || 
+          Math.abs(snappedOut - lastAnnouncedValues.current.out) >= 1) {
+        announceValue(0, snappedIn);
+        announceValue(1, snappedOut);
+        lastAnnouncedValues.current = { in: snappedIn, out: snappedOut };
+      }
     }
-  }, []);
+  }, [announceValue]);
+
+  // @accessibility - Keyboard navigation handlers
+  const handleKeyDown = useCallback((index: number, event: React.KeyboardEvent) => {
+    const currentValue = index === 0 ? state.in : state.out;
+    let newValue = currentValue;
+
+    switch (event.key) {
+      case 'ArrowRight':
+      case 'ArrowUp':
+        event.preventDefault();
+        newValue = Math.min(currentValue + stepSize, jobMeta.duration);
+        break;
+      case 'ArrowLeft':
+      case 'ArrowDown':
+        event.preventDefault();
+        newValue = Math.max(currentValue - stepSize, 0);
+        break;
+      case 'Home':
+        event.preventDefault();
+        newValue = 0;
+        break;
+      case 'End':
+        event.preventDefault();
+        newValue = jobMeta.duration;
+        break;
+      case 'PageUp':
+        event.preventDefault();
+        newValue = Math.min(currentValue + 10, jobMeta.duration); // 10-second jump
+        break;
+      case 'PageDown':
+        event.preventDefault();
+        newValue = Math.max(currentValue - 10, 0); // 10-second jump
+        break;
+      default:
+        return; // Don't prevent default for other keys
+    }
+
+    // Snap to step precision
+    newValue = Math.round(newValue / stepSize) * stepSize;
+
+    // Update appropriate handle
+    if (index === 0) {
+      // Start handle - ensure it doesn't exceed end handle
+      newValue = Math.min(newValue, state.out - stepSize);
+      dispatch({ type: 'SET_IN', payload: newValue });
+    } else {
+      // End handle - ensure it doesn't go below start handle
+      newValue = Math.max(newValue, state.in + stepSize);
+      dispatch({ type: 'SET_OUT', payload: newValue });
+    }
+
+    // @accessibility - Immediate announcement for keyboard navigation
+    announceValue(index, newValue);
+  }, [state.in, state.out, stepSize, jobMeta.duration, announceValue]);
 
   const handleInTimeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -114,6 +208,15 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-6">
+      {/* @accessibility - Hidden live region for screen reader announcements */}
+      <div 
+        ref={announcementRef}
+        className="sr-only"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="slider-announcement"
+      />
+
       {/* Video Preview */}
       <div className="aspect-video bg-black rounded-lg overflow-hidden">
         <ReactPlayer
@@ -123,108 +226,110 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
           controls
           muted
           playing
+          data-testid="video-player"
         />
       </div>
 
       {/* Video Info */}
       <div className="text-center">
-        <h3 className="text-lg font-semibold text-gray-900 truncate">{jobMeta.title}</h3>
-        <p className="text-sm text-gray-600">Duration: {formatTime(jobMeta.duration)}</p>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">{jobMeta.title}</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Duration: {formatTime(jobMeta.duration)}</p>
       </div>
 
       {/* Time Inputs */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="in-time" className="block text-sm font-medium text-gray-700 mb-1">
+          <label 
+            htmlFor="in-time" 
+            id="start-time-label"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
             Start Time (hh:mm:ss.mmm)
           </label>
           <input
             id="in-time"
             data-testid="start-time"
+            data-cy="start-time-input"
             type="text"
             value={inTimeInput}
             onChange={handleInTimeChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-mono"
             placeholder="00:00:00.000"
+            aria-describedby="start-time-help"
           />
+          <div id="start-time-help" className="sr-only">
+            Enter start time in hours, minutes, seconds, and milliseconds format
+          </div>
         </div>
         <div>
-          <label htmlFor="out-time" className="block text-sm font-medium text-gray-700 mb-1">
+          <label 
+            htmlFor="out-time" 
+            id="end-time-label"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
             End Time (hh:mm:ss.mmm)
           </label>
           <input
             id="out-time"
             data-testid="end-time"
+            data-cy="end-time-input"
             type="text"
             value={outTimeInput}
             onChange={handleOutTimeChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-mono"
             placeholder="00:00:00.000"
+            aria-describedby="end-time-help"
           />
+          <div id="end-time-help" className="sr-only">
+            Enter end time in hours, minutes, seconds, and milliseconds format
+          </div>
         </div>
       </div>
 
-      {/* Slider */}
+      {/* @accessibility - Enhanced Slider with full ARIA support */}
       <div className="space-y-2">
-        <Range
+        <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300 mb-2">
+          <span>Video Timeline</span>
+          <span>Use arrow keys to adjust by {stepSize}s, Page Up/Down for 10s jumps</span>
+        </div>
+        
+        <SimpleRange
           values={[state.in, state.out]}
-          step={0.1}
+          step={stepSize}
           min={0}
           max={jobMeta.duration}
           onChange={handleSliderChange}
-          renderTrack={({ props, children }) => (
-            <div
-              {...props}
-              className="h-2 w-full rounded-md"
-              style={{
-                background: getTrackBackground({
-                  values: [state.in, state.out],
-                  colors: ['#e5e7eb', '#3b82f6', '#e5e7eb'],
-                  min: 0,
-                  max: jobMeta.duration,
-                }),
-              }}
-            >
-              {children}
-            </div>
-          )}
-          renderThumb={({ index, props }) => {
-            const { key, ...thumbProps } = props;
-            return (
-              <div
-                key={key}
-                {...thumbProps}
-                data-testid={index === 0 ? 'handle-start' : 'handle-end'}
-                className="h-6 w-6 bg-blue-600 border-2 border-white rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                style={{ ...thumbProps.style }}
-                aria-valuemin={0}
-                aria-valuemax={jobMeta.duration}
-                aria-valuenow={index === 0 ? state.in : state.out}
-                aria-label={index === 0 ? 'Start time' : 'End time'}
-              />
-            );
-          }}
         />
-        <div className="flex justify-between text-xs text-gray-500">
-          <span>{formatTime(state.in)}</span>
-          <span className={clipDuration > maxDuration ? 'text-red-600 font-medium' : ''}>
+        
+        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+          <span aria-label={`Current start time: ${formatTime(state.in)}`}>{formatTime(state.in)}</span>
+          <span 
+            className={clipDuration > maxDuration ? 'text-red-600 dark:text-red-400 font-medium' : ''}
+            aria-label={`Clip duration: ${formatTime(clipDuration)}${clipDuration > maxDuration ? ' - exceeds maximum allowed duration' : ''}`}
+          >
             Duration: {formatTime(clipDuration)}
           </span>
-          <span>{formatTime(state.out)}</span>
+          <span aria-label={`Current end time: ${formatTime(state.out)}`}>{formatTime(state.out)}</span>
         </div>
       </div>
 
       {/* Validation Error */}
       {clipDuration > maxDuration && (
-        <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-3">
-          Trim to three minutes or less to proceed.
-        </div>
+        <Notification
+          type="error"
+          message="Trim to three minutes or less to proceed."
+          position="inline"
+          data-cy="duration-error"
+        />
       )}
 
       {state.out <= state.in && (
-        <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-3">
-          End time must be after start time.
-        </div>
+        <Notification
+          type="error"
+          message="End time must be after start time."
+          position="inline"
+          data-cy="range-error"
+        />
       )}
 
       {/* Rights Checkbox */}
@@ -232,29 +337,57 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
         <input
           id="rights-checkbox"
           data-testid="rights-checkbox"
+          data-cy="rights-checkbox"
           type="checkbox"
           checked={state.rights}
           onChange={(e) => dispatch({ type: 'SET_RIGHTS', payload: e.target.checked })}
-          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-800"
+          aria-describedby="rights-description"
         />
-        <label htmlFor="rights-checkbox" className="text-sm text-gray-700">
-          I have the right to download this video and accept the Terms of Use.
-        </label>
+        <div>
+          <label htmlFor="rights-checkbox" className="text-sm text-text-primary dark:text-gray-200">
+            I confirm I have the right to download this content and agree to the{' '}
+            <a
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-link-primary hover:text-link-hover dark:text-link-dark dark:hover:text-link-dark-hover underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+            >
+              Terms of Use
+            </a>
+            .
+          </label>
+          <div id="rights-description" className="sr-only">
+            Required: You must confirm you have the legal right to download this video content
+          </div>
+        </div>
       </div>
 
       {/* Submit Button */}
       <button
         onClick={handleSubmit}
-        disabled={!canSubmit}
+        disabled={!canSubmit || disabled}
         data-testid="clip-btn"
-        className={`w-full py-3 px-4 rounded-md font-semibold text-white transition-colors ${
-          canSubmit
-            ? 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-            : 'bg-gray-400 cursor-not-allowed'
+        data-cy="clip-button"
+        className={`w-full min-h-[44px] py-3 px-4 rounded-md font-semibold text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+          canSubmit && !disabled
+            ? 'bg-primary-800 hover:bg-primary-900 focus-visible:ring-primary-500 dark:focus-visible:ring-offset-gray-900'
+            : 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
         }`}
+        aria-describedby="submit-button-help"
       >
         Clip & Download
       </button>
+      <div id="submit-button-help" className="sr-only">
+        {!isValidClip && !state.rights ? 
+          'Button disabled: Please set valid clip times and accept terms' :
+          !isValidClip ? 
+            'Button disabled: Please set valid clip times within 3 minutes' :
+            !state.rights ? 
+              'Button disabled: Please accept the terms of use' :
+              'Create and download your video clip'
+        }
+      </div>
     </div>
   );
 } 

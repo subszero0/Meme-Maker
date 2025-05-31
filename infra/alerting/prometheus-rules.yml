@@ -1,0 +1,106 @@
+groups:
+  - name: meme-maker-alerts
+    rules:
+      # Alert when /health endpoint returns non-200 for more than 3 consecutive checks
+      - alert: API_Uptime_Failure
+        expr: up{job="meme-maker-backend"} == 0
+        for: 3m  # 3 consecutive checks at 1-minute intervals
+        labels:
+          severity: critical
+          service: meme-maker
+        annotations:
+          summary: "Meme Maker API is down"
+          description: "The Meme Maker API health check at {{ $labels.instance }} has been failing for more than 3 minutes. Current status: {{ $value }}"
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/monitoring.md#api-uptime-failure"
+
+      # Alert when HTTP error rate exceeds 5% over a 5-minute window
+      - alert: API_Error_Rate_High
+        expr: (
+          rate(http_requests_total{job="meme-maker-backend",status!~"2.."}[5m]) /
+          rate(http_requests_total{job="meme-maker-backend"}[5m])
+        ) > 0.05
+        for: 2m  # Allow brief spikes but alert on sustained high error rates
+        labels:
+          severity: critical
+          service: meme-maker
+        annotations:
+          summary: "High HTTP error rate detected"
+          description: "The Meme Maker API at {{ $labels.instance }} has an error rate of {{ $value | humanizePercentage }} over the last 5 minutes, which exceeds the 5% threshold."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/monitoring.md#api-error-rate-high"
+
+      # Additional alert for high queue depth (proactive monitoring)
+      - alert: Job_Queue_High
+        expr: rq_jobs_in_queue{job="meme-maker-backend"} > 15
+        for: 5m
+        labels:
+          severity: warning
+          service: meme-maker
+        annotations:
+          summary: "Job queue depth is high"
+          description: "The job queue at {{ $labels.instance }} has {{ $value }} jobs pending for more than 5 minutes. This may indicate worker issues or high load."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/monitoring.md#job-queue-high"
+
+      # Alert when worker is not processing jobs
+      - alert: Worker_Not_Processing
+        expr: rate(job_duration_seconds_count{job="meme-maker-backend"}[10m]) == 0
+        for: 10m
+        labels:
+          severity: critical
+          service: meme-maker
+        annotations:
+          summary: "Worker is not processing jobs"
+          description: "No jobs have been completed by the worker at {{ $labels.instance }} in the last 10 minutes. Worker may be down or stuck."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/monitoring.md#worker-not-processing"
+
+  # Cost guardrails for S3 storage and egress monitoring
+  - name: cost-guardrails
+    rules:
+      # Alert when S3 storage exceeds 200 GB for sustained period
+      - alert: S3StorageTooHigh
+        expr: avg_over_time(S3_STORAGE_BYTES[12h]) > 200 * 1024 * 1024 * 1024
+        for: 30m
+        labels:
+          severity: warning
+          service: meme-maker
+          cost_type: storage
+        annotations:
+          summary: "S3 bucket storage > 200 GB"
+          description: "Bucket {{ $labels.bucket }} in {{ $labels.env }} has stored >200 GB for 12h. Current average: {{ $value | humanizeBytes }}. This exceeds our cost guardrail threshold."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/monitoring.md#s3-storage-too-high"
+
+      # Alert when S3 egress exceeds 50 GB in the last hour
+      - alert: S3EgressTooHigh
+        expr: increase(S3_EGRESS_BYTES[1h]) > 50 * 1024 * 1024 * 1024
+        for: 15m
+        labels:
+          severity: warning
+          service: meme-maker
+          cost_type: egress
+        annotations:
+          summary: "S3 egress > 50 GB"
+          description: "Bucket {{ $labels.bucket }} egress >50 GB in the last hour. Current increase: {{ $value | humanizeBytes }}. This exceeds our cost guardrail threshold."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/monitoring.md#s3-egress-too-high"
+
+      # Alert when S3 metrics exporter is down
+      - alert: S3MetricsExporterDown
+        expr: up{job="s3-metrics-exporter"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: meme-maker
+        annotations:
+          summary: "S3 metrics exporter is down"
+          description: "The S3 metrics exporter at {{ $labels.instance }} has been down for more than 5 minutes. Cost monitoring is unavailable."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/monitoring.md#s3-metrics-exporter-down"
+
+      # Alert when S3 metrics haven't been updated recently
+      - alert: S3MetricsStale
+        expr: (time() - S3_METRICS_LAST_UPDATED_TIMESTAMP) > 1800  # 30 minutes
+        for: 10m
+        labels:
+          severity: warning
+          service: meme-maker
+        annotations:
+          summary: "S3 metrics are stale"
+          description: "S3 metrics for bucket {{ $labels.bucket }} haven't been updated in {{ $value | humanizeDuration }}. Check S3 metrics exporter logs."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/monitoring.md#s3-metrics-stale" 

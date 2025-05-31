@@ -29,9 +29,11 @@ services:
       - redis
       - minio
     environment:
+      - REDIS_URL=redis://redis:6379
       - AWS_ACCESS_KEY_ID=admin
       - AWS_SECRET_ACCESS_KEY=admin12345
       - AWS_ENDPOINT_URL=http://minio:9000
+      - S3_BUCKET=clips
     ports:
       - "8000:8000"
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
@@ -43,7 +45,41 @@ services:
     container_name: meme-maker-worker
     depends_on:
       - redis
-      - backend
+      - minio
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=admin12345
+      - AWS_ENDPOINT_URL=http://minio:9000
+      - S3_BUCKET=clips
+    command: ["python", "/app/worker/main.py"]
+
+  # S3 metrics exporter for cost monitoring
+  s3_exporter:
+    build:
+      context: infra/monitoring
+      dockerfile: Dockerfile
+    container_name: meme-maker-s3-exporter
+    depends_on:
+      - minio
+    environment:
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=admin12345
+      - AWS_ENDPOINT_URL=http://minio:9000
+      - S3_BUCKET=clips
+      - ENV=${ENV:-dev}
+      - EXPORTER_PORT=9100
+      - SCRAPE_INTERVAL=300
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9100/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   prometheus:
     image: prom/prometheus
@@ -51,8 +87,36 @@ services:
     volumes:
       - prometheus-data:/prometheus
       - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./infra/alerting/prometheus-rules.yml:/etc/prometheus/rules/prometheus-rules.yml
     ports:
       - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+
+  alertmanager:
+    image: prom/alertmanager
+    container_name: meme-maker-alertmanager
+    environment:
+      - ALERT_SLACK_WEBHOOK=${ALERT_SLACK_WEBHOOK}
+      - ALERT_EMAIL_USER=${ALERT_EMAIL_USER}
+      - ALERT_EMAIL_PASS=${ALERT_EMAIL_PASS}
+      - ALERT_EMAIL_RECIPIENT=${ALERT_EMAIL_RECIPIENT:-admin@mememaker.local}
+    volumes:
+      - alertmanager-data:/alertmanager
+      - ./infra/alerting/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    ports:
+      - "9093:9093"
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+      - '--cluster.advertise-address=0.0.0.0:9093'
 
   grafana:
     image: grafana/grafana
@@ -67,4 +131,5 @@ services:
 volumes:
   minio-data:
   prometheus-data:
+  alertmanager-data:
   grafana-data:

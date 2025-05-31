@@ -15,4 +15,15 @@ export default defineConfig({
       // implement node event listeners here
     },
   },
+  // Percy configuration for visual regression testing
+  env: {
+    percy: {
+      projectToken: process.env.PERCY_TOKEN || 'percy-token-placeholder',
+      viewports: [
+        { width: 375, height: 667, name: 'mobile' },    // iPhone SE
+        { width: 768, height: 1024, name: 'tablet' },   // iPad
+        { width: 1280, height: 720, name: 'desktop' }   // Desktop
+      ]
+    }
+  }
 }); 

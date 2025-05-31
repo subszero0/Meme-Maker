@@ -1,0 +1,119 @@
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@mememaker.local'
+  smtp_auth_username: '${ALERT_EMAIL_USER}'
+  smtp_auth_password: '${ALERT_EMAIL_PASS}'
+  smtp_require_tls: true
+
+# Configure routing of alerts to different receivers
+route:
+  group_by: ['alertname', 'service']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'default-receiver'
+  routes:
+    # Critical alerts go to both Slack and Email immediately
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      repeat_interval: 1h
+    
+    # Warning alerts go to Slack only
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 30s
+      repeat_interval: 2h
+
+# Define notification receivers
+receivers:
+  - name: 'default-receiver'
+    # Fallback receiver - sends to Slack
+    slack_configs:
+      - api_url: '${ALERT_SLACK_WEBHOOK}'
+        channel: '#alerts'
+        title: 'Meme Maker Alert'
+        text: 'Alert: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        color: 'warning'
+
+  - name: 'critical-alerts'
+    # Critical alerts to both Slack and Email
+    slack_configs:
+      - api_url: '${ALERT_SLACK_WEBHOOK}'
+        channel: '#alerts'
+        title: 'CRITICAL: Meme Maker Alert'
+        text: |
+          🚨 CRITICAL ALERT 🚨
+          
+          **Service:** {{ .GroupLabels.service }}
+          **Alert:** {{ .GroupLabels.alertname }}
+          
+          {{ range .Alerts }}
+          **Summary:** {{ .Annotations.summary }}
+          **Description:** {{ .Annotations.description }}
+          **Instance:** {{ .Labels.instance }}
+          **Runbook:** {{ .Annotations.runbook_url }}
+          {{ end }}
+        color: 'danger'
+        send_resolved: true
+    
+    email_configs:
+      - to: '${ALERT_EMAIL_RECIPIENT}'
+        subject: 'CRITICAL: Meme Maker {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>🚨 CRITICAL ALERT: Meme Maker</h2>
+          <p><strong>Service:</strong> {{ .GroupLabels.service }}</p>
+          <p><strong>Alert:</strong> {{ .GroupLabels.alertname }}</p>
+          
+          {{ range .Alerts }}
+          <h3>Alert Details</h3>
+          <ul>
+            <li><strong>Summary:</strong> {{ .Annotations.summary }}</li>
+            <li><strong>Description:</strong> {{ .Annotations.description }}</li>
+            <li><strong>Instance:</strong> {{ .Labels.instance }}</li>
+            <li><strong>Severity:</strong> {{ .Labels.severity }}</li>
+            <li><strong>Started At:</strong> {{ .StartsAt }}</li>
+          </ul>
+          
+          <p><a href="{{ .Annotations.runbook_url }}">📚 View Runbook</a></p>
+          {{ end }}
+          
+          <p><em>This is an automated alert from Meme Maker monitoring system.</em></p>
+
+  - name: 'warning-alerts'
+    # Warning alerts to Slack only
+    slack_configs:
+      - api_url: '${ALERT_SLACK_WEBHOOK}'
+        channel: '#alerts'
+        title: 'Warning: Meme Maker Alert'
+        text: |
+          ⚠️ WARNING ⚠️
+          
+          **Service:** {{ .GroupLabels.service }}
+          **Alert:** {{ .GroupLabels.alertname }}
+          
+          {{ range .Alerts }}
+          **Summary:** {{ .Annotations.summary }}
+          **Description:** {{ .Annotations.description }}
+          **Instance:** {{ .Labels.instance }}
+          {{ end }}
+        color: 'warning'
+        send_resolved: true
+
+# Inhibition rules to prevent spam
+inhibit_rules:
+  # If API is down, don't send error rate alerts
+  - source_match:
+      alertname: API_Uptime_Failure
+    target_match:
+      alertname: API_Error_Rate_High
+    equal: ['instance']
+
+  # If worker is not processing, don't send queue high alerts
+  - source_match:
+      alertname: Worker_Not_Processing
+    target_match:
+      alertname: Job_Queue_High
+    equal: ['instance'] 

@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
 
 interface ProgressBarProps {
   progress?: number; // 0-100, undefined for indeterminate
@@ -9,26 +9,22 @@ interface ProgressBarProps {
 
 export default function ProgressBar({ progress, className = '' }: ProgressBarProps) {
   const isIndeterminate = progress === undefined;
+  const [animatedProgress, setAnimatedProgress] = useState(0);
+
+  useEffect(() => {
+    if (progress !== undefined) {
+      setAnimatedProgress(Math.max(0, Math.min(100, progress)));
+    }
+  }, [progress]);
 
   return (
     <div className={`w-full bg-gray-200 rounded-full h-2 overflow-hidden ${className}`}>
       {isIndeterminate ? (
-        <motion.div
-          className="h-full bg-blue-600 rounded-full"
-          initial={{ x: '-100%', width: '30%' }}
-          animate={{ x: '100%' }}
-          transition={{
-            duration: 1.5,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        />
+        <div className="h-full bg-blue-600 rounded-full w-1/3 animate-bounce" />
       ) : (
-        <motion.div
-          className="h-full bg-blue-600 rounded-full"
-          initial={{ width: 0 }}
-          animate={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
+        <div
+          className="h-full bg-blue-600 rounded-full transition-all duration-300 ease-out"
+          style={{ width: `${animatedProgress}%` }}
         />
       )}
     </div>

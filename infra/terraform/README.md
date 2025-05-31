@@ -1,84 +1,74 @@
-# Clip Downloader - Terraform Infrastructure
+# Meme Maker Infrastructure as Code (Terraform)
 
-This Terraform module deploys the complete infrastructure for the Clip Downloader application on AWS, including Cloudflare DNS integration and SSL certificate management.
+This directory contains Infrastructure-as-Code definitions using Terraform to provision and manage the core AWS resources for the Meme Maker application in a reproducible, versioned way.
+
+## Overview
+
+This Terraform configuration creates the essential infrastructure components:
+
+- **S3 Bucket**: Temporary storage for processed video clips with automatic cleanup
+- **IAM Role & Policy**: Permissions for worker/backend services to access S3
+- **Route53 DNS Record**: Optional DNS management for custom domains
 
 ## Architecture
 
-- **ECS Fargate**: Backend API and worker services
-- **ALB**: Application Load Balancer with HTTPS termination
-- **ElastiCache Redis**: Job queue and caching
-- **S3**: Temporary file storage with lifecycle policies
-- **ECR**: Container image registry
-- **CloudWatch**: Logging and monitoring
-- **ACM**: SSL/TLS certificates (validated via Cloudflare DNS)
-- **WAF v2**: Web Application Firewall with rate limiting
-- **Cloudflare**: DNS management and CDN (optional)
-
-## Features
-
-### SSL/TLS & DNS
-- ✅ **Automatic SSL certificate** provisioning via AWS Certificate Manager
-- ✅ **DNS validation** using Cloudflare DNS records
-- ✅ **API subdomain** (`api.yourdomain.com`) pointing to the ALB
-- ✅ **HTTP to HTTPS redirect** for secure connections
-- ✅ **Modern TLS policy** (TLS 1.3 support)
-
-### Security
-- ✅ **WAF v2 protection** with rate limiting (2000 requests/5min per IP)
-- ✅ **AWS Managed Rules** for common web exploits
-- ✅ **Private subnets** for ECS tasks
-- ✅ **Security groups** with minimal required access
-- ✅ **IAM roles** with least privilege access
-
-### Scalability & Reliability
-- ✅ **Auto-scaling** ECS services based on CPU/queue depth
-- ✅ **Health checks** with automatic failover
-- ✅ **Multi-AZ deployment** for high availability
-- ✅ **Container insights** for monitoring
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  S3 Bucket      │    │  IAM Role       │    │  Route53 (opt)  │
+│  - Clips storage│    │  - S3 access    │    │  - DNS record   │
+│  - 1-day cleanup│    │  - Worker perms │    │  - memeit.domain│
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
 
 ## Prerequisites
 
 1. **AWS Account** with appropriate permissions
-2. **Cloudflare Account** with domain management (optional, for SSL)
-3. **Terraform** >= 1.6
-4. **AWS CLI** configured
-5. **S3 bucket** for Terraform state storage
+2. **AWS CLI** configured with credentials
+3. **Terraform** >= 1.5 installed
+4. **Domain & Route53 Zone** (optional, for DNS management)
 
-## Required Variables
+## Quick Start
 
-### Core Infrastructure
-```hcl
-aws_region      = "ap-south-1"        # AWS region
-environment     = "dev"               # Environment name
-vpc_id          = "vpc-xxxxxxxxx"     # Existing VPC ID
-public_subnets  = ["subnet-xxx", "subnet-yyy"]   # Public subnets for ALB
-private_subnets = ["subnet-aaa", "subnet-bbb"]   # Private subnets for ECS
-```
-
-### Domain & SSL (Optional)
-```hcl
-domain_name         = "example.com"           # Your domain name
-cloudflare_zone_id  = "xxxxxxxxxxxxxxxxxx"   # Cloudflare zone ID
-cloudflare_api_token = "xxxxxxxxxxxxx"       # Cloudflare API token (sensitive)
-```
-
-### CI/CD Integration
-```hcl
-github_repository = "your-username/meme-maker"  # For OIDC role
-```
-
-## Deployment
-
-### 1. Local Development
+### 1. Initial Setup
 
 ```bash
 # Navigate to terraform directory
 cd infra/terraform
 
-# Initialize Terraform
-terraform init -backend-config="bucket=your-state-bucket" \
-               -backend-config="key=clip-downloader/terraform.tfstate" \
-               -backend-config="region=ap-south-1"
+# Copy example variables
+cp terraform.tfvars.example terraform.tfvars
+
+# Edit with your values
+nano terraform.tfvars
+```
+
+### 2. Bootstrap Terraform
+
+For **local state** (development):
+```bash
+terraform init
+```
+
+For **remote state** (recommended for production):
+```bash
+# Edit main.tf and uncomment the backend "s3" block
+# Update bucket name, region, and DynamoDB table
+
+terraform init \
+  -backend-config="bucket=your-terraform-state-bucket" \
+  -backend-config="key=meme-maker/terraform.tfstate" \
+  -backend-config="region=ap-south-1" \
+  -backend-config="dynamodb_table=terraform-locks"
+```
+
+### 3. Validate and Apply
+
+```bash
+# Validate configuration
+terraform validate
+
+# Format code
+terraform fmt
 
 # Plan deployment
 terraform plan -var-file="terraform.tfvars"
@@ -87,174 +77,287 @@ terraform plan -var-file="terraform.tfvars"
 terraform apply -var-file="terraform.tfvars"
 ```
 
-### 2. GitHub Actions (Recommended)
+## Configuration
 
-The included GitHub Actions workflow automatically deploys infrastructure on pushes to `main`.
+### Required Variables
 
-#### Required Secrets
+| Variable | Description | Default | Example |
+|----------|-------------|---------|---------|
+| `project_name` | Project name for resource naming | `"meme-maker"` | `"meme-maker"` |
+| `env` | Environment (dev/staging/prod) | `"dev"` | `"prod"` |
+| `aws_region` | AWS region for all resources | `"ap-south-1"` | `"us-east-1"` |
+
+### Optional DNS Variables
+
+| Variable | Description | Default | Example |
+|----------|-------------|---------|---------|
+| `domain` | Base domain name | `""` | `"example.com"` |
+| `lb_dns` | Load balancer DNS name | `""` | `"my-lb-123.elb.amazonaws.com"` |
+| `route53_zone_id` | Route53 hosted zone ID | `""` | `"Z1234567890ABC"` |
+| `create_route53_record` | Create Route53 DNS record | `false` | `true` |
+
+### Example Configurations
+
+#### Development (Local)
+```hcl
+# terraform.tfvars
+project_name = "meme-maker"
+env          = "dev"
+aws_region   = "ap-south-1"
 ```
-AWS_ACCESS_KEY_ID     # AWS access key
-AWS_SECRET_ACCESS_KEY # AWS secret key
-CF_API_TOKEN          # Cloudflare API token (if using domain)
+
+#### Production with DNS
+```hcl
+# terraform.tfvars
+project_name = "meme-maker"
+env          = "prod"
+aws_region   = "ap-south-1"
+domain       = "yourdomain.com"
+lb_dns       = "prod-alb-123456789.ap-south-1.elb.amazonaws.com"
+route53_zone_id     = "Z1234567890ABC"
+create_route53_record = true
 ```
-
-#### Required Variables
-```
-AWS_REGION            # e.g., "ap-south-1"
-TF_STATE_BUCKET       # Terraform state bucket name
-VPC_ID                # VPC ID for deployment
-PUBLIC_SUBNETS        # Comma-separated public subnet IDs
-PRIVATE_SUBNETS       # Comma-separated private subnet IDs
-DOMAIN_NAME           # Your domain (optional)
-CLOUDFLARE_ZONE_ID    # Cloudflare zone ID (optional)
-GITHUB_REPOSITORY     # Repository name for OIDC
-ENVIRONMENT           # Environment name (dev/staging/prod)
-```
-
-## Cloudflare Integration
-
-### Setup Steps
-
-1. **Get Zone ID**:
-   ```bash
-   curl -X GET "https://api.cloudflare.com/client/v4/zones" \
-        -H "Authorization: Bearer YOUR_API_TOKEN" | jq '.result[] | {name: .name, id: .id}'
-   ```
-
-2. **Create API Token**:
-   - Go to Cloudflare dashboard → My Profile → API Tokens
-   - Create token with permissions:
-     - Zone:Zone:Read
-     - Zone:DNS:Edit
-     - Include: Specific zone → Your domain
-
-3. **Configure Variables**:
-   ```hcl
-   domain_name         = "yourdomain.com"
-   cloudflare_zone_id  = "zone-id-from-step-1"
-   cloudflare_api_token = "token-from-step-2"
-   ```
-
-### What Gets Created
-
-When domain and Cloudflare are configured:
-
-1. **DNS Records**:
-   - `api.yourdomain.com` → ALB DNS name (CNAME)
-   - ACM validation records (automatically managed)
-
-2. **SSL Certificate**:
-   - Domain: `api.yourdomain.com`
-   - Validation: DNS (via Cloudflare)
-   - Region: `us-east-1` (required for ALB)
-
-3. **ALB Listeners**:
-   - Port 443: HTTPS → Backend service
-   - Port 80: HTTP → 301 redirect to HTTPS
-
-4. **WAF Protection**:
-   - Rate limiting: 2000 requests per 5 minutes per IP
-   - AWS managed rules for common exploits
-   - CloudWatch metrics enabled
 
 ## Outputs
 
-After successful deployment:
+After successful deployment, Terraform provides these key outputs:
 
-```hcl
-alb_dns_name          = "clip-downloader-dev-123456789.ap-south-1.elb.amazonaws.com"
-alb_url               = "https://api.yourdomain.com"  # or HTTP if no domain
-api_fqdn              = "api.yourdomain.com"          # or ALB DNS if no domain
-s3_bucket_name        = "clip-downloader-files-dev-abc12345"
-ecs_cluster_name      = "clip-downloader-dev"
-ci_deploy_role_arn    = "arn:aws:iam::123456789012:role/clip-downloader-github-actions-dev"
-```
+| Output | Description | Usage |
+|--------|-------------|-------|
+| `bucket_name` | S3 bucket name | Configure backend/worker |
+| `bucket_arn` | S3 bucket ARN | IAM policies |
+| `role_arn` | IAM role ARN | ECS task definitions |
+| `role_name` | IAM role name | EC2 instance profiles |
+| `record_name` | DNS record name | Domain configuration |
+| `resource_prefix` | Resource naming prefix | External integrations |
 
-## Monitoring & Troubleshooting
+## Remote State Setup (Recommended)
 
-### Health Checks
+For production deployments, use remote state with locking:
 
-Test the deployment:
-
-```bash
-# Without domain
-curl -f http://your-alb-dns-name/health
-
-# With domain
-curl -f https://api.yourdomain.com/health
-```
-
-Expected response:
-```json
-{"status": "ok"}
-```
-
-### CloudWatch Logs
-
-Monitor application logs:
-- Backend: `/ecs/clip-downloader-backend-dev`
-- Worker: `/ecs/clip-downloader-worker-dev`
-
-### WAF Metrics
-
-Monitor security events:
-- WAF Web ACL: `clipDownloaderWAF`
-- Rate limiting: `RateLimitRule`
-- Security rules: `CommonRuleSetMetric`
-
-## Cost Optimization
-
-### Resource Sizing
-```hcl
-# Development
-backend_task_cpu    = 256   # 0.25 vCPU
-backend_task_memory = 512   # 512 MB
-worker_task_cpu     = 512   # 0.5 vCPU
-worker_task_memory  = 1024  # 1 GB
-
-# Production
-backend_task_cpu    = 1024  # 1 vCPU
-backend_task_memory = 2048  # 2 GB
-worker_task_cpu     = 2048  # 2 vCPU
-worker_task_memory  = 4096  # 4 GB
-```
-
-### Estimated Monthly Costs (us-east-1)
-
-| Component | Development | Production |
-|-----------|-------------|------------|
-| ECS Fargate | $15-30 | $60-120 |
-| ALB | $20 | $20 |
-| ElastiCache | $15 | $100 |
-| CloudWatch | $5 | $15 |
-| S3 + Transfer | $5 | $20 |
-| **Total** | **~$60** | **~$275** |
-
-*Costs are estimates and may vary based on usage patterns.*
-
-## Security Best Practices
-
-1. **Enable GuardDuty** for threat detection
-2. **Use Secrets Manager** for sensitive configuration
-3. **Enable CloudTrail** for audit logging
-4. **Regular security updates** for container images
-5. **Network ACLs** for additional network security
-6. **Backup strategies** for critical data
-
-## Cleanup
-
-To destroy all resources:
+### 1. Create State Bucket
 
 ```bash
-terraform destroy -var-file="terraform.tfvars"
+# Create S3 bucket for state
+aws s3 mb s3://meme-maker-terraform-state-$(date +%s) --region ap-south-1
+
+# Create DynamoDB table for locking
+aws dynamodb create-table \
+  --table-name terraform-locks \
+  --attribute-definitions AttributeName=LockID,AttributeType=S \
+  --key-schema AttributeName=LockID,KeyType=HASH \
+  --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 \
+  --region ap-south-1
 ```
 
-**⚠️ Warning**: This will permanently delete all infrastructure and data.
+### 2. Configure Backend
 
-## Support
+Uncomment and configure the backend block in `main.tf`:
 
-For issues or questions:
-1. Check CloudWatch logs for application errors
-2. Review Terraform plan output for infrastructure issues
-3. Verify DNS propagation with `dig` or `nslookup`
-4. Test connectivity with `curl` or browser developer tools 
+```hcl
+backend "s3" {
+  bucket         = "your-terraform-state-bucket"
+  key            = "meme-maker/terraform.tfstate"
+  region         = "ap-south-1"
+  dynamodb_table = "terraform-locks"
+  encrypt        = true
+}
+```
+
+### 3. Initialize with Backend
+
+```bash
+terraform init
+```
+
+## DNS Configuration
+
+### Route53 Setup
+
+If your domain is managed in AWS Route53:
+
+1. **Get Hosted Zone ID**:
+   ```bash
+   aws route53 list-hosted-zones --query 'HostedZones[?Name==`yourdomain.com.`].Id' --output text
+   ```
+
+2. **Configure Variables**:
+   ```hcl
+   domain                = "yourdomain.com"
+   route53_zone_id      = "Z1234567890ABC"
+   create_route53_record = true
+   lb_dns               = "your-load-balancer-dns-name"
+   ```
+
+3. **Apply Configuration**:
+   ```bash
+   terraform apply -var-file="terraform.tfvars"
+   ```
+
+### External DNS Providers
+
+If using Cloudflare, GoDaddy, or other DNS providers, set `create_route53_record = false` and manually create:
+- **Record Type**: CNAME
+- **Name**: `memeit.yourdomain.com`
+- **Value**: `your-load-balancer-dns-name`
+
+## Resource Tagging
+
+All resources are automatically tagged with:
+
+- `Environment`: Environment name (`dev`, `staging`, `prod`)
+- `Project`: Project name (`meme-maker`)
+- `ManagedBy`: `Terraform`
+
+Additional resource-specific tags are applied for better organization.
+
+## Security Features
+
+### S3 Bucket Security
+- ✅ **Public access blocked** completely
+- ✅ **Server-side encryption** with AES256
+- ✅ **Lifecycle policy** deletes objects after 1 day
+- ✅ **Versioning disabled** as specified in requirements
+- ✅ **Incomplete multipart uploads** cleaned up after 1 day
+
+### IAM Role Security
+- ✅ **Principle of least privilege** - only required S3 actions
+- ✅ **Resource-scoped permissions** - access only to clips bucket
+- ✅ **Multiple service principals** - supports ECS and EC2
+
+## Validation and Testing
+
+### Pre-deployment Checks
+
+```bash
+# Validate syntax
+terraform validate
+
+# Format code
+terraform fmt -check
+
+# Security scan (if using tfsec)
+tfsec .
+
+# Plan without applying
+terraform plan -var-file="terraform.tfvars"
+```
+
+### Post-deployment Testing
+
+```bash
+# Verify S3 bucket exists
+aws s3 ls s3://$(terraform output -raw bucket_name)
+
+# Verify IAM role exists
+aws iam get-role --role-name $(terraform output -raw role_name)
+
+# Test S3 permissions (requires AWS CLI with role)
+aws sts assume-role --role-arn $(terraform output -raw role_arn) --role-session-name test
+
+# Verify DNS record (if created)
+dig memeit.yourdomain.com
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Permission Denied**:
+   ```bash
+   # Check AWS credentials
+   aws sts get-caller-identity
+   ```
+
+2. **Bucket Name Conflict**:
+   - S3 bucket names are globally unique
+   - The random suffix should prevent conflicts
+   - If it fails, run `terraform destroy` and `terraform apply` again
+
+3. **DNS Validation Timeout**:
+   - Ensure Route53 zone ID is correct
+   - Check domain name formatting (no trailing dots)
+   - DNS propagation can take up to 10 minutes
+
+4. **State Lock Issues**:
+   ```bash
+   # Force unlock if needed (use carefully)
+   terraform force-unlock LOCK_ID
+   ```
+
+### Getting Help
+
+- **Terraform Validate**: `terraform validate`
+- **AWS Provider Issues**: Check [AWS Provider Documentation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
+- **State Issues**: Use `terraform state list` and `terraform state show`
+
+## Cost Estimation
+
+### Development Environment
+- **S3**: ~$0.50/month (minimal usage)
+- **Route53**: $0.50/month per hosted zone (if used)
+- **Total**: ~$1/month
+
+### Production Environment
+- **S3**: ~$2-5/month (depends on clip volume)
+- **Route53**: $0.50/month per hosted zone
+- **Data Transfer**: Minimal (files deleted after 1 day)
+- **Total**: ~$3-6/month
+
+## Maintenance
+
+### Regular Tasks
+
+1. **Update Terraform Providers**:
+   ```bash
+   terraform init -upgrade
+   ```
+
+2. **Review and Rotate Access Keys** (if using IAM users):
+   ```bash
+   aws iam list-access-keys --user-name terraform-user
+   ```
+
+3. **Monitor S3 Costs**:
+   ```bash
+   aws s3api list-objects-v2 --bucket $(terraform output -raw bucket_name) --query 'length(Contents)'
+   ```
+
+4. **Validate Lifecycle Rules**:
+   ```bash
+   aws s3api get-bucket-lifecycle-configuration --bucket $(terraform output -raw bucket_name)
+   ```
+
+## Integration with Application
+
+### Backend Configuration
+
+Use Terraform outputs to configure your application:
+
+```bash
+# Get bucket name for backend configuration
+export S3_BUCKET_NAME=$(terraform output -raw bucket_name)
+
+# Get IAM role ARN for ECS task definition
+export TASK_ROLE_ARN=$(terraform output -raw role_arn)
+
+# Get instance profile for EC2 deployment
+export INSTANCE_PROFILE_NAME=$(terraform output -raw instance_profile_name)
+```
+
+### Environment Variables
+
+Set these in your application environment:
+
+```bash
+S3_BUCKET_NAME="meme-maker-clips-prod-abc12345"
+AWS_REGION="ap-south-1"
+```
+
+The IAM role provides automatic credentials when running on AWS services (ECS, EC2).
+
+---
+
+## License
+
+This infrastructure code is part of the Meme Maker project and is licensed under the same terms as the main project (MIT License). 

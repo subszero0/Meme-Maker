@@ -2,9 +2,16 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+# Load alerting rules
 rule_files:
-  # - "first_rules.yml"
-  # - "second_rules.yml"
+  - "/etc/prometheus/rules/*.yml"
+
+# Configure Alertmanager
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
 
 scrape_configs:
   - job_name: 'prometheus'
@@ -15,4 +22,18 @@ scrape_configs:
     static_configs:
       - targets: ['backend:8000']
     metrics_path: '/metrics'
-    scrape_interval: 10s 
+    scrape_interval: 10s
+
+  # Scrape Alertmanager metrics
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+    scrape_interval: 30s
+
+  # Scrape S3 metrics exporter for cost monitoring
+  - job_name: 's3-metrics-exporter'
+    static_configs:
+      - targets: ['s3_exporter:9100']
+    metrics_path: '/metrics'
+    scrape_interval: 300s  # 5 minutes - matches exporter cache interval
+    scrape_timeout: 30s 

@@ -1,14 +1,34 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import URLInputPanel from '@/components/URLInputPanel';
-import TrimPanel from '@/components/TrimPanel';
-import DownloadModal from '@/components/DownloadModal';
 import QueueFullErrorBanner from '@/components/QueueFullErrorBanner';
 import ProgressBar from '@/components/ProgressBar';
+import RateLimitNotification, { useRateLimitNotification } from '@/components/RateLimitNotification';
+import Footer from '@/components/Footer';
 import { useToast } from '@/components/ToastProvider';
 import useJobPoller from '@/hooks/useJobPoller';
-import { fetchVideoMetadata, createJob, type VideoMetadata } from '@/lib/api';
+import { fetchVideoMetadata, createJob, isRateLimitError, type VideoMetadata } from '@/lib/api';
+import { formatTimeForAPI } from '@/lib/formatTime';
+
+// Dynamically import TrimPanel since it's only needed after metadata is loaded
+const TrimPanel = dynamic(() => import('@/components/TrimPanel'), {
+  loading: () => (
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="aspect-video bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg"></div>
+      <div className="space-y-4">
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-3/4"></div>
+      </div>
+    </div>
+  )
+});
+
+// Dynamically import DownloadModal since it's only shown at the end
+const DownloadModal = dynamic(() => import('@/components/DownloadModal'), {
+  loading: () => <div className="fixed inset-0 bg-black bg-opacity-50" />
+});
 
 type AppState = 
   | { phase: 'idle' }
@@ -20,7 +40,9 @@ type AppState =
 
 export default function Home() {
   const { pushToast } = useToast();
+  const { notification, showNotification, clearNotification } = useRateLimitNotification();
   const [state, setState] = useState<AppState>({ phase: 'idle' });
+  const [isRetryDisabled, setIsRetryDisabled] = useState(false);
   
   const jobId = state.phase === 'processing' ? state.jobId : null;
   const pollerResult = useJobPoller(jobId);
@@ -48,7 +70,13 @@ export default function Home() {
       pushToast({ type: 'success', message: 'Video loaded successfully!' });
     } catch (error) {
       setState({ phase: 'idle' });
-      pushToast({ type: 'error', message: 'Failed to load video. Please check the URL and try again.' });
+      
+      if (isRateLimitError(error)) {
+        showNotification(error.message, error.retryAfter, error.limitType);
+        setIsRetryDisabled(true);
+      } else {
+        pushToast({ type: 'error', message: 'Failed to load video. Please check the URL and try again.' });
+      }
     }
   };
 
@@ -58,9 +86,9 @@ export default function Home() {
     try {
       const response = await createJob({
         url: state.metadata.url,
-        in: params.in,
-        out: params.out,
-        rights: params.rights,
+        start: formatTimeForAPI(params.in),
+        end: formatTimeForAPI(params.out),
+        accepted_terms: params.rights,
       });
       
       setState({
@@ -69,7 +97,12 @@ export default function Home() {
         jobId: response.jobId,
       });
     } catch (error) {
-      pushToast({ type: 'error', message: 'Failed to start processing. Please try again.' });
+      if (isRateLimitError(error)) {
+        showNotification(error.message, error.retryAfter, error.limitType);
+        setIsRetryDisabled(true);
+      } else {
+        pushToast({ type: 'error', message: 'Failed to start processing. Please try again.' });
+      }
     }
   };
 
@@ -83,6 +116,19 @@ export default function Home() {
     }
   };
 
+  const handleRateLimitRetryAvailable = () => {
+    setIsRetryDisabled(false);
+    clearNotification();
+    pushToast({ 
+      type: 'info', 
+      message: 'Rate limit has expired. You can now make requests again.' 
+    });
+  };
+
+  const handleRateLimitDismiss = () => {
+    clearNotification();
+  };
+
   const resetToIdle = () => {
     setState({ phase: 'idle' });
   };
@@ -91,20 +137,34 @@ export default function Home() {
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+          <h1 className="text-4xl font-bold text-text-primary dark:text-white mb-4">
             Meme Maker
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+          <p className="text-lg text-text-secondary dark:text-text-secondary max-w-2xl mx-auto">
             Paste a video URL from YouTube, Instagram, Facebook, Threads, or Reddit.
             Trim your clip and download it instantly.
           </p>
         </div>
+
+        {/* Rate Limit Notification */}
+        {notification && (
+          <div className="mb-8">
+            <RateLimitNotification
+              message={notification.message}
+              retryAfter={notification.retryAfter}
+              limitType={notification.limitType}
+              onRetryAvailable={handleRateLimitRetryAvailable}
+              onDismiss={handleRateLimitDismiss}
+            />
+          </div>
+        )}
 
         {/* URL Input Phase */}
         {(state.phase === 'idle' || state.phase === 'loading-metadata') && (
           <URLInputPanel 
             onSubmit={handleUrlSubmit} 
             loading={state.phase === 'loading-metadata'}
+            disabled={isRetryDisabled}
           />
         )}
 
@@ -113,6 +173,7 @@ export default function Home() {
           <TrimPanel 
             jobMeta={state.metadata}
             onSubmit={handleTrimSubmit}
+            disabled={isRetryDisabled}
           />
         )}
 
@@ -120,14 +181,14 @@ export default function Home() {
         {state.phase === 'processing' && (
           <div className="max-w-2xl mx-auto space-y-6">
             <div className="text-center">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              <h3 className="text-lg font-medium text-text-primary dark:text-white mb-2">
                 Processing your clip...
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              <p className="text-sm text-text-secondary dark:text-text-secondary mb-4">
                 {state.metadata.title}
               </p>
               <ProgressBar progress={pollerResult.progress} />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              <p className="text-xs text-text-muted dark:text-text-muted mt-2">
                 {pollerResult.status === 'queued' && 'Waiting in queue...'}
                 {pollerResult.status === 'working' && 'Trimming video...'}
               </p>
@@ -135,7 +196,7 @@ export default function Home() {
             <div className="text-center">
               <button
                 onClick={resetToIdle}
-                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                className="text-sm text-text-muted hover:text-text-secondary dark:text-text-muted dark:hover:text-text-secondary"
               >
                 Cancel
               </button>
@@ -159,11 +220,7 @@ export default function Home() {
         )}
 
         {/* Footer */}
-        <div className="mt-12 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Maximum clip length: 3 minutes • Files self-destruct after download
-          </p>
-        </div>
+        <Footer />
 
         {/* Download Modal */}
         {state.phase === 'download' && (

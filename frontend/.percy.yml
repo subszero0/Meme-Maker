@@ -1,0 +1,30 @@
+version: 2
+project: meme-maker
+snapshot:
+  widths: [375, 768, 1280]
+  min-height: 768
+  percy-css: |
+    /* Hide elements that can cause visual flakiness */
+    .react-player video {
+      background: #000 !important;
+    }
+    
+    /* Ensure consistent loading states */
+    .loading-spinner {
+      animation-play-state: paused !important;
+    }
+    
+    /* Hide dynamic timestamps/progress that change */
+    [data-testid="current-time"],
+    [data-testid="duration"] {
+      visibility: hidden !important;
+    }
+
+discovery:
+  request-headers:
+    User-Agent: Percy/Cypress
+  network-idle-timeout: 750
+  
+ci:
+  fail-on-changes: false
+  threshold: 0.1 

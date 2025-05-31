@@ -3,10 +3,17 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence } from 'framer-motion';
-import Toast, { ToastData } from './Toast';
+import Notification, { NotificationType } from './Notification';
+
+interface ToastData {
+  id: string;
+  type: NotificationType;
+  message: string;
+  timestamp: number;
+}
 
 interface ToastContextValue {
-  pushToast: (toast: { type: 'success' | 'error' | 'info'; message: string }) => void;
+  pushToast: (toast: { type: NotificationType; message: string }) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -30,7 +37,7 @@ export default function ToastProvider({ children }: ToastProviderProps) {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
 
-  const pushToast = useCallback(({ type, message }: { type: 'success' | 'error' | 'info'; message: string }) => {
+  const pushToast = useCallback(({ type, message }: { type: NotificationType; message: string }) => {
     const now = Date.now();
     const id = `toast-${now}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -70,9 +77,13 @@ export default function ToastProvider({ children }: ToastProviderProps) {
           <AnimatePresence mode="popLayout">
             {toasts.map(toast => (
               <div key={toast.id} className="pointer-events-auto">
-                <Toast
-                  toast={toast}
-                  onDismiss={removeToast}
+                <Notification
+                  type={toast.type}
+                  message={toast.message}
+                  position="toast"
+                  duration={4000}
+                  onClose={() => removeToast(toast.id)}
+                  data-cy="toast"
                 />
               </div>
             ))}

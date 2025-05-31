@@ -16,6 +16,19 @@ export function formatTime(seconds: number): string {
 }
 
 /**
+ * Formats seconds to hh:mm:ss format for API requests
+ * @param seconds - Time in seconds
+ * @returns Formatted time string without milliseconds
+ */
+export function formatTimeForAPI(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+/**
  * Parses a time string in hh:mm:ss.mmm or mm:ss.mmm format to seconds
  * @param timeString - Time string to parse
  * @returns Time in seconds or null if invalid format

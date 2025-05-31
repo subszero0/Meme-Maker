@@ -102,6 +102,135 @@ Run specific test file:
 pytest tests/test_health.py -v
 ```
 
+### End-to-End Smoke Tests
+
+The E2E smoke tests verify the complete user flow from metadata fetching to clip download. These tests can be run against any deployment (local, staging, production) to verify the entire system is working correctly.
+
+#### Quick Start
+
+```bash
+# Run E2E tests against local development server
+../scripts/run_smoke_tests.sh
+
+# Run tests against a specific API URL
+../scripts/run_smoke_tests.sh --url https://api.yourdomain.com
+
+# Run only quick tests (skip full E2E flow)
+../scripts/run_smoke_tests.sh --quick
+```
+
+#### Test Coverage
+
+The smoke tests verify:
+
+1. **API Availability** - Health check and docs endpoints are reachable
+2. **Metadata Fetching** - POST `/api/v1/metadata` returns valid video information
+3. **Job Creation** - POST `/api/v1/jobs` creates jobs and validates inputs properly
+4. **Job Processing** - Polling GET `/api/v1/jobs/{id}` until completion
+5. **File Download** - Download and verify the generated clip file
+
+#### Configuration
+
+Environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BASE_URL` | `http://localhost:8000` | API base URL for testing |
+| `TEST_VIDEO_URL` | `https://www.youtube.com/watch?v=BaW_jenozKc` | Video URL for test clips |
+| `MAX_WAIT_TIMEOUT_SECONDS` | `60` | Maximum time to wait for job completion |
+| `PYTEST_ARGS` | - | Additional pytest arguments |
+
+#### Running Tests Manually
+
+```bash
+# Set environment and run with pytest directly
+export BASE_URL=http://localhost:8000
+export TEST_VIDEO_URL=https://www.youtube.com/watch?v=BaW_jenozKc
+cd backend/
+python -m pytest tests/test_e2e_smoke.py -v
+
+# Run only specific test
+python -m pytest tests/test_e2e_smoke.py::TestE2EUserFlow::test_complete_user_flow -v
+
+# Run with verbose output for debugging
+python -m pytest tests/test_e2e_smoke.py -v -s
+```
+
+#### Test Examples
+
+```bash
+# Test against production deployment
+BASE_URL=https://api.mememaker.com ../scripts/run_smoke_tests.sh
+
+# Use a different test video
+TEST_VIDEO_URL="https://www.youtube.com/watch?v=dQw4w9WgXcQ" ../scripts/run_smoke_tests.sh
+
+# Quick health check only
+../scripts/run_smoke_tests.sh --quick
+
+# Verbose output for debugging
+../scripts/run_smoke_tests.sh --verbose
+
+# Custom timeout for slow connections
+../scripts/run_smoke_tests.sh --wait-time 120
+```
+
+#### Continuous Integration
+
+Add to your CI pipeline:
+
+```yaml
+# Example GitHub Actions step
+- name: Run E2E Smoke Tests
+  run: |
+    export BASE_URL=https://staging.api.mememaker.com
+    ./scripts/run_smoke_tests.sh
+  env:
+    TEST_VIDEO_URL: ${{ secrets.TEST_VIDEO_URL }}
+```
+
+#### Test Output
+
+The tests provide detailed progress information:
+
+```
+🧪 Meme Maker E2E Smoke Tests
+==================================
+
+ℹ️  Configuration:
+  📍 API Base URL: http://localhost:8000
+  🎬 Test Video: https://www.youtube.com/watch?v=BaW_jenozKc
+  📁 Backend Dir: /path/to/backend
+  ⚡ Quick Mode: false
+
+ℹ️  Checking environment...
+✅ Environment check passed
+✅ API is reachable at http://localhost:8000
+
+🔍 Testing E2E flow with URL: https://www.youtube.com/watch?v=BaW_jenozKc
+📡 API Base URL: http://localhost:8000
+
+1️⃣ Fetching video metadata...
+   ✅ Duration: 123.45 seconds
+   ✅ Title: Sample Video Title
+
+2️⃣ Creating clip job...
+   ✅ Job created: abc123def456
+
+3️⃣ Polling for job completion...
+   📋 Status: queued (after 0.1s)
+   📋 Status: working (after 2.3s)
+   📊 Progress: 45%
+   📋 Status: done (after 15.7s)
+   ✅ Job completed successfully
+   ✅ Download link: https://s3.amazonaws.com/bucket/file.mp4?presigned...
+
+4️⃣ Downloading clip file...
+   ✅ Downloaded clip: 2,547,891 bytes
+
+🎉 Complete E2E flow successful!
+```
+
 ## Docker
 
 Build image:

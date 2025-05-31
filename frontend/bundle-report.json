@@ -1,0 +1,337 @@
+{
+  "chunks": [
+    {
+      "name": "framework-b326bfe0905a39d9.js",
+      "path": "_next\\static\\chunks\\framework-b326bfe0905a39d9.js",
+      "type": "framework",
+      "rawSize": 182764,
+      "gzipSize": 57838,
+      "rawSizeKB": 178.48,
+      "gzipSizeKB": 56.48
+    },
+    {
+      "name": "4bd1b696-666224796d2fdfa5.js",
+      "path": "_next\\static\\chunks\\4bd1b696-666224796d2fdfa5.js",
+      "type": "app",
+      "rawSize": 168413,
+      "gzipSize": 53320,
+      "rawSizeKB": 164.47,
+      "gzipSizeKB": 52.07
+    },
+    {
+      "name": "684-a702476986805f98.js",
+      "path": "_next\\static\\chunks\\684-a702476986805f98.js",
+      "type": "vendor",
+      "rawSize": 174828,
+      "gzipSize": 46130,
+      "rawSizeKB": 170.73,
+      "gzipSizeKB": 45.05
+    },
+    {
+      "name": "553-e73d2968e5a143cb.js",
+      "path": "_next\\static\\chunks\\553-e73d2968e5a143cb.js",
+      "type": "vendor",
+      "rawSize": 122669,
+      "gzipSize": 39800,
+      "rawSizeKB": 119.79,
+      "gzipSizeKB": 38.87
+    },
+    {
+      "name": "polyfills-42372ed130431b0a.js",
+      "path": "_next\\static\\chunks\\polyfills-42372ed130431b0a.js",
+      "type": "polyfill",
+      "rawSize": 112594,
+      "gzipSize": 39627,
+      "rawSizeKB": 109.96,
+      "gzipSizeKB": 38.7
+    },
+    {
+      "name": "main-d8be890fce5ff179.js",
+      "path": "_next\\static\\chunks\\main-d8be890fce5ff179.js",
+      "type": "main",
+      "rawSize": 112355,
+      "gzipSize": 32212,
+      "rawSizeKB": 109.72,
+      "gzipSizeKB": 31.46
+    },
+    {
+      "name": "536-4eb3f81148c9743c.js",
+      "path": "_next\\static\\chunks\\536-4eb3f81148c9743c.js",
+      "type": "vendor",
+      "rawSize": 50850,
+      "gzipSize": 16800,
+      "rawSizeKB": 49.66,
+      "gzipSizeKB": 16.41
+    },
+    {
+      "name": "212.db284fc9d4856efc.js",
+      "path": "_next\\static\\chunks\\212.db284fc9d4856efc.js",
+      "type": "vendor",
+      "rawSize": 25489,
+      "gzipSize": 8306,
+      "rawSizeKB": 24.89,
+      "gzipSizeKB": 8.11
+    },
+    {
+      "name": "page-a4637124ca62041a.js",
+      "path": "_next\\static\\chunks\\app\\page-a4637124ca62041a.js",
+      "type": "app",
+      "rawSize": 24045,
+      "gzipSize": 7621,
+      "rawSizeKB": 23.48,
+      "gzipSizeKB": 7.44
+    },
+    {
+      "name": "909.6eeb401976b25e09.js",
+      "path": "_next\\static\\chunks\\909.6eeb401976b25e09.js",
+      "type": "vendor",
+      "rawSize": 12656,
+      "gzipSize": 4174,
+      "rawSizeKB": 12.36,
+      "gzipSizeKB": 4.08
+    },
+    {
+      "name": "reactPlayerFilePlayer.3dea3f01233a5fd6.js",
+      "path": "_next\\static\\chunks\\reactPlayerFilePlayer.3dea3f01233a5fd6.js",
+      "type": "lazy-media",
+      "rawSize": 8623,
+      "gzipSize": 2880,
+      "rawSizeKB": 8.42,
+      "gzipSizeKB": 2.81
+    },
+    {
+      "name": "layout-12987e317048fa49.js",
+      "path": "_next\\static\\chunks\\app\\layout-12987e317048fa49.js",
+      "type": "app",
+      "rawSize": 6780,
+      "gzipSize": 2521,
+      "rawSizeKB": 6.62,
+      "gzipSizeKB": 2.46
+    },
+    {
+      "name": "_error-429ffef92729b913.js",
+      "path": "_next\\static\\chunks\\pages\\_error-429ffef92729b913.js",
+      "type": "app",
+      "rawSize": 6134,
+      "gzipSize": 2480,
+      "rawSizeKB": 5.99,
+      "gzipSizeKB": 2.42
+    },
+    {
+      "name": "341.3d7e7d0d3d1bf4f5.js",
+      "path": "_next\\static\\chunks\\341.3d7e7d0d3d1bf4f5.js",
+      "type": "vendor",
+      "rawSize": 5899,
+      "gzipSize": 2398,
+      "rawSizeKB": 5.76,
+      "gzipSizeKB": 2.34
+    },
+    {
+      "name": "webpack-ccd0d7f00da356b4.js",
+      "path": "_next\\static\\chunks\\webpack-ccd0d7f00da356b4.js",
+      "type": "runtime",
+      "rawSize": 4239,
+      "gzipSize": 2205,
+      "rawSizeKB": 4.14,
+      "gzipSizeKB": 2.15
+    },
+    {
+      "name": "reactPlayerYouTube.91cbbce2bd057d3b.js",
+      "path": "_next\\static\\chunks\\reactPlayerYouTube.91cbbce2bd057d3b.js",
+      "type": "lazy-media",
+      "rawSize": 4030,
+      "gzipSize": 1856,
+      "rawSizeKB": 3.94,
+      "gzipSizeKB": 1.81
+    },
+    {
+      "name": "337.ffdfa4a353b30669.js",
+      "path": "_next\\static\\chunks\\337.ffdfa4a353b30669.js",
+      "type": "vendor",
+      "rawSize": 4811,
+      "gzipSize": 1785,
+      "rawSizeKB": 4.7,
+      "gzipSizeKB": 1.74
+    },
+    {
+      "name": "reactPlayerMux.fe4f4364dac7975d.js",
+      "path": "_next\\static\\chunks\\reactPlayerMux.fe4f4364dac7975d.js",
+      "type": "lazy-media",
+      "rawSize": 4939,
+      "gzipSize": 1740,
+      "rawSizeKB": 4.82,
+      "gzipSizeKB": 1.7
+    },
+    {
+      "name": "reactPlayerWistia.c240c594fe917508.js",
+      "path": "_next\\static\\chunks\\reactPlayerWistia.c240c594fe917508.js",
+      "type": "lazy-media",
+      "rawSize": 3112,
+      "gzipSize": 1332,
+      "rawSizeKB": 3.04,
+      "gzipSizeKB": 1.3
+    },
+    {
+      "name": "reactPlayerVimeo.dc0867989b45b528.js",
+      "path": "_next\\static\\chunks\\reactPlayerVimeo.dc0867989b45b528.js",
+      "type": "lazy-media",
+      "rawSize": 3229,
+      "gzipSize": 1322,
+      "rawSizeKB": 3.15,
+      "gzipSizeKB": 1.29
+    },
+    {
+      "name": "reactPlayerPreview.4364cea89c61791d.js",
+      "path": "_next\\static\\chunks\\reactPlayerPreview.4364cea89c61791d.js",
+      "type": "lazy-media",
+      "rawSize": 2617,
+      "gzipSize": 1277,
+      "rawSizeKB": 2.56,
+      "gzipSizeKB": 1.25
+    },
+    {
+      "name": "reactPlayerFacebook.ac18a9deab562d52.js",
+      "path": "_next\\static\\chunks\\reactPlayerFacebook.ac18a9deab562d52.js",
+      "type": "lazy-media",
+      "rawSize": 2825,
+      "gzipSize": 1266,
+      "rawSizeKB": 2.76,
+      "gzipSizeKB": 1.24
+    },
+    {
+      "name": "reactPlayerTwitch.b8e0d1779af06c56.js",
+      "path": "_next\\static\\chunks\\reactPlayerTwitch.b8e0d1779af06c56.js",
+      "type": "lazy-media",
+      "rawSize": 2674,
+      "gzipSize": 1228,
+      "rawSizeKB": 2.61,
+      "gzipSizeKB": 1.2
+    },
+    {
+      "name": "reactPlayerDailyMotion.010e727617157116.js",
+      "path": "_next\\static\\chunks\\reactPlayerDailyMotion.010e727617157116.js",
+      "type": "lazy-media",
+      "rawSize": 2559,
+      "gzipSize": 1205,
+      "rawSizeKB": 2.5,
+      "gzipSizeKB": 1.18
+    },
+    {
+      "name": "reactPlayerSoundCloud.74e12cbe0ea43a1d.js",
+      "path": "_next\\static\\chunks\\reactPlayerSoundCloud.74e12cbe0ea43a1d.js",
+      "type": "lazy-media",
+      "rawSize": 2525,
+      "gzipSize": 1182,
+      "rawSizeKB": 2.47,
+      "gzipSizeKB": 1.15
+    },
+    {
+      "name": "reactPlayerStreamable.eafb65ea85248a34.js",
+      "path": "_next\\static\\chunks\\reactPlayerStreamable.eafb65ea85248a34.js",
+      "type": "lazy-media",
+      "rawSize": 2539,
+      "gzipSize": 1158,
+      "rawSizeKB": 2.48,
+      "gzipSizeKB": 1.13
+    },
+    {
+      "name": "reactPlayerVidyard.a95b5f27eec3070f.js",
+      "path": "_next\\static\\chunks\\reactPlayerVidyard.a95b5f27eec3070f.js",
+      "type": "lazy-media",
+      "rawSize": 2454,
+      "gzipSize": 1152,
+      "rawSizeKB": 2.4,
+      "gzipSizeKB": 1.13
+    },
+    {
+      "name": "reactPlayerKaltura.97c33e1369789be3.js",
+      "path": "_next\\static\\chunks\\reactPlayerKaltura.97c33e1369789be3.js",
+      "type": "lazy-media",
+      "rawSize": 2390,
+      "gzipSize": 1132,
+      "rawSizeKB": 2.33,
+      "gzipSizeKB": 1.11
+    },
+    {
+      "name": "reactPlayerMixcloud.64685ac5f47f535b.js",
+      "path": "_next\\static\\chunks\\reactPlayerMixcloud.64685ac5f47f535b.js",
+      "type": "lazy-media",
+      "rawSize": 2241,
+      "gzipSize": 1091,
+      "rawSizeKB": 2.19,
+      "gzipSizeKB": 1.07
+    },
+    {
+      "name": "page-c8802fa59a4f74b0.js",
+      "path": "_next\\static\\chunks\\app\\_not-found\\page-c8802fa59a4f74b0.js",
+      "type": "app",
+      "rawSize": 2237,
+      "gzipSize": 977,
+      "rawSizeKB": 2.18,
+      "gzipSizeKB": 0.95
+    },
+    {
+      "name": "_app-92f2aae776f86b9c.js",
+      "path": "_next\\static\\chunks\\pages\\_app-92f2aae776f86b9c.js",
+      "type": "app",
+      "rawSize": 910,
+      "gzipSize": 508,
+      "rawSizeKB": 0.89,
+      "gzipSizeKB": 0.5
+    },
+    {
+      "name": "472.a3826d29d6854395.js",
+      "path": "_next\\static\\chunks\\472.a3826d29d6854395.js",
+      "type": "vendor",
+      "rawSize": 739,
+      "gzipSize": 415,
+      "rawSizeKB": 0.72,
+      "gzipSizeKB": 0.41
+    },
+    {
+      "name": "main-app-d1925bfae01a0004.js",
+      "path": "_next\\static\\chunks\\main-app-d1925bfae01a0004.js",
+      "type": "main",
+      "rawSize": 518,
+      "gzipSize": 220,
+      "rawSizeKB": 0.51,
+      "gzipSizeKB": 0.21
+    }
+  ],
+  "violations": [
+    {
+      "type": "TOTAL_BUDGET_EXCEEDED",
+      "current": 331.21999999999997,
+      "budget": 250,
+      "message": "Total bundle size 331.21999999999997 kB exceeds budget of 250 kB"
+    }
+  ],
+  "summary": {
+    "totalChunks": 33,
+    "totalGzipKB": 331.22,
+    "criticalGzipKB": 90.3,
+    "lazyChunks": 14
+  },
+  "timestamp": "2025-05-30T22:12:00.351Z",
+  "budgets": {
+    "TOTAL_GZIP_KB": 250,
+    "CHUNK_GZIP_KB": 100,
+    "CRITICAL_GZIP_KB": 180,
+    "SINGLE_MODULE_KB": 10
+  },
+  "recommendations": [
+    {
+      "type": "LARGE_CHUNKS",
+      "description": "Consider code splitting or tree shaking for large chunks",
+      "chunks": [
+        "framework-b326bfe0905a39d9.js (56.48 kB)",
+        "4bd1b696-666224796d2fdfa5.js (52.07 kB)"
+      ]
+    },
+    {
+      "type": "REACT_PLAYER_OPTIMIZATION",
+      "description": "Many React Player modules detected. Consider lazy loading only needed players",
+      "count": 14
+    }
+  ]
+}

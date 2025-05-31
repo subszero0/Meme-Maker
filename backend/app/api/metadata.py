@@ -1,13 +1,18 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from ..models import MetadataRequest, MetadataResponse
+from ..ratelimit import global_limiter
 
 router = APIRouter()
 
 
-@router.post("/metadata", response_model=MetadataResponse)
+@router.post("/metadata", response_model=MetadataResponse, dependencies=[Depends(global_limiter)])
 async def get_video_metadata(request: MetadataRequest) -> MetadataResponse:
-    """Get video metadata including duration and title"""
+    """Get video metadata including duration and title
+    
+    Rate limits:
+    - Global: 10 requests per minute per IP
+    """
     # Placeholder implementation
     return MetadataResponse(
         title="Sample Video Title",

@@ -1,64 +1,75 @@
-output "alb_dns_name" {
-  description = "DNS name of the load balancer"
-  value       = aws_lb.main.dns_name
-}
+# Terraform Outputs for Meme Maker Infrastructure
+# Core values for integration with other systems
 
-output "s3_bucket_name" {
-  description = "Name of the S3 bucket for clips"
+output "bucket_name" {
+  description = "Name of the S3 bucket for video clips"
   value       = aws_s3_bucket.clips.bucket
 }
 
-output "ecs_cluster_name" {
-  description = "Name of the ECS cluster"
-  value       = aws_ecs_cluster.main.name
+output "bucket_arn" {
+  description = "ARN of the S3 bucket for video clips"
+  value       = aws_s3_bucket.clips.arn
 }
 
-output "ecr_backend_repository_url" {
-  description = "URL of the backend ECR repository"
-  value       = aws_ecr_repository.backend.repository_url
+output "role_arn" {
+  description = "ARN of the IAM role for worker/backend services"
+  value       = aws_iam_role.worker_backend.arn
 }
 
-output "ecr_worker_repository_url" {
-  description = "URL of the worker ECR repository"
-  value       = aws_ecr_repository.worker.repository_url
+output "role_name" {
+  description = "Name of the IAM role for worker/backend services"
+  value       = aws_iam_role.worker_backend.name
 }
 
-output "redis_endpoint" {
-  description = "Redis cluster endpoint"
-  value       = aws_elasticache_cluster.redis.cache_nodes[0].address
+output "instance_profile_name" {
+  description = "Name of the IAM instance profile for EC2 deployments"
+  value       = aws_iam_instance_profile.worker_backend.name
 }
 
-output "ci_user_name" {
-  description = "Name of the CI/CD IAM user"
-  value       = aws_iam_user.ci_deploy.name
+output "instance_profile_arn" {
+  description = "ARN of the IAM instance profile for EC2 deployments"
+  value       = aws_iam_instance_profile.worker_backend.arn
 }
 
-output "backend_service_name" {
-  description = "Name of the backend ECS service"
-  value       = aws_ecs_service.backend.name
+# DNS outputs (when Route53 is used)
+output "record_name" {
+  description = "DNS record name created (if Route53 record was created)"
+  value       = var.create_route53_record && var.route53_zone_id != "" && var.lb_dns != "" ? aws_route53_record.api[0].name : null
 }
 
-output "worker_service_name" {
-  description = "Name of the worker ECS service"
-  value       = aws_ecs_service.worker.name
+output "record_fqdn" {
+  description = "Fully qualified domain name of the created DNS record"
+  value       = var.create_route53_record && var.route53_zone_id != "" && var.lb_dns != "" ? aws_route53_record.api[0].fqdn : null
 }
 
-output "alb_url" {
-  description = "Full URL to access the application"
-  value       = var.domain_name != "" && var.cloudflare_zone_id != "" ? "https://api.${var.domain_name}" : "http://${aws_lb.main.dns_name}"
+# Environment information
+output "environment" {
+  description = "Environment name"
+  value       = var.env
 }
 
-output "ci_deploy_role_arn" {
-  description = "ARN of the GitHub Actions OIDC role for CI/CD"
-  value       = aws_iam_role.github_actions.arn
+output "project_name" {
+  description = "Project name"
+  value       = var.project_name
 }
 
-output "api_fqdn" {
-  description = "Fully qualified domain name for the API endpoint"
-  value       = var.domain_name != "" && var.cloudflare_zone_id != "" ? "api.${var.domain_name}" : aws_lb.main.dns_name
+output "aws_region" {
+  description = "AWS region where resources are deployed"
+  value       = var.aws_region
 }
 
-output "waf_web_acl_arn" {
-  description = "ARN of the WAF Web ACL"
-  value       = var.domain_name != "" && var.cloudflare_zone_id != "" ? aws_wafv2_web_acl.main[0].arn : null
-} 
+# Resource naming outputs for external integrations
+output "resource_prefix" {
+  description = "Resource naming prefix used for all resources"
+  value       = "${var.project_name}-${var.env}"
+}
+
+output "bucket_domain_name" {
+  description = "S3 bucket domain name for direct access"
+  value       = aws_s3_bucket.clips.bucket_domain_name
+}
+
+output "bucket_regional_domain_name" {
+  description = "S3 bucket regional domain name"
+  value       = aws_s3_bucket.clips.bucket_regional_domain_name
+}

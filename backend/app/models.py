@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, HttpUrl, Field
 from decimal import Decimal
+from dataclasses import dataclass
 
 
 class JobStatus(str, Enum):
@@ -11,6 +12,19 @@ class JobStatus(str, Enum):
     working = "working"
     done = "done"
     error = "error"
+
+
+@dataclass
+class ClipJob:
+    """Dataclass for clip job data passed to RQ worker"""
+    job_id: str
+    url: str
+    start_seconds: float
+    end_seconds: float
+    
+    def duration(self) -> float:
+        """Calculate clip duration in seconds"""
+        return self.end_seconds - self.start_seconds
 
 
 class Job(BaseModel):
@@ -28,17 +42,37 @@ class Job(BaseModel):
 class JobCreate(BaseModel):
     """Request model for creating a new job"""
     url: HttpUrl
-    in_ts: float  # seconds
-    out_ts: float  # seconds
+    start: str = Field(..., description="Start time in ISO format (hh:mm:ss)")
+    end: str = Field(..., description="End time in ISO format (hh:mm:ss)")
+    accepted_terms: bool = Field(..., description="User agreement to Terms of Use")
+    
+    def to_seconds(self, time_str: str) -> float:
+        """Convert hh:mm:ss string to seconds"""
+        parts = time_str.split(':')
+        if len(parts) != 3:
+            raise ValueError("Time must be in format hh:mm:ss")
+        
+        hours, minutes, seconds = map(float, parts)
+        return hours * 3600 + minutes * 60 + seconds
+    
+    @property 
+    def start_seconds(self) -> float:
+        """Get start time in seconds"""
+        return self.to_seconds(self.start)
+    
+    @property
+    def end_seconds(self) -> float:
+        """Get end time in seconds"""
+        return self.to_seconds(self.end)
 
 
 class JobResponse(BaseModel):
     """Response model for job operations"""
-    id: str
+    job_id: str
     status: JobStatus
     created_at: datetime
     progress: Optional[int] = None
-    url: Optional[str] = None  # presigned S3 URL when done
+    link: Optional[str] = None  # presigned S3 URL when done
     error_code: Optional[str] = None
 
 
