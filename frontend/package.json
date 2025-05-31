@@ -15,9 +15,11 @@
     "audit:bundle": "node ../scripts/bundle-audit.js",
     "audit:bundle:enforce": "node ../scripts/bundle-audit.js --enforce",
     "audit:bundle:verbose": "node ../scripts/bundle-audit.js --verbose",
+    "audit:final": "bash ../scripts/final-review.sh",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "cypress:run:chrome": "cypress run --browser chrome",
+    "cypress:smoke": "cypress run --spec 'cypress/e2e/smoke.cy.ts'",
     "visual:baseline": "percy exec -- cypress run --spec 'cypress/e2e/visual_regression.cy.ts'",
     "visual:test": "percy exec -- cypress run --spec 'cypress/e2e/visual_regression.cy.ts'"
   },

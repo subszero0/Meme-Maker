@@ -1,0 +1,196 @@
+groups:
+  - name: production-alerts
+    rules:
+      # Critical: High HTTP error rate (5xx responses > 1% for 5 minutes)
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{job="meme-maker-backend",status=~"5.."}[5m]) /
+            rate(http_requests_total{job="meme-maker-backend"}[5m])
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          service: meme-maker
+          environment: production
+        annotations:
+          summary: "High HTTP error rate detected in production"
+          description: "The Meme Maker API has an error rate of {{ $value | humanizePercentage }} over the last 5 minutes, which exceeds the 1% threshold."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/runbooks.md#high-error-rate"
+          dashboard: "https://app.memeit.pro/grafana/d/api-overview"
+
+      # Critical: SSL certificate expiry warning
+      - alert: CertExpiry
+        expr: (ssl_cert_not_after{instance="app.memeit.pro:443"} - time()) / 86400 < 14
+        for: 2h
+        labels:
+          severity: warning
+          service: meme-maker
+          environment: production
+        annotations:
+          summary: "SSL certificate expires soon"
+          description: "SSL certificate for {{ $labels.instance }} expires in {{ $value | humanizeDuration }}."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/runbooks.md#ssl-cert-expiry"
+
+      # Warning: High CPU usage (>80% for 10 minutes)
+      - alert: HighCPU
+        expr: |
+          (
+            rate(container_cpu_usage_seconds_total{name=~"meme-prod-.*"}[5m]) * 100
+          ) > 80
+        for: 10m
+        labels:
+          severity: warning
+          service: meme-maker
+          environment: production
+        annotations:
+          summary: "High CPU usage detected"
+          description: "Container {{ $labels.name }} has been using {{ $value }}% CPU for more than 10 minutes."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/runbooks.md#high-cpu"
+
+      # Warning: High memory usage (>85% for 5 minutes)
+      - alert: HighMemory
+        expr: |
+          (
+            container_memory_usage_bytes{name=~"meme-prod-.*"} /
+            container_spec_memory_limit_bytes{name=~"meme-prod-.*"} * 100
+          ) > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: meme-maker
+          environment: production
+        annotations:
+          summary: "High memory usage detected"
+          description: "Container {{ $labels.name }} is using {{ $value }}% of its memory limit."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/runbooks.md#high-memory"
+
+      # Critical: Container restart loop
+      - alert: ContainerRestartLoop
+        expr: |
+          rate(container_start_time_seconds{name=~"meme-prod-.*"}[15m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          service: meme-maker
+          environment: production
+        annotations:
+          summary: "Container restart loop detected"
+          description: "Container {{ $labels.name }} has been restarting frequently."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/runbooks.md#container-restart-loop"
+
+      # Warning: Disk space running low
+      - alert: DiskSpaceLow
+        expr: |
+          (
+            (node_filesystem_avail_bytes{mountpoint="/"} /
+             node_filesystem_size_bytes{mountpoint="/"}) * 100
+          ) < 20
+        for: 5m
+        labels:
+          severity: warning
+          service: meme-maker
+          environment: production
+        annotations:
+          summary: "Disk space running low"
+          description: "Root filesystem has {{ $value }}% space remaining."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/runbooks.md#disk-space-low"
+
+      # Critical: Redis connection failures
+      - alert: RedisConnectionFailure
+        expr: redis_connected_clients{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: meme-maker
+          environment: production
+        annotations:
+          summary: "Redis connection failure"
+          description: "Redis has no connected clients for more than 2 minutes."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/runbooks.md#redis-connection-failure"
+
+      # Warning: MinIO high storage usage
+      - alert: MinIOStorageHigh
+        expr: |
+          (
+            minio_disk_usage_total_bytes / minio_disk_total_bytes * 100
+          ) > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: meme-maker
+          environment: production
+        annotations:
+          summary: "MinIO storage usage high"
+          description: "MinIO storage is {{ $value }}% full."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/runbooks.md#minio-storage-high"
+
+      # Critical: Queue depth very high (>25 jobs for 5 minutes)
+      - alert: QueueDepthCritical
+        expr: rq_jobs_in_queue{job="meme-maker-backend"} > 25
+        for: 5m
+        labels:
+          severity: critical
+          service: meme-maker
+          environment: production
+        annotations:
+          summary: "Job queue depth critically high"
+          description: "The job queue has {{ $value }} jobs pending for more than 5 minutes."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/runbooks.md#queue-depth-critical"
+
+      # Warning: Slow response times (>2s for 5 minutes)
+      - alert: SlowResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            rate(http_request_duration_seconds_bucket{job="meme-maker-backend"}[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: meme-maker
+          environment: production
+        annotations:
+          summary: "Slow API response times"
+          description: "95th percentile response time is {{ $value }}s."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/runbooks.md#slow-response-time"
+
+  # Deployment and release alerts
+  - name: deployment-alerts
+    rules:
+      # Info: Deployment started
+      - alert: DeploymentStarted
+        expr: increase(deployment_started_total[5m]) > 0
+        for: 0s
+        labels:
+          severity: info
+          service: meme-maker
+          environment: production
+        annotations:
+          summary: "Production deployment started"
+          description: "A new deployment to production has started."
+
+      # Critical: Deployment failed
+      - alert: DeploymentFailed
+        expr: increase(deployment_failed_total[10m]) > 0
+        for: 0s
+        labels:
+          severity: critical
+          service: meme-maker
+          environment: production
+        annotations:
+          summary: "Production deployment failed"
+          description: "A production deployment has failed and may require manual intervention."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/runbooks.md#deployment-failed"
+
+      # Warning: Rollback executed
+      - alert: RollbackExecuted
+        expr: increase(deployment_rollback_total[10m]) > 0
+        for: 0s
+        labels:
+          severity: warning
+          service: meme-maker
+          environment: production
+        annotations:
+          summary: "Production rollback executed"
+          description: "A production rollback has been executed."
+          runbook_url: "https://github.com/YOUR_USERNAME/Meme-Maker/blob/main/docs/runbooks.md#rollback-executed" 

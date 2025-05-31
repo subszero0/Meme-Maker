@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7.2.5-alpine
+    container_name: meme-staging-redis
+    restart: unless-stopped
+    networks:
+      - staging-net
+    command: ["redis-server"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  minio:
+    image: minio/minio:latest
+    container_name: meme-staging-minio
+    restart: unless-stopped
+    networks:
+      - staging-net
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-admin12345}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-staging-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  backend:
+    image: ghcr.io/${GITHUB_REPOSITORY:-owner/repo}/meme-backend:${IMAGE_TAG:-latest}
+    container_name: meme-staging-backend
+    restart: unless-stopped
+    networks:
+      - staging-net
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - AWS_ACCESS_KEY_ID=${MINIO_ACCESS_KEY:-admin}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_SECRET_KEY:-admin12345}
+      - AWS_ENDPOINT_URL=http://minio:9000
+      - S3_BUCKET=${S3_BUCKET:-clips}
+      - CORS_ORIGINS=https://${STAGING_DOMAIN:-staging.memeit.pro}
+      - ENV=staging
+      - LOG_LEVEL=INFO
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    image: ghcr.io/${GITHUB_REPOSITORY:-owner/repo}/meme-worker:${IMAGE_TAG:-latest}
+    container_name: meme-staging-worker
+    restart: unless-stopped
+    networks:
+      - staging-net
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - AWS_ACCESS_KEY_ID=${MINIO_ACCESS_KEY:-admin}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_SECRET_KEY:-admin12345}
+      - AWS_ENDPOINT_URL=http://minio:9000
+      - S3_BUCKET=${S3_BUCKET:-clips}
+      - ENV=staging
+      - LOG_LEVEL=INFO
+      - WORKER_CONCURRENCY=2
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: meme-staging-prometheus
+    restart: unless-stopped
+    networks:
+      - staging-net
+    volumes:
+      - prometheus-staging-data:/prometheus
+      - ./prometheus.staging.yml:/etc/prometheus/prometheus.yml:ro
+      - ../alerting/prometheus-rules.yml:/etc/prometheus/rules/prometheus-rules.yml:ro
+    expose:
+      - "9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=168h'  # 7 days for staging
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--web.external-url=https://${STAGING_DOMAIN:-staging.memeit.pro}/prometheus'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: meme-staging-caddy
+    restart: unless-stopped
+    networks:
+      - staging-net
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-staging-data:/data
+      - caddy-staging-config:/config
+      - ../caddy/Caddyfile.staging:/etc/caddy/Caddyfile:ro
+    environment:
+      - STAGING_DOMAIN=${STAGING_DOMAIN:-staging.memeit.pro}
+      - ACME_EMAIL=${ACME_EMAIL:-admin@memeit.pro}
+      - STAGING_PROM_USER=${STAGING_PROM_USER}
+      - STAGING_PROM_PASS=${STAGING_PROM_PASS}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+networks:
+  staging-net:
+    driver: bridge
+    name: meme-staging-network
+
+volumes:
+  minio-staging-data:
+    name: meme-staging-minio-data
+  prometheus-staging-data:
+    name: meme-staging-prometheus-data
+  caddy-staging-data:
+    name: meme-staging-caddy-data
+  caddy-staging-config:
+    name: meme-staging-caddy-config 

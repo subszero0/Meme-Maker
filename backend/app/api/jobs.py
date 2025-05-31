@@ -29,8 +29,14 @@ except Exception as e:
     job_queue = None
 
 
+# Create dependencies list based on rate limiting configuration
+job_dependencies = [Depends(global_limiter)]
+if job_creation_limiter is not None:
+    job_dependencies.append(Depends(job_creation_limiter))
+
+
 @router.post("/jobs", response_model=JobResponse, status_code=status.HTTP_202_ACCEPTED, 
-             dependencies=[Depends(global_limiter), Depends(job_creation_limiter)])
+             dependencies=job_dependencies)
 async def create_job(job_data: JobCreate) -> JobResponse:
     """Create a new video clipping job
     
@@ -57,10 +63,10 @@ async def create_job(job_data: JobCreate) -> JobResponse:
                 detail="end time must be greater than start time"
             )
         
-        if duration > 180:
+        if duration > settings.max_clip_seconds:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Clip duration cannot exceed 180 seconds (3 minutes)"
+                detail=f"Clip duration exceeds maximum allowed length of {settings.max_clip_seconds} seconds"
             )
             
     except ValueError as e:

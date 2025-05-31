@@ -1,9 +1,10 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
-from pydantic import BaseModel, HttpUrl, Field
+from typing import Optional, Union
+from pydantic import BaseModel, HttpUrl, Field, validator
 from decimal import Decimal
 from dataclasses import dataclass
+import os
 
 
 class JobStatus(str, Enum):
@@ -42,28 +43,53 @@ class Job(BaseModel):
 class JobCreate(BaseModel):
     """Request model for creating a new job"""
     url: HttpUrl
-    start: str = Field(..., description="Start time in ISO format (hh:mm:ss)")
-    end: str = Field(..., description="End time in ISO format (hh:mm:ss)")
+    start: Union[str, float, int] = Field(..., description="Start time in hh:mm:ss format or seconds")
+    end: Union[str, float, int] = Field(..., description="End time in hh:mm:ss format or seconds")
     accepted_terms: bool = Field(..., description="User agreement to Terms of Use")
     
-    def to_seconds(self, time_str: str) -> float:
-        """Convert hh:mm:ss string to seconds"""
-        parts = time_str.split(':')
+    @validator("start", "end", pre=True)
+    def _to_seconds(cls, v):
+        """Convert start/end to seconds - accepts hh:mm:ss strings or numeric seconds"""
+        # already numeric → ok
+        if isinstance(v, (int, float)):
+            return float(v)
+        # else parse "hh:mm:ss(.mmm)"
+        parts = str(v).split(":")
         if len(parts) != 3:
-            raise ValueError("Time must be in format hh:mm:ss")
+            raise ValueError("Time must be in hh:mm:ss format or numeric seconds")
+        try:
+            h, m, s = map(float, parts)
+            return h * 3600 + m * 60 + s
+        except ValueError:
+            raise ValueError("Invalid time format - use hh:mm:ss or numeric seconds")
+    
+    @validator("end")
+    def validate_clip_duration(cls, end_seconds, values):
+        """Validate that clip duration doesn't exceed maximum allowed"""
+        start_seconds = values.get("start", 0)
         
-        hours, minutes, seconds = map(float, parts)
-        return hours * 3600 + minutes * 60 + seconds
+        # Check that end > start
+        if end_seconds <= start_seconds:
+            raise ValueError("end time must be greater than start time")
+        
+        # Check maximum clip duration using environment variable
+        MAX_CLIP_SECONDS = int(os.getenv("MAX_CLIP_SECONDS", "1800"))  # 30 minutes default
+        duration = end_seconds - start_seconds
+        
+        if duration > MAX_CLIP_SECONDS:
+            raise ValueError("Clip too long")
+        
+        return end_seconds
     
     @property 
     def start_seconds(self) -> float:
         """Get start time in seconds"""
-        return self.to_seconds(self.start)
+        return self.start
     
     @property
     def end_seconds(self) -> float:
         """Get end time in seconds"""
-        return self.to_seconds(self.end)
+        return self.end
 
 
 class JobResponse(BaseModel):

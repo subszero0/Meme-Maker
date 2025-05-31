@@ -1,0 +1,247 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7.2.5-alpine
+    container_name: meme-prod-redis
+    restart: unless-stopped
+    networks:
+      - prod-net
+    command: ["redis-server"]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    volumes:
+      - redis-prod-data:/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: meme-prod-minio
+    restart: unless-stopped
+    networks:
+      - prod-net
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-admin12345}
+    command: server /data --console-address ":9001"
+    volumes:
+      - /opt/meme-data:/data  # Persistent volume on host
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  backend:
+    image: ghcr.io/${GITHUB_REPOSITORY:-owner/repo}/meme-backend:${IMAGE_TAG:-latest}
+    container_name: meme-prod-backend
+    restart: unless-stopped
+    networks:
+      - prod-net
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://minio:9000}
+      - S3_BUCKET=${S3_BUCKET:-clips}
+      - CORS_ORIGINS=https://${PRODUCTION_DOMAIN:-app.memeit.pro}
+      - ENV=production
+      - LOG_LEVEL=INFO
+      - MAX_WORKERS=4
+      - WORKER_TIMEOUT=120
+    expose:
+      - "8000"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    image: ghcr.io/${GITHUB_REPOSITORY:-owner/repo}/meme-worker:${IMAGE_TAG:-latest}
+    container_name: meme-prod-worker
+    restart: unless-stopped
+    networks:
+      - prod-net
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://minio:9000}
+      - S3_BUCKET=${S3_BUCKET:-clips}
+      - ENV=production
+      - LOG_LEVEL=INFO
+      - WORKER_CONCURRENCY=20
+      - WORKER_TIMEOUT=300
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '4.0'
+        reservations:
+          memory: 2G
+          cpus: '2.0'
+    healthcheck:
+      test: ["CMD", "python", "-c", "import redis; r=redis.from_url('redis://redis:6379'); r.ping()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: meme-prod-prometheus
+    restart: unless-stopped
+    networks:
+      - prod-net
+    volumes:
+      - prometheus-prod-data:/prometheus
+      - ./prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - ../alerting/prometheus-rules.yml:/etc/prometheus/rules/prometheus-rules.yml:ro
+      - ../alerting/prod.yml:/etc/prometheus/rules/prod.yml:ro
+    expose:
+      - "9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=720h'  # 30 days for production
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--web.external-url=https://${PRODUCTION_DOMAIN:-app.memeit.pro}/prometheus'
+      - '--storage.tsdb.max-block-duration=2h'
+      - '--storage.tsdb.min-block-duration=2h'
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: meme-prod-alertmanager
+    restart: unless-stopped
+    networks:
+      - prod-net
+    volumes:
+      - alertmanager-prod-data:/alertmanager
+      - ../alerting/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    expose:
+      - "9093"
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=https://${PRODUCTION_DOMAIN:-app.memeit.pro}/alertmanager'
+      - '--cluster.listen-address='
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: meme-prod-caddy
+    restart: unless-stopped
+    networks:
+      - prod-net
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_PORT:-443}:443"
+    volumes:
+      - caddy-prod-data:/data
+      - caddy-prod-config:/config
+      - ../caddy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
+    environment:
+      - PRODUCTION_DOMAIN=${PRODUCTION_DOMAIN:-app.memeit.pro}
+      - ACME_EMAIL=${ACME_EMAIL:-admin@memeit.pro}
+      - PROD_PROM_USER=${PROD_PROM_USER:-admin}
+      - PROD_PROM_PASS=${PROD_PROM_PASS}
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+networks:
+  prod-net:
+    driver: bridge
+    name: meme-prod-network
+
+volumes:
+  redis-prod-data:
+    name: meme-prod-redis-data
+  prometheus-prod-data:
+    name: meme-prod-prometheus-data
+  alertmanager-prod-data:
+    name: meme-prod-alertmanager-data
+  caddy-prod-data:
+    name: meme-prod-caddy-data
+  caddy-prod-config:
+    name: meme-prod-caddy-config 

@@ -1,0 +1,183 @@
+# Meme Maker - Production Caddyfile
+# Wildcard SSL with DNS-01 validation and hardened TLS settings
+
+{
+    # Global options
+    auto_https disable_redirects
+    admin off
+    
+    # Email for Let's Encrypt registration
+    email {$ACME_EMAIL:admin@memeit.pro}
+    
+    # DNS-01 challenge configuration for wildcard certificates
+    acme_dns route53 {
+        max_retries 5
+        propagation_timeout 120s
+        polling_interval 4s
+    }
+}
+
+# Security snippet for reuse
+(security) {
+    # Modern compression
+    encode zstd gzip
+    
+    # Hardened TLS configuration
+    tls {
+        # Use DNS-01 challenge for wildcard certificates
+        dns route53 {
+            max_retries 5
+            propagation_timeout 120s
+            polling_interval 4s
+        }
+        
+        # Modern cipher suites only (TLS 1.2 and 1.3)
+        ciphers TLS_AES_256_GCM_SHA384 TLS_CHACHA20_POLY1305_SHA256 TLS_AES_128_GCM_SHA256 TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305 TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305 TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        
+        # Modern curves only
+        curves secp384r1 x25519 secp256r1
+        
+        # TLS 1.2 and 1.3 only
+        protocols tls1.2 tls1.3
+        
+        # Enable ALPN
+        alpn h2 http/1.1
+    }
+    
+    # Comprehensive security headers
+    header {
+        # HSTS with preload
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        
+        # CSP for HTTPS upgrade
+        Content-Security-Policy "upgrade-insecure-requests; default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' wss: https:; media-src 'self' blob: data: https:; object-src 'none'; base-uri 'self'; frame-ancestors 'none';"
+        
+        # Prevent MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        
+        # Prevent clickjacking
+        X-Frame-Options "DENY"
+        
+        # Referrer policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        
+        # XSS protection (legacy)
+        X-XSS-Protection "1; mode=block"
+        
+        # Permissions policy
+        Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+        
+        # Remove server identification
+        -Server
+    }
+    
+    # Access logging for production monitoring
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 100mb
+            roll_keep 5
+            roll_keep_for 168h
+        }
+        format console
+        level INFO
+    }
+}
+
+# Main production domains - app.memeit.pro and www.memeit.pro
+app.memeit.pro, www.memeit.pro {
+    import security
+    
+    # Redirect www to app (canonical URL)
+    @www_redirect header Host www.memeit.pro
+    redir @www_redirect https://app.memeit.pro{uri} permanent
+    
+    # API routes - highest priority
+    @api path /api/* /health /metrics /docs /redoc /openapi.json
+    handle @api {
+        reverse_proxy backend_prod:8000 {
+            # Health checking
+            health_uri /health
+            health_interval 30s
+            health_timeout 10s
+            health_status 2xx
+            
+            # Connection settings
+            flush_interval -1
+            
+            # Headers for real IP tracking
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+    
+    # Static assets with long-term caching
+    @static_assets {
+        path /_next/* /static/* *.js *.css *.ico *.png *.jpg *.jpeg *.gif *.svg *.woff *.woff2 *.ttf *.eot
+    }
+    handle @static_assets {
+        header Cache-Control "public, max-age=31536000, immutable"
+        header Vary "Accept-Encoding"
+        reverse_proxy frontend_prod:3000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+    
+    # All other routes (SPA, API fallback)
+    handle {
+        reverse_proxy frontend_prod:3000 {
+            # Health checking
+            health_uri /
+            health_interval 30s
+            health_timeout 10s
+            health_status 2xx
+            
+            # Headers for real IP tracking
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+}
+
+# Monitoring subdomain with basic auth
+monitoring.memeit.pro {
+    import security
+    
+    # Prometheus metrics with authentication
+    handle_path /prometheus/* {
+        basic_auth {
+            {$PROMETHEUS_USER} {$PROMETHEUS_PASS_HASH}
+        }
+        reverse_proxy prometheus_prod:9090
+    }
+    
+    # Grafana dashboard with authentication
+    handle_path /grafana/* {
+        basic_auth {
+            {$GRAFANA_USER} {$GRAFANA_PASS_HASH}
+        }
+        reverse_proxy grafana_prod:3000
+    }
+    
+    # Default redirect to Grafana
+    redir / /grafana/ permanent
+}
+
+# Fallback for any other *.memeit.pro subdomains
+*.memeit.pro {
+    import security
+    
+    # Redirect all other subdomains to main app
+    redir https://app.memeit.pro{uri} permanent
+}
+
+# HTTP to HTTPS redirect for all domains
+http://app.memeit.pro, http://www.memeit.pro, http://monitoring.memeit.pro {
+    redir https://{host}{uri} permanent
+} 

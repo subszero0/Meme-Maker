@@ -1,0 +1,486 @@
+name: Production Release
+
+on:
+  push:
+    tags: [ 'v*.*.*' ]  # Trigger only on semantic version tags
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to deploy (e.g., v1.0.0)'
+        required: true
+        type: string
+      skip_tests:
+        description: 'Skip tests (use with caution)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME_BACKEND: ${{ github.repository }}/meme-backend
+  IMAGE_NAME_WORKER: ${{ github.repository }}/meme-worker
+
+jobs:
+  # Checkout and validate tag
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      is_prerelease: ${{ steps.tag.outputs.is_prerelease }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          
+          # Check if this is a prerelease (contains alpha, beta, rc)
+          if [[ "${TAG}" =~ (alpha|beta|rc) ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "📋 Release tag: ${TAG}"
+          echo "🔍 Is prerelease: $(echo $TAG | grep -E '(alpha|beta|rc)' >/dev/null && echo 'true' || echo 'false')"
+
+      - name: Validate semantic version
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          if [[ ! "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
+            echo "❌ Invalid semantic version: ${TAG}"
+            echo "Expected format: v1.2.3 or v1.2.3-alpha.1"
+            exit 1
+          fi
+          echo "✅ Valid semantic version: ${TAG}"
+
+  # Security scanning with Trivy
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'  # Fail on critical/high vulnerabilities
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Scan Docker images
+        run: |
+          docker build -f Dockerfile.backend -t temp-backend .
+          docker build -f Dockerfile.worker -t temp-worker .
+          
+          echo "🔍 Scanning backend image..."
+          trivy image --exit-code 1 --severity CRITICAL,HIGH temp-backend
+          
+          echo "🔍 Scanning worker image..."
+          trivy image --exit-code 1 --severity CRITICAL,HIGH temp-worker
+
+  # Build and push production images
+  build-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    needs: [validate, security-scan]
+    outputs:
+      backend-image: ${{ steps.images.outputs.backend-image }}
+      worker-image: ${{ steps.images.outputs.worker-image }}
+      image-digest-backend: ${{ steps.build-backend.outputs.digest }}
+      image-digest-worker: ${{ steps.build-worker.outputs.digest }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=production-latest
+            type=sha,prefix={{branch}}-
+
+      - name: Extract metadata for worker
+        id: meta-worker
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WORKER }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=production-latest
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push backend image
+        id: build-backend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push worker image
+        id: build-worker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.worker
+          push: true
+          tags: ${{ steps.meta-worker.outputs.tags }}
+          labels: ${{ steps.meta-worker.outputs.labels }}
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Output image information
+        id: images
+        run: |
+          echo "backend-image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:${{ needs.validate.outputs.tag }}" >> $GITHUB_OUTPUT
+          echo "worker-image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WORKER }}:${{ needs.validate.outputs.tag }}" >> $GITHUB_OUTPUT
+
+  # Run comprehensive test suite
+  test-suite:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    needs: [validate, build-push]
+    if: ${{ !inputs.skip_tests }}
+    strategy:
+      fail-fast: false
+      matrix:
+        test-type: [backend, frontend, integration, e2e]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Backend Tests
+        if: matrix.test-type == 'backend'
+        run: |
+          cd backend
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+          pytest -v --maxfail=3 --disable-warnings --tb=short --cov=app --cov-report=xml
+
+      - name: Frontend Tests
+        if: matrix.test-type == 'frontend'
+        run: |
+          cd frontend
+          npm ci
+          npm run test:ci
+          npm run build
+
+      - name: Integration Tests
+        if: matrix.test-type == 'integration'
+        run: |
+          docker-compose -f docker-compose.yaml up -d redis minio
+          sleep 10
+          cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 15
+          chmod +x scripts/run_smoke_tests.sh
+          ./scripts/run_smoke_tests.sh http://localhost:8000
+
+      - name: End-to-End Tests
+        if: matrix.test-type == 'e2e'
+        run: |
+          # Install Cypress
+          npm install -g cypress
+          cd frontend
+          npm ci
+          # Run E2E tests against built application
+          npm run test:e2e:headless
+
+  # Promote staging images to production
+  promote-staging:
+    name: Promote to Production
+    runs-on: ubuntu-latest
+    needs: [validate, build-push, test-suite]
+    if: ${{ always() && (needs.test-suite.result == 'success' || inputs.skip_tests) }}
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Re-tag images for production
+        run: |
+          TAG="${{ needs.validate.outputs.tag }}"
+          
+          # Pull and re-tag backend image
+          docker pull ${{ needs.build-push.outputs.backend-image }}
+          docker tag ${{ needs.build-push.outputs.backend-image }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:production-latest
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:production-latest
+          
+          # Pull and re-tag worker image  
+          docker pull ${{ needs.build-push.outputs.worker-image }}
+          docker tag ${{ needs.build-push.outputs.worker-image }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WORKER }}:production-latest
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WORKER }}:production-latest
+          
+          echo "✅ Images promoted to production-latest"
+
+  # Deploy to production using blue-green strategy
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [validate, promote-staging]
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/production_key
+          chmod 600 ~/.ssh/production_key
+          ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy using blue-green strategy
+        id: deploy
+        run: |
+          TAG="${{ needs.validate.outputs.tag }}"
+          
+          ssh -i ~/.ssh/production_key ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} << EOF
+          set -e
+          
+          # Navigate to application directory
+          cd /opt/meme-maker
+          
+          # Pull latest configuration
+          git fetch origin
+          git checkout main
+          git pull origin main
+          
+          # Update production environment
+          cat > .env.prod << 'ENVEOF'
+          IMAGE_TAG=${TAG}
+          GITHUB_REPOSITORY=${{ github.repository }}
+          PRODUCTION_DOMAIN=app.memeit.pro
+          ACME_EMAIL=admin@memeit.pro
+          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION=${{ secrets.AWS_REGION || 'ap-south-1' }}
+          S3_BUCKET=${{ secrets.S3_BUCKET }}
+          MINIO_ACCESS_KEY=${{ secrets.MINIO_ACCESS_KEY }}
+          MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }}
+          PROD_PROM_USER=admin
+          PROD_PROM_PASS=${{ secrets.PROMETHEUS_PASSWORD }}
+          ENV=production
+          ENVEOF
+          
+          # Make deployment script executable
+          chmod +x scripts/promote_to_prod.sh
+          
+          # Execute blue-green deployment
+          echo "🚀 Starting blue-green deployment..."
+          ./scripts/promote_to_prod.sh ${TAG}
+          
+          echo "✅ Deployment completed successfully"
+          EOF
+
+      - name: Cleanup SSH
+        if: always()
+        run: |
+          rm -f ~/.ssh/production_key
+
+  # Post-deployment E2E tests against production
+  post-deploy-e2e:
+    name: Post-Deploy E2E Tests
+    runs-on: ubuntu-latest
+    needs: [validate, deploy-prod]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Wait for deployment to stabilize
+        run: |
+          echo "⏳ Waiting 60 seconds for deployment to stabilize..."
+          sleep 60
+
+      - name: Run production smoke tests
+        run: |
+          export SMOKE_TEST_URL="https://app.memeit.pro"
+          chmod +x scripts/run_smoke_tests.sh
+          ./scripts/run_smoke_tests.sh https://app.memeit.pro
+
+      - name: Run Cypress E2E against production
+        run: |
+          cd frontend
+          npm ci
+          export CYPRESS_BASE_URL="https://app.memeit.pro"
+          npx cypress run --config video=false --spec "cypress/e2e/critical-path.cy.js"
+
+      - name: SSL Certificate check
+        run: |
+          echo "🔒 Checking SSL certificate..."
+          echo | openssl s_client -servername app.memeit.pro -connect app.memeit.pro:443 2>/dev/null | openssl x509 -noout -dates
+          
+          # Check certificate expiry
+          EXPIRY_DATE=$(echo | openssl s_client -servername app.memeit.pro -connect app.memeit.pro:443 2>/dev/null | openssl x509 -noout -enddate | cut -d= -f2)
+          EXPIRY_EPOCH=$(date -d "$EXPIRY_DATE" +%s)
+          CURRENT_EPOCH=$(date +%s)
+          DAYS_UNTIL_EXPIRY=$(( (EXPIRY_EPOCH - CURRENT_EPOCH) / 86400 ))
+          
+          if [[ $DAYS_UNTIL_EXPIRY -lt 30 ]]; then
+            echo "⚠️  SSL certificate expires in $DAYS_UNTIL_EXPIRY days"
+          else
+            echo "✅ SSL certificate valid for $DAYS_UNTIL_EXPIRY days"
+          fi
+
+      - name: Performance check
+        run: |
+          echo "⚡ Running performance check..."
+          RESPONSE_TIME=$(curl -o /dev/null -s -w '%{time_total}' https://app.memeit.pro/health)
+          if (( $(echo "$RESPONSE_TIME > 5.0" | bc -l) )); then
+            echo "⚠️  Slow response time: ${RESPONSE_TIME}s"
+          else
+            echo "✅ Response time: ${RESPONSE_TIME}s"
+          fi
+
+  # Automated rollback on failure
+  rollback:
+    name: Automated Rollback
+    runs-on: ubuntu-latest
+    needs: [validate, deploy-prod, post-deploy-e2e]
+    if: ${{ failure() && needs.deploy-prod.result == 'success' }}
+    environment: production
+    steps:
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/production_key
+          chmod 600 ~/.ssh/production_key
+          ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Execute rollback
+        run: |
+          echo "🔄 Executing automated rollback..."
+          
+          ssh -i ~/.ssh/production_key ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} << 'EOF'
+          set -e
+          
+          cd /opt/meme-maker
+          
+          # Check if rollback script exists
+          if [[ -f "rollback_prod.sh" ]]; then
+            echo "📝 Found rollback script, executing..."
+            chmod +x rollback_prod.sh
+            ./rollback_prod.sh
+          else
+            echo "❌ Rollback script not found"
+            exit 1
+          fi
+          EOF
+
+      - name: Cleanup SSH
+        if: always()
+        run: |
+          rm -f ~/.ssh/production_key
+
+  # Notification and cleanup
+  notify-slack:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [validate, deploy-prod, post-deploy-e2e, rollback]
+    if: always()
+    steps:
+      - name: Determine deployment status
+        id: status
+        run: |
+          if [[ "${{ needs.post-deploy-e2e.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=✅ Production deployment successful" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.rollback.result }}" == "success" ]]; then
+            echo "status=rolled_back" >> $GITHUB_OUTPUT
+            echo "message=🔄 Deployment failed and rolled back successfully" >> $GITHUB_OUTPUT
+            echo "color=warning" >> $GITHUB_OUTPUT
+          else
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "message=❌ Production deployment failed" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Calculate elapsed time
+        id: time
+        run: |
+          START_TIME="${{ github.event.head_commit.timestamp }}"
+          END_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          
+          START_EPOCH=$(date -d "$START_TIME" +%s)
+          END_EPOCH=$(date -d "$END_TIME" +%s)
+          ELAPSED=$((END_EPOCH - START_EPOCH))
+          
+          MINUTES=$((ELAPSED / 60))
+          SECONDS=$((ELAPSED % 60))
+          
+          echo "elapsed=${MINUTES}m ${SECONDS}s" >> $GITHUB_OUTPUT
+
+      - name: Send Slack notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ steps.status.outputs.status }}
+          channel: '#deployments'
+          text: |
+            ${{ steps.status.outputs.message }}
+            
+            📋 Tag: ${{ needs.validate.outputs.tag }}
+            ⏱️  Duration: ${{ steps.time.outputs.elapsed }}
+            🔗 Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            🌐 Production: https://app.memeit.pro
+            📊 Monitoring: https://app.memeit.pro/prometheus
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} 

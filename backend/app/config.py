@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings
 from pydantic import validator
 from typing import Optional, Union
+import os
 
 
 class Settings(BaseSettings):
@@ -18,6 +19,13 @@ class Settings(BaseSettings):
     global_rate_limit_window: int = 60  # 1 minute
     job_rate_limit_requests: int = 3  # job creations per hour
     job_rate_limit_window: int = 3600  # 1 hour
+    
+    # New configurable rate limiting
+    max_jobs_per_hour: int = int(os.getenv("MAX_JOBS_PER_HOUR", "20"))
+    rate_limit: str = os.getenv("RATE_LIMIT", "on")  # "on" or "off"
+    
+    # Clip length configuration
+    max_clip_seconds: int = int(os.getenv("MAX_CLIP_SECONDS", "1800"))  # 30 minutes default
     
     # MinIO/S3 Configuration  
     aws_access_key_id: str = "admin"

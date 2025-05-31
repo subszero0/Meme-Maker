@@ -41,6 +41,19 @@ variable "lb_dns" {
   default     = ""
 }
 
+# Production DNS Configuration
+variable "production_server_ip" {
+  description = "Production server IP address for A records (app.memeit.pro, monitoring.memeit.pro)"
+  type        = string
+  default     = ""
+}
+
+variable "production_lb_dns" {
+  description = "Production load balancer DNS name for CNAME records"
+  type        = string
+  default     = ""
+}
+
 # Optional Route53 Configuration
 variable "route53_zone_id" {
   description = "Route53 hosted zone ID for domain management (if domain is managed in AWS)"
@@ -52,4 +65,12 @@ variable "create_route53_record" {
   description = "Whether to create Route53 DNS record"
   type        = bool
   default     = false
+}
+
+# ACME Challenge Configuration
+variable "acme_challenge_token" {
+  description = "ACME challenge token for DNS-01 validation (managed by Caddy)"
+  type        = string
+  default     = ""
+  sensitive   = true
 } 

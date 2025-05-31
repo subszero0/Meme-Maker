@@ -1,0 +1,320 @@
+name: Production Deployment
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment (bypass tests)'
+        required: false
+        default: false
+        type: boolean
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME_BACKEND: ${{ github.repository }}/meme-backend
+  IMAGE_NAME_WORKER: ${{ github.repository }}/meme-worker
+
+jobs:
+  # Security and compliance checks
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Build and push production images
+  build-push:
+    runs-on: ubuntu-latest
+    needs: security-scan
+    outputs:
+      backend-image: ${{ steps.build.outputs.backend-image }}
+      worker-image: ${{ steps.build.outputs.worker-image }}
+      image-tag: ${{ steps.build.outputs.image-tag }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}
+          tags: |
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=production-latest
+
+      - name: Extract metadata for worker
+        id: meta-worker
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WORKER }}
+          tags: |
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=production-latest
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push worker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.worker
+          push: true
+          tags: ${{ steps.meta-worker.outputs.tags }}
+          labels: ${{ steps.meta-worker.outputs.labels }}
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Output image information
+        id: build
+        run: |
+          echo "backend-image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:production-latest" >> $GITHUB_OUTPUT
+          echo "worker-image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WORKER }}:production-latest" >> $GITHUB_OUTPUT
+          echo "image-tag=production-latest" >> $GITHUB_OUTPUT
+
+  # Comprehensive testing suite
+  test-suite:
+    runs-on: ubuntu-latest
+    needs: build-push
+    if: ${{ !inputs.force_deploy }}
+    strategy:
+      matrix:
+        test-type: [backend, frontend, integration]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Backend Tests
+        if: matrix.test-type == 'backend'
+        run: |
+          cd backend
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+          pytest -v --maxfail=1 --disable-warnings --tb=short
+      
+      - name: Frontend Tests
+        if: matrix.test-type == 'frontend'
+        run: |
+          cd frontend
+          npm ci
+          npm test
+          npm run build
+      
+      - name: Integration Tests
+        if: matrix.test-type == 'integration'
+        run: |
+          docker-compose up -d redis
+          cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 10
+          chmod +x scripts/smoke-test.sh
+          ./scripts/smoke-test.sh
+
+  # DNS provisioning for production
+  provision-dns:
+    runs-on: ubuntu-latest
+    needs: [build-push, test-suite]
+    if: ${{ always() && (needs.test-suite.result == 'success' || inputs.force_deploy) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-south-1' }}
+
+      - name: Provision DNS records
+        run: |
+          chmod +x scripts/provision_dns.sh
+          ./scripts/provision_dns.sh
+        env:
+          ROUTE53_ZONE_ID: ${{ secrets.ROUTE53_ZONE_ID }}
+          PRODUCTION_SERVER_IP: ${{ secrets.PRODUCTION_SERVER_IP }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'ap-south-1' }}
+
+      - name: Verify DNS propagation
+        run: |
+          echo "Waiting for DNS propagation..."
+          for i in {1..60}; do
+            if dig +short app.memeit.pro | grep -q "${{ secrets.PRODUCTION_SERVER_IP }}"; then
+              echo "✅ DNS propagation verified for app.memeit.pro"
+              break
+            fi
+            echo "⏳ Waiting for DNS propagation... ($i/60)"
+            sleep 10
+          done
+
+  # Deploy to production
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build-push, provision-dns]
+    environment: 
+      name: production
+      url: https://app.memeit.pro
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/production_key
+          chmod 600 ~/.ssh/production_key
+          ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to production server
+        run: |
+          ssh -i ~/.ssh/production_key ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} << 'EOF'
+            set -e
+            
+            # Navigate to application directory
+            cd /opt/meme-maker
+            
+            # Pull latest configuration
+            git pull origin main
+            
+            # Update environment variables
+            echo "IMAGE_TAG=production-latest" > .env.prod
+            echo "GITHUB_REPOSITORY=${{ github.repository }}" >> .env.prod
+            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env.prod
+            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env.prod
+            echo "AWS_REGION=${{ secrets.AWS_REGION || 'ap-south-1' }}" >> .env.prod
+            echo "S3_BUCKET=${{ secrets.S3_BUCKET }}" >> .env.prod
+            echo "ACME_EMAIL=admin@memeit.pro" >> .env.prod
+            echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" >> .env.prod
+            echo "PROMETHEUS_USER=admin" >> .env.prod
+            echo "PROMETHEUS_PASS_HASH=${{ secrets.PROMETHEUS_PASS_HASH }}" >> .env.prod
+            echo "GRAFANA_USER=admin" >> .env.prod
+            echo "GRAFANA_PASS_HASH=${{ secrets.GRAFANA_PASS_HASH }}" >> .env.prod
+            
+            # Generate basic auth hashes if not provided
+            if [ -z "${{ secrets.PROMETHEUS_PASS_HASH }}" ]; then
+              echo "PROMETHEUS_PASS_HASH=$(htpasswd -bnBC 10 "" "${{ secrets.PROMETHEUS_PASSWORD || 'changeme123' }}" | tr -d ':\n')" >> .env.prod
+            fi
+            if [ -z "${{ secrets.GRAFANA_PASS_HASH }}" ]; then
+              echo "GRAFANA_PASS_HASH=$(htpasswd -bnBC 10 "" "${{ secrets.GRAFANA_PASSWORD || 'changeme123' }}" | tr -d ':\n')" >> .env.prod
+            fi
+            
+            # Stop existing services
+            docker-compose -f infra/production/docker-compose.prod.yml --env-file .env.prod down
+            
+            # Pull latest images
+            docker-compose -f infra/production/docker-compose.prod.yml --env-file .env.prod pull
+            
+            # Start services
+            docker-compose -f infra/production/docker-compose.prod.yml --env-file .env.prod up -d
+            
+            # Wait for services to be healthy
+            echo "Waiting for services to be healthy..."
+            timeout 300 bash -c 'until docker-compose -f infra/production/docker-compose.prod.yml ps | grep -v "Up (health"; do sleep 5; done'
+            
+            echo "✅ Production deployment completed"
+          EOF
+
+      - name: Health check
+        run: |
+          echo "Performing post-deployment health checks..."
+          
+          # Wait for services to stabilize
+          sleep 30
+          
+          # Check main application health
+          for i in {1..10}; do
+            if curl -f --max-time 30 https://app.memeit.pro/health; then
+              echo "✅ Main application health check passed"
+              break
+            fi
+            echo "⏳ Waiting for application to be ready... ($i/10)"
+            sleep 30
+          done
+          
+          # Check monitoring endpoints
+          if curl -f --max-time 10 https://monitoring.memeit.pro/prometheus/-/healthy; then
+            echo "✅ Prometheus health check passed"
+          fi
+          
+          # Verify SSL certificate
+          echo "| Checking SSL certificate..."
+          if echo | openssl s_client -servername app.memeit.pro -connect app.memeit.pro:443 2>/dev/null | openssl x509 -noout -dates; then
+            echo "✅ SSL certificate check passed"
+          fi
+
+      - name: Run smoke tests
+        run: |
+          # Install test dependencies
+          npm install -g @lhci/cli
+          
+          # Run smoke tests against production
+          export SMOKE_TEST_URL="https://app.memeit.pro"
+          chmod +x scripts/smoke-test.sh
+          ./scripts/smoke-test.sh
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "🚀 Production deployment successful!"
+          echo "📍 Application: https://app.memeit.pro"
+          echo "📊 Monitoring: https://monitoring.memeit.pro"
+          echo "📋 API Docs: https://app.memeit.pro/docs"
+
+      - name: Cleanup SSH
+        if: always()
+        run: |
+          rm -f ~/.ssh/production_key 

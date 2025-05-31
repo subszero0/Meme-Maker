@@ -40,8 +40,9 @@ def test_create_job_valid(client_with_fake_redis):
     """Test creating a valid job returns 202 and enqueues job"""
     job_data = {
         "url": "https://www.youtube.com/watch?v=test",
-        "start_seconds": 10.0,
-        "end_seconds": 70.0
+        "start": 10.0,
+        "end": 70.0,
+        "accepted_terms": True
     }
     
     with patch('app.api.jobs.q.enqueue') as mock_enqueue:
@@ -66,12 +67,115 @@ def test_create_job_valid(client_with_fake_redis):
         assert args[4] == 70.0
 
 
+def test_create_job_with_string_timestamps(client_with_fake_redis):
+    """Test creating a valid job with hh:mm:ss string format returns 202"""
+    job_data = {
+        "url": "https://www.youtube.com/watch?v=test",
+        "start": "00:00:10",
+        "end": "00:01:10",
+        "accepted_terms": True
+    }
+    
+    with patch('app.api.jobs.q.enqueue') as mock_enqueue:
+        mock_enqueue.return_value = MagicMock()
+        
+        response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
+        
+        assert response.status_code == 202
+        data = response.json()
+        assert "job_id" in data
+        assert data["status"] == "queued"
+        
+        # Verify job was enqueued with converted seconds
+        mock_enqueue.assert_called_once()
+        args = mock_enqueue.call_args[0]
+        assert args[3] == 10.0  # 00:00:10 -> 10 seconds
+        assert args[4] == 70.0  # 00:01:10 -> 70 seconds
+
+
+def test_create_job_with_fractional_seconds(client_with_fake_redis):
+    """Test creating a job with fractional seconds in hh:mm:ss.mmm format"""
+    job_data = {
+        "url": "https://www.youtube.com/watch?v=test",
+        "start": "00:00:10.5",
+        "end": "00:01:10.25",
+        "accepted_terms": True
+    }
+    
+    with patch('app.api.jobs.q.enqueue') as mock_enqueue:
+        mock_enqueue.return_value = MagicMock()
+        
+        response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
+        
+        assert response.status_code == 202
+        
+        # Verify job was enqueued with converted fractional seconds
+        mock_enqueue.assert_called_once()
+        args = mock_enqueue.call_args[0]
+        assert args[3] == 10.5   # 00:00:10.5 -> 10.5 seconds
+        assert args[4] == 70.25  # 00:01:10.25 -> 70.25 seconds
+
+
+def test_create_job_with_integer_seconds(client_with_fake_redis):
+    """Test creating a job with integer seconds"""
+    job_data = {
+        "url": "https://www.youtube.com/watch?v=test", 
+        "start": 15,
+        "end": 75,
+        "accepted_terms": True
+    }
+    
+    with patch('app.api.jobs.q.enqueue') as mock_enqueue:
+        mock_enqueue.return_value = MagicMock()
+        
+        response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
+        
+        assert response.status_code == 202
+        
+        # Verify job was enqueued with integer seconds converted to float
+        mock_enqueue.assert_called_once()
+        args = mock_enqueue.call_args[0]
+        assert args[3] == 15.0
+        assert args[4] == 75.0
+
+
+def test_create_job_invalid_string_format(client_with_fake_redis):
+    """Test that invalid time string formats are rejected with 422"""
+    job_data = {
+        "url": "https://www.youtube.com/watch?v=test",
+        "start": "10:30",  # Missing seconds part
+        "end": "70.0",
+        "accepted_terms": True
+    }
+    
+    response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
+    
+    assert response.status_code == 422
+    assert "Time must be in hh:mm:ss format or numeric seconds" in str(response.json())
+
+
+def test_create_job_invalid_time_values(client_with_fake_redis):
+    """Test that invalid time values in string format are rejected"""
+    job_data = {
+        "url": "https://www.youtube.com/watch?v=test",
+        "start": "00:00:abc",  # Invalid seconds value
+        "end": "00:01:30",
+        "accepted_terms": True
+    }
+    
+    response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
+    
+    assert response.status_code == 422
+    assert "Invalid time format" in str(response.json())
+
+
 def test_create_job_duration_too_long(client_with_fake_redis):
     """Test that jobs over 180 seconds are rejected with 422"""
     job_data = {
         "url": "https://www.youtube.com/watch?v=test",
-        "start_seconds": 10.0,
-        "end_seconds": 200.0  # 190 seconds > 180
+        "start": 10.0,
+        "end": 200.0,  # 190 seconds > 180
+        "accepted_terms": True
     }
     
     response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
@@ -80,12 +184,51 @@ def test_create_job_duration_too_long(client_with_fake_redis):
     assert "180 seconds" in response.json()["detail"]
 
 
-def test_create_job_invalid_duration(client_with_fake_redis):
-    """Test that jobs with end_seconds <= start_seconds are rejected"""
+def test_clip_exactly_30_min_passes(client_with_fake_redis):
+    """Test that a clip of exactly 30 minutes (1800 seconds) is accepted"""
     job_data = {
         "url": "https://www.youtube.com/watch?v=test",
-        "start_seconds": 70.0,
-        "end_seconds": 60.0  # end_seconds < start_seconds
+        "start": 0.0,
+        "end": 1800.0,  # Exactly 30 minutes
+        "accepted_terms": True
+    }
+    
+    with patch('app.api.jobs.q.enqueue') as mock_enqueue:
+        mock_enqueue.return_value = MagicMock()
+        
+        response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
+        
+        assert response.status_code == 202
+        data = response.json()
+        assert "job_id" in data
+        assert data["status"] == "queued"
+        
+        # Verify job was enqueued
+        mock_enqueue.assert_called_once()
+
+
+def test_clip_over_30_min_fails(client_with_fake_redis):
+    """Test that a clip over 30 minutes (1801 seconds) is rejected"""
+    job_data = {
+        "url": "https://www.youtube.com/watch?v=test",
+        "start": 0.0,
+        "end": 1801.0,  # 1 second over 30 minutes
+        "accepted_terms": True
+    }
+    
+    response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
+    
+    assert response.status_code == 422
+    assert "Clip too long" in response.json()["detail"]
+
+
+def test_create_job_invalid_duration(client_with_fake_redis):
+    """Test that jobs with end <= start are rejected"""
+    job_data = {
+        "url": "https://www.youtube.com/watch?v=test",
+        "start": 70.0,
+        "end": 60.0,  # end < start
+        "accepted_terms": True
     }
     
     response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
@@ -98,8 +241,9 @@ def test_create_job_enqueue_failure(client_with_fake_redis, fake_redis):
     """Test that enqueue failure cleans up job from Redis"""
     job_data = {
         "url": "https://www.youtube.com/watch?v=test",
-        "start_seconds": 10.0,
-        "end_seconds": 70.0
+        "start": 10.0,
+        "end": 70.0,
+        "accepted_terms": True
     }
     
     with patch('app.api.jobs.q.enqueue') as mock_enqueue:

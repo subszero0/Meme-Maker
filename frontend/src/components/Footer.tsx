@@ -19,9 +19,9 @@ export default function Footer() {
       <footer className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
         <div className="text-center space-y-3">
           <div className="text-sm text-text-secondary dark:text-gray-300">
-            <p>Maximum clip length: 3 minutes • Files self-destruct after download</p>
+            <p>Maximum clip length: **30 minutes** · 20 jobs per hour · Files self-destruct after download</p>
             <p className="text-xs mt-1 text-text-tertiary dark:text-gray-400">
-              Rate limits: 10 requests per minute • 3 job creations per hour
+              Rate limits: 10 requests per minute · 20 job creations per hour
             </p>
           </div>
           

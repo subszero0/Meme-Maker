@@ -1,0 +1,189 @@
+# Prometheus Configuration - Production
+# Enhanced monitoring with SSL certificate tracking and security metrics
+
+global:
+  scrape_interval: 15s  # Scrape targets every 15 seconds for production
+  evaluation_interval: 15s  # Evaluate rules every 15 seconds
+  external_labels:
+    environment: 'production'
+    cluster: 'meme-maker-prod'
+
+# Rule files
+rule_files:
+  - "rules/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Meme Maker Backend API
+  - job_name: 'meme-maker-backend'
+    scrape_interval: 10s  # More frequent for API metrics
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['backend:8000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'meme-prod-backend'
+
+  # Redis metrics
+  - job_name: 'redis'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: '/metrics'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'meme-prod-redis'
+
+  # MinIO metrics
+  - job_name: 'minio'
+    scrape_interval: 30s
+    metrics_path: '/minio/v2/metrics/cluster'
+    static_configs:
+      - targets: ['minio:9000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'meme-prod-minio'
+
+  # Caddy metrics (if enabled)
+  - job_name: 'caddy'
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['caddy:2019']  # Caddy admin port
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'meme-prod-caddy'
+
+  # Node exporter (system metrics)
+  - job_name: 'node-exporter'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['localhost:9100']  # Assuming node exporter on host
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'production-server'
+
+  # Container metrics (cAdvisor)
+  - job_name: 'cadvisor'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['localhost:8080']  # Assuming cAdvisor on host
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'production-containers'
+
+  # Self-monitoring (Prometheus)
+  - job_name: 'prometheus'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['localhost:9090']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'meme-prod-prometheus'
+
+  # Alertmanager
+  - job_name: 'alertmanager'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['alertmanager:9093']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'meme-prod-alertmanager'
+
+  # S3 metrics exporter
+  - job_name: 's3-metrics-exporter'
+    scrape_interval: 60s  # S3 metrics don't change frequently
+    static_configs:
+      - targets: ['localhost:9301']  # Assuming S3 exporter on host
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'production-s3-exporter'
+
+  # SSL certificate monitoring
+  - job_name: 'ssl-exporter'
+    scrape_interval: 300s  # Check SSL every 5 minutes
+    metrics_path: '/probe'
+    params:
+      module: [https_2xx]
+    static_configs:
+      - targets:
+        - 'app.memeit.pro:443'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 'localhost:9219'  # SSL exporter address
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - 'alertmanager:9093'
+      timeout: 10s
+      api_version: v2
+
+# Storage configuration
+storage:
+  tsdb:
+    retention.time: 30d  # 30 days retention for production
+    retention.size: 10GB  # Limit storage to 10GB
+    wal-compression: true  # Enable WAL compression
+
+# Remote write configuration (for external monitoring services)
+# Uncomment and configure if using external monitoring
+# remote_write:
+#   - url: "https://prometheus-us-central1.grafana.net/api/prom/push"
+#     basic_auth:
+#       username: "your-username"
+#       password: "your-api-key"
+#     write_relabel_configs:
+#       - source_labels: [__name__]
+#         regex: '(up|http_requests_total|http_request_duration_seconds|rq_jobs_.*)'
+#         action: keep
+
+# Recording rules for aggregated metrics
+recording_rules:
+  - name: "meme-maker-aggregates"
+    rules:
+      # API request rate (requests per second)
+      - record: meme_maker:http_requests:rate5m
+        expr: rate(http_requests_total{job="meme-maker-backend"}[5m])
+
+      # API error rate percentage
+      - record: meme_maker:http_errors:rate5m
+        expr: |
+          rate(http_requests_total{job="meme-maker-backend",status=~"5.."}[5m]) /
+          rate(http_requests_total{job="meme-maker-backend"}[5m]) * 100
+
+      # Queue depth moving average
+      - record: meme_maker:queue_depth:avg5m
+        expr: avg_over_time(rq_jobs_in_queue{job="meme-maker-backend"}[5m])
+
+      # Worker processing rate
+      - record: meme_maker:jobs_processed:rate5m
+        expr: rate(job_duration_seconds_count{job="meme-maker-backend"}[5m])
+
+      # Response time percentiles
+      - record: meme_maker:response_time:p95_5m
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{job="meme-maker-backend"}[5m])
+          )
+
+      - record: meme_maker:response_time:p99_5m
+        expr: |
+          histogram_quantile(0.99,
+            rate(http_request_duration_seconds_bucket{job="meme-maker-backend"}[5m])
+          ) 

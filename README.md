@@ -4,6 +4,41 @@
 
 A simple tool to download and trim video clips from social media platforms with a modern web interface.
 
+## 🚀 Quick Start for End Users
+
+**Want to get started immediately? Use our one-click setup scripts:**
+
+### Windows Users
+```powershell
+# Download this repository, then run:
+.\scripts\quick-start.ps1
+```
+
+### macOS/Linux Users
+```bash
+# Download this repository, then run:
+chmod +x scripts/quick-start.sh
+./scripts/quick-start.sh
+```
+
+### Manual Setup
+If you prefer step-by-step instructions, see our **[Complete Getting Started Guide](docs/getting-started.md)** which covers:
+- ✅ Installing all prerequisites (Git, Docker, etc.)
+- ✅ Setting up the application from scratch
+- ✅ Using the app to clip videos
+- ✅ Troubleshooting common issues
+- ✅ Optional production deployment
+
+**Already have Docker?** Jump straight to:
+```bash
+# Clone and start
+git clone https://github.com/YOUR_USERNAME/Meme-Maker.git
+cd Meme-Maker
+docker-compose up --build
+
+# Access at http://localhost:3000
+```
+
 ## Features
 - 🎬 **Web UI**: Modern, mobile-first interface for easy video trimming
 - ✂️ **Precision Trimming**: Dual-handle slider + timestamp inputs (max 3 minutes)
@@ -231,6 +266,21 @@ Access the **Clip Overview** dashboard at http://localhost:3000 after starting t
 
 Environment configuration is handled through the docker-compose.yaml file. For custom settings, copy `env.template` to `.env` and modify as needed.
 
+### Key Environment Variables
+
+#### Rate Limiting Configuration
+- `MAX_JOBS_PER_HOUR` - Maximum job creations per IP per hour (default: 20)
+- `RATE_LIMIT` - Enable/disable rate limiting: "on" or "off" (default: "on")
+- `GLOBAL_RATE_LIMIT_REQUESTS` - Global API requests per minute (default: 10)
+
+#### Clip Configuration  
+- `MAX_CLIP_SECONDS` - Maximum clip duration in seconds (default: 1800 = 30 minutes)
+
+#### Development Settings
+- `DEBUG` - Enable debug mode to disable rate limiting (default: false)
+
+For a complete list of environment variables, see `env.template`.
+
 ## API Usage
 
 While the web interface is the primary way to use the service, you can also interact directly with the API:
@@ -252,8 +302,151 @@ curl http://localhost:8000/api/v1/jobs/{job_id}
 
 **Note**: All job creation requests require `accepted_terms: true` to comply with Terms of Use.
 
+## 🚀 Staging Deployment
+
+The project includes a comprehensive staging deployment system with versioned Docker images and automated deployment via GitHub Actions.
+
+### Quick Deploy to Staging
+
+```bash
+# Automatic deployment on push to main
+git push origin main
+
+# Manual deployment via GitHub Actions
+# Go to Actions → Staging Deployment → Run workflow
+```
+
+### Staging Environment
+
+- **URL**: https://staging.memeit.pro
+- **Health**: https://staging.memeit.pro/health
+- **API Docs**: https://staging.memeit.pro/docs
+- **Prometheus**: https://staging.memeit.pro/prometheus
+
+### Features
+
+- **Versioned Images**: Built and pushed to GitHub Container Registry (GHCR)
+- **Automated Deployment**: One-click deployment to staging VPS
+- **Health Checks**: Comprehensive monitoring and smoke tests
+- **HTTPS/TLS**: Automatic SSL certificates via Caddy
+- **Rollback Support**: Easy rollback to previous versions
+- **Local Testing**: Test staging setup locally before deploying
+
+### Test Staging Locally
+
+```bash
+# Test the complete staging stack locally
+./scripts/test-staging-local.sh
+```
+
+### Configuration
+
+Required GitHub secrets for staging deployment:
+- `STAGING_HOST` - Staging server hostname/IP
+- `STAGING_USER` - SSH user for deployment
+- `STAGING_SSH_KEY` - Private SSH key for server access
+- `STAGING_DOMAIN` - Staging domain (optional, defaults to staging.memeit.pro)
+
+For detailed setup instructions, see [Staging Deployment Guide](docs/staging-deployment.md).
+
+## 🏭 Production Deployment
+
+The production environment features enterprise-grade security with wildcard SSL certificates, modern TLS configuration, and comprehensive monitoring.
+
+### Production Infrastructure
+
+- **Main Application**: https://app.memeit.pro
+- **WWW Redirect**: https://www.memeit.pro → https://app.memeit.pro
+- **Monitoring**: https://monitoring.memeit.pro (basic auth protected)
+- **SSL/TLS**: Let's Encrypt wildcard certificates with DNS-01 validation
+- **DNS**: AWS Route 53 with automated DNS management
+- **Security**: A+ SSL Labs grade, HSTS preload, modern cipher suites only
+
+### Key Features
+
+- **🔒 Wildcard SSL**: Automatic certificate issuance and renewal via Route 53
+- **⚡ Modern TLS**: TLS 1.2+ only with strong cipher suites and PFS
+- **🛡️ Security Headers**: HSTS preload, CSP, XSS protection, and more
+- **📊 Full Monitoring**: Prometheus metrics with Grafana dashboards
+- **🚨 SSL Monitoring**: Certificate expiry alerts and renewal automation
+- **🏗️ Infrastructure as Code**: Terraform for Route 53 and AWS resources
+
+### Quick Deploy to Production
+
+```bash
+# Tag a release to trigger production deployment
+git tag v1.0.0
+git push origin v1.0.0
+
+# Or manually trigger via GitHub Actions
+# Go to Actions → Production Deployment → Run workflow
+```
+
+### Production Setup Requirements
+
+#### AWS Resources
+- Route 53 hosted zone for `memeit.pro`
+- S3 bucket for clip storage
+- IAM user with Route 53 and S3 permissions
+
+#### GitHub Secrets
+```bash
+# AWS Configuration
+AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
+S3_BUCKET, ROUTE53_ZONE_ID
+
+# Production Server
+PRODUCTION_SERVER_IP, PRODUCTION_HOST, PRODUCTION_USER, PRODUCTION_SSH_KEY
+
+# Security
+GRAFANA_ADMIN_PASSWORD, PROMETHEUS_PASS_HASH, GRAFANA_PASS_HASH
+```
+
+### DNS & SSL Configuration
+
+The production deployment automatically:
+
+1. **Provisions DNS Records**: Creates A/CNAME records for all subdomains
+2. **Obtains SSL Certificates**: Wildcard `*.memeit.pro` via DNS-01 challenge
+3. **Configures Security**: Modern TLS settings and comprehensive headers
+4. **Sets Up Monitoring**: SSL expiry alerts and certificate renewal tracking
+
+### Security & Compliance
+
+- **SSL Labs Grade**: Target A+ rating with modern TLS configuration
+- **HSTS Preload**: 2-year max-age with includeSubDomains and preload
+- **Perfect Forward Secrecy**: All cipher suites provide PFS
+- **Certificate Transparency**: Automatic monitoring of certificate logs
+- **Security Headers**: Comprehensive CSP, XSS protection, and CSRF prevention
+
+### Production Verification
+
+```bash
+# Health checks
+curl -f https://app.memeit.pro/health
+curl -f https://app.memeit.pro/docs
+
+# SSL verification
+echo | openssl s_client -servername app.memeit.pro -connect app.memeit.pro:443
+
+# Security testing
+curl -I https://app.memeit.pro | grep -E "(Strict-Transport-Security|Content-Security-Policy)"
+```
+
+### Monitoring & Operations
+
+- **Application Metrics**: Performance, error rates, and resource usage
+- **SSL Monitoring**: Certificate expiry tracking and renewal alerts
+- **Infrastructure**: Server health, DNS resolution, and network connectivity
+- **Automated Alerts**: Slack/email notifications for critical issues
+
+For detailed production setup instructions, see [Production Deployment Guide](docs/production-deployment.md).
+
 ## Project documentation
 
+- [Production Deployment Guide](docs/production-deployment.md)
+- [Security Guide](docs/security.md)
+- [Staging Deployment Guide](docs/staging-deployment.md)
 - [Wireframes](docs/wireframes/README.md)
 - [Frontend Documentation](frontend/README.md)
 - [Visual Regression Testing](frontend/cypress/VISUAL_TESTING.md)

@@ -1,0 +1,107 @@
+{
+	# Global options
+	admin off
+	auto_https on
+	email {env.ACME_EMAIL}
+}
+
+{env.STAGING_DOMAIN:staging.memeit.pro} {
+	# Serve health check endpoint directly
+	handle /health {
+		reverse_proxy backend:8000
+	}
+
+	# API routes
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# Metrics endpoint (protected)
+	handle /metrics {
+		reverse_proxy backend:8000
+	}
+
+	# API documentation
+	handle /docs* {
+		reverse_proxy backend:8000
+	}
+
+	handle /openapi.json {
+		reverse_proxy backend:8000
+	}
+
+	# Prometheus with basic auth protection
+	handle_path /prometheus/* {
+		basicauth {
+			{env.STAGING_PROM_USER} {env.STAGING_PROM_PASS}
+		}
+		reverse_proxy prometheus:9090
+	}
+
+	# Everything else goes to the backend (which serves the SPA from /app/static)
+	handle /* {
+		reverse_proxy backend:8000
+	}
+
+	# Security headers
+	header {
+		# HSTS
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		
+		# CSP
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://www.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; media-src 'self' blob: https:; connect-src 'self' https://www.youtube.com https://www.googleapis.com; frame-src 'self' https://www.youtube.com; worker-src 'self' blob:; font-src 'self' data:;"
+		
+		# Security headers
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		
+		# Remove server info
+		-Server
+	}
+
+	# Compression
+	encode {
+		zstd
+		gzip 6
+	}
+
+	# Caching for static assets
+	@static {
+		path /_next/static/* *.js *.css *.woff *.woff2 *.ttf *.eot *.ico *.png *.jpg *.jpeg *.gif *.svg *.webp
+	}
+	header @static {
+		Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	# No cache for HTML and API responses
+	@no_cache {
+		path / /api/* *.html
+	}
+	header @no_cache {
+		Cache-Control "no-cache, no-store, must-revalidate"
+		Pragma "no-cache"
+		Expires "0"
+	}
+
+	# Logging
+	log {
+		output file /var/log/caddy/staging.log {
+			roll_size 100mb
+			roll_keep 5
+			roll_keep_for 168h
+		}
+		format json
+		level INFO
+	}
+
+	# Rate limiting
+	rate_limit {
+		zone dynamic_ip {
+			key {remote_host}
+			events 100
+			window 1m
+		}
+	}
+} 
