@@ -82,6 +82,8 @@ jobs:
                 - AWS_SECRET_ACCESS_KEY=admin12345
                 - AWS_ENDPOINT_URL=http://minio:9000
                 - S3_BUCKET=clips
+                - MAX_JOBS_PER_HOUR=100
+                - RATE_LIMIT=on
               ports:
                 - "8000:8000"
               healthcheck:
@@ -166,6 +168,10 @@ jobs:
 
       - name: Run smoke test
         run: |
+          # Set environment variables for testing to allow more jobs
+          export MAX_JOBS_PER_HOUR=100
+          export RATE_LIMIT=on
+          
           # Verify smoke test file exists
           ls -la tools/smoke.py
           # Run the smoke test

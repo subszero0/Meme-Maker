@@ -41,6 +41,8 @@ def client_with_mock_storage(fake_redis, fake_queue, mock_storage):
          patch('app.q', fake_queue), \
          patch('app.api.jobs.redis', fake_redis), \
          patch('app.api.jobs.q', fake_queue), \
+         patch('app.api.jobs.get_storage', return_value=mock_storage), \
+         patch('app.utils.get_storage', return_value=mock_storage), \
          patch('app.ratelimit.init_rate_limit', new_callable=AsyncMock), \
          patch('fastapi_limiter.FastAPILimiter.redis', fake_redis), \
          patch('fastapi_limiter.depends.RateLimiter.__call__', new_callable=lambda: mock_rate_limiter):
