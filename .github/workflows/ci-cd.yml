@@ -37,7 +37,7 @@ jobs:
       - name: Run backend tests with mock storage
         run: |
           echo "🧪 Running backend tests excluding E2E tests..."
-          python -m pytest tests/ --ignore=tests/e2e -v --maxfail=1 --disable-warnings --tb=short
+          python -m pytest tests/ --ignore=tests/e2e --ignore=tests/test_e2e_smoke.py -v --maxfail=1 --disable-warnings --tb=short
           
       - name: Run simplified mock storage tests
         run: |
