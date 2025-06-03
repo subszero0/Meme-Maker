@@ -175,18 +175,18 @@ def test_create_job_invalid_time_values(client_with_fake_redis):
 
 
 def test_create_job_duration_too_long(client_with_fake_redis):
-    """Test that jobs over 180 seconds are rejected with 422"""
+    """Test that jobs over 1800 seconds (30 minutes) are rejected with 422"""
     job_data = {
         "url": "https://www.youtube.com/watch?v=test",
         "start": 10.0,
-        "end": 200.0,  # 190 seconds > 180
+        "end": 1900.0,  # 1890 seconds > 1800 (31 minutes 30 seconds)
         "accepted_terms": True
     }
     
     response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
     
     assert response.status_code == 422
-    assert "180 seconds" in response.json()["detail"]
+    assert "Clip too long" in response.json()["detail"]
 
 
 def test_clip_exactly_30_min_passes(client_with_fake_redis):
