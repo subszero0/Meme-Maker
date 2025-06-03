@@ -53,9 +53,14 @@ class TestRateLimiting:
     
     def test_job_creation_rate_limit_enforcement(self, client):
         """Test that job creation rate limit is enforced"""
-        # Mock FastAPILimiter to avoid initialization issues
+        # Mock FastAPILimiter and Redis to avoid infrastructure dependencies
         with patch('fastapi_limiter.FastAPILimiter.init', new_callable=AsyncMock), \
-             patch('fastapi_limiter.depends.RateLimiter.__call__', new_callable=lambda: AsyncMock(return_value=None)):
+             patch('fastapi_limiter.depends.RateLimiter.__call__', new_callable=lambda: AsyncMock(return_value=None)), \
+             patch('app.api.jobs.redis') as mock_redis, \
+             patch('app.api.jobs.q.enqueue') as mock_enqueue:
+            
+            # Configure mocks
+            mock_enqueue.return_value.id = "test-job-id"
             
             job_data = {
                 "url": "https://example.com/video",
