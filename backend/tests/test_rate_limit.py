@@ -51,9 +51,9 @@ class TestRateLimiting:
         """Test that job creation rate limit is enforced"""
         job_data = {
             "url": "https://example.com/video",
-            "start_seconds": 0,
-            "end_seconds": 10,
-            "rights": True
+            "start": 0,
+            "end": 10,
+            "accepted_terms": True
         }
         
         # Make job creation requests up to the limit
@@ -108,9 +108,9 @@ class TestRateLimiting:
             else:
                 response = client.post("/api/v1/jobs", json={
                     "url": "https://example.com/video",
-                    "start_seconds": 0,
-                    "end_seconds": 10,
-                    "rights": True
+                    "start": 0,
+                    "end": 10,
+                    "accepted_terms": True
                 })
                 job_requests += 1
             

@@ -54,8 +54,8 @@ class TestJobFlowWithMockStorage:
         """Test creating a job returns 202 and correct job_id."""
         job_data = {
             "url": "https://www.youtube.com/watch?v=BaW_jenozKc",
-            "start_seconds": 5.0,
-            "end_seconds": 15.0,
+            "start": 5.0,
+            "end": 15.0,
             "accepted_terms": True
         }
         
@@ -89,8 +89,8 @@ class TestJobFlowWithMockStorage:
         # Create a job first
         job_data = {
             "url": "https://www.youtube.com/watch?v=BaW_jenozKc",
-            "start_seconds": 5.0,
-            "end_seconds": 15.0,
+            "start": 5.0,
+            "end": 15.0,
             "accepted_terms": True
         }
         
@@ -205,8 +205,8 @@ class TestJobFlowWithMockStorage:
         # 1. Create job
         job_data = {
             "url": "https://www.youtube.com/watch?v=BaW_jenozKc",
-            "start_seconds": 10.0,
-            "end_seconds": 25.0,
+            "start": 10.0,
+            "end": 25.0,
             "accepted_terms": True
         }
         

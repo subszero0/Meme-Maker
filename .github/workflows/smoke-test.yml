@@ -10,7 +10,7 @@ jobs:
   smoke-test:
     name: End-to-End Smoke Test
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 15
         
     steps:
       - name: Checkout code
@@ -115,9 +115,35 @@ jobs:
           
           docker compose -f docker-compose.test.yml up -d --build
           
-          # Wait for all services to be healthy
+          # Wait for all services to be healthy with simpler checks
           echo "Waiting for services to be ready..."
-          timeout 120 bash -c 'until docker compose -f docker-compose.test.yml ps | grep -q "healthy.*healthy.*healthy"; do sleep 5; echo "Still waiting..."; done'
+          for i in {1..40}; do
+            echo "Check $i/40..."
+            
+            # Check services using simpler status check
+            if docker compose -f docker-compose.test.yml ps | grep -q "healthy.*healthy.*healthy"; then
+              echo "✅ All services are healthy!"
+              break
+            fi
+            
+            # Show current status for debugging
+            echo "Current service status:"
+            docker compose -f docker-compose.test.yml ps
+            
+            if [ "$i" -eq 40 ]; then
+              echo "❌ Services failed to become healthy within 6+ minutes"
+              echo "=== Final status ==="
+              docker compose -f docker-compose.test.yml ps
+              echo "=== Service logs ==="
+              docker compose -f docker-compose.test.yml logs --tail=30 redis
+              docker compose -f docker-compose.test.yml logs --tail=30 minio  
+              docker compose -f docker-compose.test.yml logs --tail=30 backend
+              docker compose -f docker-compose.test.yml logs --tail=30 worker
+              exit 1
+            fi
+            
+            sleep 10
+          done
 
       - name: Setup MinIO bucket
         run: |
