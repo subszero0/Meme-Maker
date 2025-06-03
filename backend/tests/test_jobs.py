@@ -186,7 +186,9 @@ def test_create_job_duration_too_long(client_with_fake_redis):
     response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
     
     assert response.status_code == 422
-    assert "Clip too long" in response.json()["detail"]
+    error_detail = response.json()["detail"]
+    # Handle Pydantic validation error format (list of error objects)
+    assert any("Clip too long" in str(error) for error in error_detail)
 
 
 def test_clip_exactly_30_min_passes(client_with_fake_redis):
