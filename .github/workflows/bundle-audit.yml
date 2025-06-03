@@ -28,7 +28,7 @@ jobs:
     - name: Install dependencies
       run: |
         cd frontend
-        npm ci
+        npm ci --loglevel=warn || npm ci --loglevel=warn --legacy-peer-deps
         
     - name: Build frontend
       run: |

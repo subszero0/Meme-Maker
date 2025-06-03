@@ -51,7 +51,11 @@ jobs:
           sudo apt-get install -y google-chrome-stable
           
           # Install dependencies with extended timeout and optimizations
-          timeout 600 npm ci --prefer-offline --no-audit --no-fund --progress=false --loglevel=error
+          # Ignore warnings and prevent npm from treating them as errors
+          timeout 600 npm ci --prefer-offline --no-audit --no-fund --progress=false --loglevel=warn || {
+            echo "npm ci failed, trying with legacy peer deps..."
+            timeout 600 npm ci --prefer-offline --no-audit --no-fund --progress=false --loglevel=warn --legacy-peer-deps
+          }
         timeout-minutes: 12
 
       - name: Install backend dependencies
