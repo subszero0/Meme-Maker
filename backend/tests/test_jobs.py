@@ -32,6 +32,7 @@ def client_with_fake_redis(fake_redis, fake_queue):
          patch('app.api.jobs.redis', fake_redis), \
          patch('app.api.jobs.q', fake_queue), \
          patch('app.ratelimit.init_rate_limit', new_callable=AsyncMock), \
+         patch('fastapi_limiter.FastAPILimiter.redis', fake_redis), \
          patch('app.api.jobs.global_limiter', return_value=None), \
          patch('app.api.jobs.job_creation_limiter', return_value=None):
         yield TestClient(app)
