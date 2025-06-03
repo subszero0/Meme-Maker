@@ -13,9 +13,9 @@ from typing import Optional
 
 # Configuration
 API_BASE_URL = "http://localhost:8000/api/v1"
-TEST_VIDEO_URL = "https://filesamples.com/samples/video/mp4/sample_640x360.mp4"
-START_TIME = "00:00:02"
-END_TIME = "00:00:07"
+TEST_VIDEO_URL = "https://www.youtube.com/watch?v=jNQXAC9IVRw"  # Sample video that's known to work with yt-dlp
+START_TIME = "00:00:01"
+END_TIME = "00:00:06"
 EXPECTED_DURATION = 5.0  # seconds
 POLL_INTERVAL = 5  # seconds
 TIMEOUT = 120  # seconds
