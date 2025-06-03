@@ -15,8 +15,8 @@ ENV CYPRESS_INSTALL_BINARY=0
 RUN apk add --no-cache chromium chromium-chromedriver && \
     rm -rf /var/cache/apk/*
 
-# Install npm dependencies
-RUN npm ci || npm ci --legacy-peer-deps
+# Install npm dependencies and suppress warnings
+RUN npm ci --no-warn || npm ci --legacy-peer-deps --no-warn
 
 # Copy frontend source and build
 COPY frontend/ ./
