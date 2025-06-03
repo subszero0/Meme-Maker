@@ -195,8 +195,8 @@ def test_clip_exactly_30_min_passes(client_with_fake_redis):
     """Test that a clip of exactly 30 minutes (1800 seconds) is accepted"""
     job_data = {
         "url": "https://www.youtube.com/watch?v=test",
-        "start": 0.0,
-        "end": 1800.0,  # Exactly 30 minutes
+        "start": 0.1,  # Changed from 0.0 to satisfy Field(gt=0) constraint
+        "end": 1800.1,  # Exactly 30 minutes duration (1800.0 seconds)
         "accepted_terms": True
     }
     
@@ -218,15 +218,17 @@ def test_clip_over_30_min_fails(client_with_fake_redis):
     """Test that a clip over 30 minutes (1801 seconds) is rejected"""
     job_data = {
         "url": "https://www.youtube.com/watch?v=test",
-        "start": 0.0,
-        "end": 1801.0,  # 1 second over 30 minutes
+        "start": 0.1,  # Changed from 0.0 to satisfy Field(gt=0) constraint
+        "end": 1801.1,  # 1801 seconds duration > 1800 limit
         "accepted_terms": True
     }
     
     response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
     
     assert response.status_code == 422
-    assert "Clip too long" in response.json()["detail"]
+    error_detail = response.json()["detail"]
+    # Handle Pydantic validation error format (list of error objects)
+    assert any("Clip too long" in str(error) for error in error_detail)
 
 
 def test_create_job_invalid_duration(client_with_fake_redis):
