@@ -5,8 +5,18 @@ WORKDIR /app/frontend
 
 # Copy frontend package files and install dependencies
 COPY frontend/package*.json ./
+
+# Set environment variables to optimize npm install
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_SKIP_DOWNLOAD=true
-RUN npm ci
+ENV CYPRESS_INSTALL_BINARY=0
+
+# Install system Chrome and dependencies for puppeteer
+RUN apk add --no-cache chromium chromium-chromedriver && \
+    rm -rf /var/cache/apk/*
+
+# Install npm dependencies with optimizations and extended timeout
+RUN timeout 600 npm ci --prefer-offline --no-audit --no-fund --progress=false --loglevel=error
 
 # Copy frontend source and build
 COPY frontend/ ./

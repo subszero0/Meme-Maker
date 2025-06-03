@@ -162,10 +162,9 @@ class TestWorkerPipelineLogic:
     
     @patch('boto3.client')
     @patch('subprocess.run')
-    @patch('yt_dlp.YoutubeDL')
     @patch('tempfile.mkdtemp')
     @patch('app.redis')
-    def test_clip_processing_workflow(self, mock_redis, mock_mkdtemp, mock_ytdlp, mock_subprocess, mock_boto3):
+    def test_clip_processing_workflow(self, mock_redis, mock_mkdtemp, mock_subprocess, mock_boto3):
         """Test the complete clipping workflow with mocked dependencies"""
         job_id = "test_workflow_job"
         url = "https://example.com/video"
@@ -185,12 +184,7 @@ class TestWorkerPipelineLogic:
         }
         mock_redis.delete.return_value = True
         
-        # Mock YT-DLP
-        mock_ytdl_instance = MagicMock()
-        mock_ytdlp.return_value.__enter__.return_value = mock_ytdl_instance
-        mock_ytdl_instance.extract_info.return_value = {"title": "Test Video"}
-        
-        # Mock subprocess (ffprobe and ffmpeg)
+        # Mock subprocess (ffprobe and ffmpeg) 
         def subprocess_side_effect(*args, **kwargs):
             result = MagicMock()
             result.returncode = 0
@@ -220,7 +214,7 @@ class TestWorkerPipelineLogic:
                 "progress": 10
             })
             
-            # Test step 2: Download simulation
+            # Test step 2: Download simulation (skip yt-dlp since it's worker-only)
             mock_redis.hset(f"job:{job_id}", "progress", 20)
             
             # Test step 3: Processing simulation
@@ -257,7 +251,7 @@ class TestDockerWorkerSetup:
         content = dockerfile_path.read_text()
         assert "python:3.12-alpine" in content, "Should use Python 3.12 Alpine"
         assert "ffmpeg" in content, "Should install FFmpeg"
-        assert "clips" in content, "Should use 'clips' queue name"
+        assert "worker/main.py" in content, "Should run worker main.py"
     
     def test_worker_requirements(self):
         """Test that worker requirements.txt has necessary dependencies"""
@@ -269,7 +263,7 @@ class TestDockerWorkerSetup:
         assert "rq" in content, "Should include RQ"
         assert "yt-dlp" in content, "Should include yt-dlp"
         assert "boto3" in content, "Should include boto3"
-        assert "pydantic" in content, "Should include Pydantic"
+        assert "prometheus_client" in content, "Should include Prometheus client"
     
     def test_process_clip_file_exists(self):
         """Test that process_clip.py exists"""
