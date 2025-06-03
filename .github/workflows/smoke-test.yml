@@ -115,14 +115,18 @@ jobs:
           
           docker compose -f docker-compose.test.yml up -d --build
           
-          # Wait for all services to be healthy with simpler checks
+          # Wait for all services to be healthy with correct counting
           echo "Waiting for services to be ready..."
           for i in {1..40}; do
             echo "Check $i/40..."
             
-            # Check services using simpler status check
-            if docker compose -f docker-compose.test.yml ps | grep -q "healthy.*healthy.*healthy"; then
-              echo "✅ All services are healthy!"
+            # Count the number of healthy services (should be 4: redis, minio, backend, worker)
+            healthy_count=$(docker compose -f docker-compose.test.yml ps | grep -c "healthy" || echo "0")
+            
+            echo "Healthy services: $healthy_count/4"
+            
+            if [ "$healthy_count" -eq 4 ]; then
+              echo "✅ All 4 services are healthy!"
               break
             fi
             
