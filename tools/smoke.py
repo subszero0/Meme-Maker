@@ -57,7 +57,8 @@ def test_rate_limiting() -> bool:
     test_job_data = {
         "url": TEST_VIDEO_URL,
         "start": START_TIME,
-        "end": END_TIME
+        "end": END_TIME,
+        "accepted_terms": True
     }
     
     successful_requests = 0
@@ -123,7 +124,8 @@ def create_job() -> Optional[str]:
             json={
                 "url": TEST_VIDEO_URL,
                 "start": START_TIME,
-                "end": END_TIME
+                "end": END_TIME,
+                "accepted_terms": True
             },
             timeout=15
         )
