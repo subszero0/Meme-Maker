@@ -50,8 +50,8 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y google-chrome-stable
           
-          # Install dependencies with basic command and suppress warnings
-          npm ci --no-warn || npm ci --legacy-peer-deps --no-warn
+          # Install dependencies - use silent to suppress all warnings and output
+          npm ci --silent
         timeout-minutes: 12
 
       - name: Install backend dependencies
