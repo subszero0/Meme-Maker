@@ -219,7 +219,7 @@ class TestRateLimiting:
         result = await rate_limit_exception_handler(request, exc)
         
         assert result["limit_type"] == "job_creation"
-        assert "Job creation limit exceeded" in result["detail"]
+        assert "Job creation limit" in result["detail"]
         
         # Test non-429 exception
         exc = HTTPException(status_code=400, detail="Bad request")

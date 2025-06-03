@@ -41,7 +41,8 @@ jobs:
       - name: Install frontend dependencies
         run: |
           cd frontend
-          npm ci
+          timeout 300 npm ci --prefer-offline --no-audit --no-fund
+        timeout-minutes: 6
 
       - name: Install backend dependencies
         run: |
