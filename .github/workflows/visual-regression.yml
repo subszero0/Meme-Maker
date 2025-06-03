@@ -41,8 +41,18 @@ jobs:
       - name: Install frontend dependencies
         run: |
           cd frontend
-          timeout 300 npm ci --prefer-offline --no-audit --no-fund
-        timeout-minutes: 6
+          
+          # Set puppeteer to use system Chrome if available to avoid downloading
+          export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+          export PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+          
+          # Install system Chrome for puppeteer (faster than downloading)
+          sudo apt-get update -qq
+          sudo apt-get install -y google-chrome-stable
+          
+          # Install dependencies with extended timeout and optimizations
+          timeout 600 npm ci --prefer-offline --no-audit --no-fund --progress=false --loglevel=error
+        timeout-minutes: 12
 
       - name: Install backend dependencies
         run: |
