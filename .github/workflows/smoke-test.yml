@@ -25,11 +25,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install requests
+          pip install pytest pytest-asyncio
 
       - name: Install FFmpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
+          # Verify FFmpeg installation
+          ffmpeg -version
+          which ffmpeg
 
       - name: Create test docker-compose
         run: |
@@ -102,6 +106,10 @@ jobs:
 
       - name: Start services
         run: |
+          # Verify docker-compose is available
+          docker-compose --version
+          docker --version
+          
           docker-compose -f docker-compose.test.yml up -d --build
           
           # Wait for all services to be healthy
@@ -115,12 +123,20 @@ jobs:
           chmod +x mc
           sudo mv mc /usr/local/bin/
           
+          # Verify mc installation
+          which mc
+          mc --version
+          
           # Create bucket
           mc alias set test http://localhost:9000 admin admin12345
           mc mb test/clips || echo "Bucket already exists"
 
       - name: Run smoke test
-        run: python tools/smoke.py
+        run: |
+          # Verify smoke test file exists
+          ls -la tools/smoke.py
+          # Run the smoke test
+          python tools/smoke.py
 
       - name: Show service logs on failure
         if: failure()

@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       
+      - name: Install pytest dependencies
+        run: pip install pytest pytest-asyncio pytest-xdist httpx
+      
       - name: Run backend tests with mock storage
         run: |
           echo "🧪 Running backend tests including mock storage tests..."
@@ -125,6 +128,9 @@ jobs:
       - name: Install global audit tools
         run: |
           npm install -g @lhci/cli @axe-core/cli
+          # Verify installations
+          lhci --version
+          axe --version
       
       - name: Start services for audit
         run: |
