@@ -80,8 +80,7 @@ def create_job_limiter() -> Optional[RateLimiter]:
     
     return RateLimiter(
         times=requests_per_minute,
-        seconds=60,  # 1 minute window
-        key_func=job_rate_limit_key_func
+        seconds=60  # 1 minute window
     )
 
 

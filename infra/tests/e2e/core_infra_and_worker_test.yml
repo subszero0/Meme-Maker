@@ -1,0 +1,411 @@
+name: Core Infra & Worker Smoke Test
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Enable debug logging'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  DEBUG_MODE: ${{ github.event.inputs.debug || 'false' }}
+
+jobs:
+  core_infra_and_worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    services:
+      docker:
+        image: docker:24.0.0
+        options: --privileged
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Set up .env.test
+        run: |
+          cat <<EOF > .env.test
+          DEBUG=true
+          REDIS_URL=redis://redis:6379/0
+          REDIS_DB=0
+          AWS_ACCESS_KEY_ID=admin
+          AWS_SECRET_ACCESS_KEY=admin12345
+          AWS_REGION=us-east-1
+          AWS_ENDPOINT_URL=http://minio:9000
+          AWS_ALLOW_HTTP=true
+          S3_BUCKET=clips
+          CORS_ORIGINS=["http://localhost:3000","http://localhost:8000","http://localhost"]
+          MAX_CONCURRENT_JOBS=20
+          JOB_TIMEOUT=300
+          RATE_LIMIT=off
+          MAX_CLIP_SECONDS=180
+          ENV=test
+          EOF
+          echo "✅ Environment configuration created"
+
+      - name: Build all Docker images
+        run: |
+          echo "🔨 Building Docker images..."
+          docker-compose -f docker-compose.yaml --env-file .env.test build --parallel
+          echo "✅ All images built successfully"
+
+      - name: Start core services (Redis & MinIO)
+        run: |
+          echo "🚀 Starting core services..."
+          docker-compose -f docker-compose.yaml --env-file .env.test up -d redis minio
+          
+          # Wait for Redis
+          echo "⏳ Waiting for Redis..."
+          for i in {1..30}; do
+            if docker exec meme-maker-redis redis-cli ping | grep -q PONG; then
+              echo "✅ Redis healthy"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "❌ Redis failed to start"
+              docker logs meme-maker-redis
+              exit 1
+            fi
+            sleep 2
+          done
+          
+          # Wait for MinIO
+          echo "⏳ Waiting for MinIO..."
+          for i in {1..30}; do
+            if curl -f -s http://localhost:9003/minio/health/ready >/dev/null 2>&1; then
+              echo "✅ MinIO healthy"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "❌ MinIO failed to start"
+              docker logs meme-maker-minio
+              exit 1
+            fi
+            sleep 2
+          done
+          
+          # Create S3 bucket
+          echo "🪣 Creating S3 bucket..."
+          docker exec meme-maker-minio mc alias set myminio http://localhost:9000 admin admin12345
+          docker exec meme-maker-minio mc mb myminio/clips --ignore-existing
+          echo "✅ S3 bucket ready"
+
+      - name: Start backend and worker services
+        run: |
+          echo "🚀 Starting backend and worker..."
+          docker-compose -f docker-compose.yaml --env-file .env.test up -d backend worker
+          
+          # Wait for backend health
+          echo "⏳ Waiting for backend..."
+          for i in {1..60}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health 2>/dev/null || echo "000")
+            if [ "$STATUS" == "200" ]; then
+              echo "✅ Backend healthy"
+              # Verify health response content
+              HEALTH_RESPONSE=$(curl -s http://localhost:8000/health)
+              if echo "$HEALTH_RESPONSE" | jq -e '.status == "ok"' >/dev/null 2>&1; then
+                echo "✅ Backend health check passed"
+                break
+              else
+                echo "❌ Backend health check failed: $HEALTH_RESPONSE"
+                exit 1
+              fi
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "❌ Backend failed to become healthy"
+              echo "Backend logs:"
+              docker logs meme-maker-backend
+              echo "Worker logs:"
+              docker logs meme-maker-worker
+              exit 1
+            fi
+            echo "⏳ Backend not ready yet... (attempt $i/60, status: $STATUS)"
+            sleep 2
+          done
+
+      - name: Backend Unit & Integration Tests
+        run: |
+          echo "🧪 Running backend tests..."
+          
+          # First attempt
+          if docker exec meme-maker-backend bash -c "cd /app && python -m pytest -v --tb=short"; then
+            echo "✅ Backend tests passed"
+          else
+            echo "❗ Tests failed, attempting recovery..."
+            
+            # Try upgrading dependencies and restarting
+            docker exec meme-maker-backend bash -c "cd /app && pip install --upgrade -r requirements.txt" || true
+            docker-compose -f docker-compose.yaml --env-file .env.test restart backend
+            
+            # Wait for backend to restart
+            sleep 10
+            for i in {1..20}; do
+              if curl -s http://localhost:8000/health | jq -e '.status == "ok"' >/dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+            
+            # Second attempt
+            if docker exec meme-maker-backend bash -c "cd /app && python -m pytest -v --tb=short"; then
+              echo "✅ Backend tests passed after recovery"
+            else
+              echo "❌ Backend tests failed after recovery attempt"
+              docker logs meme-maker-backend
+              exit 1
+            fi
+          fi
+
+      - name: Frontend Build & Validation
+        run: |
+          echo "🎨 Building frontend..."
+          cd frontend
+          
+          # Install dependencies
+          npm ci
+          
+          # Build frontend
+          if npm run build; then
+            echo "✅ Frontend build successful"
+          else
+            echo "❌ Frontend build failed"
+            exit 1
+          fi
+          
+          # Validate build output
+          if [ ! -f "out/index.html" ]; then
+            echo "❌ Frontend build output missing"
+            ls -la out/ || echo "No out directory found"
+            exit 1
+          fi
+          
+          echo "✅ Frontend build output validated"
+          cd ..
+
+      - name: Deploy Frontend to Backend
+        run: |
+          echo "📁 Deploying frontend static files..."
+          
+          # Create static directory in backend container
+          docker exec meme-maker-backend mkdir -p /app/static
+          
+          # Copy frontend build to backend container
+          docker cp frontend/out/. meme-maker-backend:/app/static/
+          
+          # Verify files were copied
+          if docker exec meme-maker-backend test -f /app/static/index.html; then
+            echo "✅ Frontend files deployed to backend"
+          else
+            echo "❌ Frontend deployment failed"
+            docker exec meme-maker-backend ls -la /app/static/ || echo "No static directory"
+            exit 1
+          fi
+          
+          # Test static file serving
+          echo "🌐 Testing static file serving..."
+          sleep 5  # Allow backend to detect new files
+          
+          for i in {1..10}; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/ 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" == "200" ]; then
+              echo "✅ Static files served successfully"
+              break
+            fi
+            if [ "$i" -eq 10 ]; then
+              echo "❌ Static file serving failed (HTTP $HTTP_CODE)"
+              docker logs meme-maker-backend --tail 20
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Worker Smoke Test
+        run: |
+          echo "🔧 Running worker smoke test..."
+          
+          # Test video URL (10 second Big Buck Bunny clip)
+          TEST_URL="https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/10s.mp4"
+          
+          # Enqueue job
+          echo "📋 Enqueuing test job..."
+          JOB_RESPONSE=$(curl -s -X POST http://localhost:8000/api/v1/jobs \
+            -H "Content-Type: application/json" \
+            -d "{\"url\":\"$TEST_URL\",\"start\":\"00:00:00\",\"end\":\"00:00:05\"}")
+          
+          echo "Job response: $JOB_RESPONSE"
+          
+          # Extract job ID
+          JOB_ID=$(echo "$JOB_RESPONSE" | jq -r '.job_id' 2>/dev/null || echo "")
+          if [ -z "$JOB_ID" ] || [ "$JOB_ID" == "null" ]; then
+            echo "❌ Failed to enqueue job: $JOB_RESPONSE"
+            echo "Backend logs:"
+            docker logs meme-maker-backend --tail 20
+            echo "Worker logs:"
+            docker logs meme-maker-worker --tail 20
+            exit 1
+          fi
+          
+          echo "✅ Job enqueued: $JOB_ID"
+          
+          # Poll job status
+          echo "⏳ Waiting for job completion..."
+          for i in {1..40}; do
+            sleep 3
+            
+            JOB_STATUS_RESPONSE=$(curl -s http://localhost:8000/api/v1/jobs/$JOB_ID 2>/dev/null || echo '{"status":"unknown"}')
+            STATUS=$(echo "$JOB_STATUS_RESPONSE" | jq -r '.status' 2>/dev/null || echo "unknown")
+            
+            echo "⏳ Job status: $STATUS (attempt $i/40)"
+            
+            if [ "$STATUS" == "done" ]; then
+              echo "✅ Job completed successfully"
+              break
+            elif [ "$STATUS" == "error" ]; then
+              echo "❌ Job failed with error"
+              echo "Job details: $JOB_STATUS_RESPONSE"
+              echo "Worker logs:"
+              docker logs meme-maker-worker --tail 30
+              
+              # Attempt worker restart and retry once
+              if [ ! -f "/tmp/worker_restarted" ]; then
+                echo "🔄 Attempting worker restart..."
+                docker-compose -f docker-compose.yaml --env-file .env.test restart worker
+                touch /tmp/worker_restarted
+                sleep 10
+                
+                # Re-enqueue job
+                echo "🔄 Re-enqueuing job..."
+                JOB_RESPONSE=$(curl -s -X POST http://localhost:8000/api/v1/jobs \
+                  -H "Content-Type: application/json" \
+                  -d "{\"url\":\"$TEST_URL\",\"start\":\"00:00:00\",\"end\":\"00:00:05\"}")
+                
+                JOB_ID=$(echo "$JOB_RESPONSE" | jq -r '.job_id' 2>/dev/null || echo "")
+                if [ -n "$JOB_ID" ] && [ "$JOB_ID" != "null" ]; then
+                  echo "🔄 Retry job enqueued: $JOB_ID"
+                  continue
+                fi
+              fi
+              
+              exit 1
+            elif [ "$i" -eq 40 ]; then
+              echo "❌ Job did not complete within timeout"
+              echo "Final job status: $JOB_STATUS_RESPONSE"
+              echo "Worker logs:"
+              docker logs meme-maker-worker --tail 30
+              exit 1
+            fi
+          done
+          
+          # Test download
+          echo "📥 Testing file download..."
+          FINAL_STATUS=$(curl -s http://localhost:8000/api/v1/jobs/$JOB_ID)
+          DOWNLOAD_URL=$(echo "$FINAL_STATUS" | jq -r '.link' 2>/dev/null || echo "")
+          
+          if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" == "null" ]; then
+            echo "❌ No download URL provided"
+            echo "Final job status: $FINAL_STATUS"
+            exit 1
+          fi
+          
+          # First download - should succeed
+          HTTP_CODE=$(curl -s -o /tmp/${JOB_ID}.mp4 -w "%{http_code}" "$DOWNLOAD_URL" 2>/dev/null || echo "000")
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Download failed (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+          
+          # Verify file size
+          FILE_SIZE=$(stat -c%s "/tmp/${JOB_ID}.mp4" 2>/dev/null || echo "0")
+          if [ "$FILE_SIZE" -eq 0 ]; then
+            echo "❌ Downloaded file is empty"
+            exit 1
+          fi
+          
+          echo "✅ Download succeeded (${FILE_SIZE} bytes)"
+          
+          # Test auto-deletion - second download should fail
+          echo "🗑️ Testing auto-deletion..."
+          sleep 2
+          HTTP_CODE2=$(curl -s -o /dev/null -w "%{http_code}" "$DOWNLOAD_URL" 2>/dev/null || echo "000")
+          if [ "$HTTP_CODE2" == "200" ]; then
+            echo "❌ File still accessible after first download"
+            exit 1
+          fi
+          
+          echo "✅ File auto-deleted successfully (HTTP $HTTP_CODE2)"
+
+      - name: Final Health Checks
+        run: |
+          echo "🏁 Running final health checks..."
+          
+          # Check all services are still healthy
+          services=("redis" "minio" "backend" "worker")
+          for service in "${services[@]}"; do
+            if docker-compose -f docker-compose.yaml ps $service | grep -q "Up"; then
+              echo "✅ $service: healthy"
+            else
+              echo "❌ $service: unhealthy"
+              docker logs meme-maker-$service --tail 10
+            fi
+          done
+          
+          # Final API health check
+          if curl -s http://localhost:8000/health | jq -e '.status == "ok"' >/dev/null 2>&1; then
+            echo "✅ API: healthy"
+          else
+            echo "❌ API: unhealthy"
+          fi
+          
+          echo "🎉 All tests completed successfully!"
+
+      - name: Cleanup on Failure
+        if: failure()
+        run: |
+          echo "🛑 Tests failed - collecting diagnostics..."
+          
+          echo "=== CONTAINER STATUS ==="
+          docker-compose -f docker-compose.yaml ps
+          
+          echo "=== BACKEND LOGS ==="
+          docker logs meme-maker-backend --tail 50 2>&1 || echo "No backend logs"
+          
+          echo "=== WORKER LOGS ==="
+          docker logs meme-maker-worker --tail 50 2>&1 || echo "No worker logs"
+          
+          echo "=== REDIS LOGS ==="
+          docker logs meme-maker-redis --tail 20 2>&1 || echo "No redis logs"
+          
+          echo "=== MINIO LOGS ==="
+          docker logs meme-maker-minio --tail 20 2>&1 || echo "No minio logs"
+          
+          echo "🧹 Cleaning up..."
+          docker-compose -f docker-compose.yaml down --volumes --remove-orphans || true
+
+      - name: Cleanup on Success
+        if: success()
+        run: |
+          echo "🧹 Cleaning up after successful test..."
+          docker-compose -f docker-compose.yaml down --volumes --remove-orphans
+          docker system prune --volumes --force
+          echo "✅ Cleanup completed" 

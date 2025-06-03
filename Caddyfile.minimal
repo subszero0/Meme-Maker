@@ -1,0 +1,7 @@
+{
+    auto_https off
+}
+
+memeit.pro:80, www.memeit.pro:80 {
+    reverse_proxy backend:8000
+} 

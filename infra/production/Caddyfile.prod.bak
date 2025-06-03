@@ -1,0 +1,19 @@
+{
+    email admin@memeit.pro
+    # Try production CA - sometimes behaves differently than staging
+    auto_https disable_redirects
+}
+
+# Explicitly bind HTTP and HTTPS for the same site
+memeit.pro, www.memeit.pro {
+    encode zstd gzip
+
+    # 1) Always serve challenge locally (no proxy, no redirect), on both HTTP & HTTPS
+    handle_path /.well-known/acme-challenge/* {
+        root * /var/lib/caddy
+        file_server
+    }
+
+    # 2) Proxy everything else to the backend
+    reverse_proxy backend:8000
+} 

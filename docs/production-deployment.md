@@ -35,7 +35,7 @@ S3_BUCKET=meme-clips-prod
 ROUTE53_ZONE_ID=Z123456789ABCDEFGHIJ
 
 # Production Server
-PRODUCTION_SERVER_IP=1.2.3.4
+PRODUCTION_SERVER_IP=13.126.173.223
 PRODUCTION_HOST=app.memeit.pro
 PRODUCTION_USER=ubuntu
 PRODUCTION_SSH_KEY=-----BEGIN OPENSSH PRIVATE KEY-----...
@@ -65,7 +65,7 @@ aws route53 list-hosted-zones-by-name --dns-name memeit.pro
 ```bash
 # Run DNS provisioning script
 export ROUTE53_ZONE_ID="Z123456789ABCDEFGHIJ"
-export PRODUCTION_SERVER_IP="1.2.3.4"
+export PRODUCTION_SERVER_IP="13.126.173.223"
 ./scripts/provision_dns.sh
 ```
 

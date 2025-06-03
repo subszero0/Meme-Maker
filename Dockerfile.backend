@@ -5,6 +5,7 @@ WORKDIR /app/frontend
 
 # Copy frontend package files and install dependencies
 COPY frontend/package*.json ./
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 RUN npm ci
 
 # Copy frontend source and build

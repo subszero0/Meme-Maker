@@ -1,0 +1,8 @@
+{
+    auto_https off
+    admin off
+}
+
+localhost:80 {
+    reverse_proxy backend:8000
+} 

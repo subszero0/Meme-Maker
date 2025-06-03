@@ -1,0 +1,8 @@
+{
+    email admin@memeit.pro
+}
+
+memeit.pro, www.memeit.pro {
+    encode zstd gzip
+    reverse_proxy backend:8000
+} 

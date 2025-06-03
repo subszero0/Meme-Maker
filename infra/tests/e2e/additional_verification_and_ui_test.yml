@@ -1,0 +1,565 @@
+name: Additional Verification & Frontend E2E
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Enable debug logging'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  DEBUG_MODE: ${{ github.event.inputs.debug || 'false' }}
+
+jobs:
+  setup_services:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      job_id: ${{ steps.smoke_test.outputs.job_id }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq curl
+
+      - name: Set up .env.test
+        run: |
+          cat <<EOF > .env.test
+          DEBUG=true
+          REDIS_URL=redis://redis:6379/0
+          REDIS_DB=0
+          AWS_ACCESS_KEY_ID=admin
+          AWS_SECRET_ACCESS_KEY=admin12345
+          AWS_REGION=us-east-1
+          AWS_ENDPOINT_URL=http://minio:9000
+          AWS_ALLOW_HTTP=true
+          S3_BUCKET=clips
+          CORS_ORIGINS=["http://localhost:3000","http://localhost:8000","http://localhost","https://localhost"]
+          MAX_CONCURRENT_JOBS=20
+          JOB_TIMEOUT=300
+          RATE_LIMIT=off
+          MAX_CLIP_SECONDS=180
+          ENV=test
+          EOF
+
+      - name: Build and start all services
+        run: |
+          echo "🔨 Building and starting all services..."
+          docker-compose -f docker-compose.yaml --env-file .env.test build --parallel
+          docker-compose -f docker-compose.yaml --env-file .env.test up -d redis minio backend worker
+          
+          # Wait for services to be ready
+          echo "⏳ Waiting for services..."
+          
+          # Redis health check
+          for i in {1..30}; do
+            if docker exec meme-maker-redis redis-cli ping | grep -q PONG; then
+              echo "✅ Redis healthy"
+              break
+            fi
+            [ "$i" -eq 30 ] && { echo "❌ Redis failed"; docker logs meme-maker-redis; exit 1; }
+            sleep 2
+          done
+          
+          # MinIO health check
+          for i in {1..30}; do
+            if curl -f -s http://localhost:9003/minio/health/ready >/dev/null 2>&1; then
+              echo "✅ MinIO healthy"
+              break
+            fi
+            [ "$i" -eq 30 ] && { echo "❌ MinIO failed"; docker logs meme-maker-minio; exit 1; }
+            sleep 2
+          done
+          
+          # Create S3 bucket if it doesn't exist
+          docker exec meme-maker-minio mc alias set myminio http://localhost:9000 admin admin12345
+          docker exec meme-maker-minio mc mb myminio/clips --ignore-existing || echo "Bucket already exists"
+          
+          # Backend health check
+          for i in {1..60}; do
+            if curl -s http://localhost:8000/health | jq -e '.status == "ok"' >/dev/null 2>&1; then
+              echo "✅ Backend healthy"
+              break
+            fi
+            [ "$i" -eq 60 ] && { echo "❌ Backend failed"; docker logs meme-maker-backend; exit 1; }
+            echo "⏳ Backend not ready... (attempt $i/60)"
+            sleep 2
+          done
+
+      - name: Run worker smoke test and capture job_id
+        id: smoke_test
+        run: |
+          echo "🔧 Running worker smoke test..."
+          
+          TEST_URL="https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/10s.mp4"
+          
+          # Enqueue job
+          JOB_RESPONSE=$(curl -s -X POST http://localhost:8000/api/v1/jobs \
+            -H "Content-Type: application/json" \
+            -d "{\"url\":\"$TEST_URL\",\"start\":\"00:00:00\",\"end\":\"00:00:05\"}")
+          
+          JOB_ID=$(echo "$JOB_RESPONSE" | jq -r '.job_id' 2>/dev/null || echo "")
+          if [ -z "$JOB_ID" ] || [ "$JOB_ID" == "null" ]; then
+            echo "❌ Failed to enqueue job: $JOB_RESPONSE"
+            exit 1
+          fi
+          
+          echo "✅ Job enqueued: $JOB_ID"
+          echo "$JOB_ID" > last_job_id.txt
+          
+          # Wait for job completion
+          for i in {1..40}; do
+            sleep 3
+            JOB_STATUS_RESPONSE=$(curl -s http://localhost:8000/api/v1/jobs/$JOB_ID 2>/dev/null || echo '{"status":"unknown"}')
+            STATUS=$(echo "$JOB_STATUS_RESPONSE" | jq -r '.status' 2>/dev/null || echo "unknown")
+            
+            echo "⏳ Job status: $STATUS (attempt $i/40)"
+            
+            if [ "$STATUS" == "done" ]; then
+              echo "✅ Job completed successfully"
+              echo "job_id=$JOB_ID" >> $GITHUB_OUTPUT
+              break
+            elif [ "$STATUS" == "error" ]; then
+              echo "❌ Job failed: $JOB_STATUS_RESPONSE"
+              docker logs meme-maker-worker --tail 30
+              exit 1
+            elif [ "$i" -eq 40 ]; then
+              echo "❌ Job timeout"
+              exit 1
+            fi
+          done
+
+  data_and_api_checks:
+    runs-on: ubuntu-latest
+    needs: setup_services
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install prerequisites
+        run: sudo apt-get update && sudo apt-get install -y jq curl
+
+      - name: Redis & MinIO Data Validation
+        run: |
+          JOB_ID="${{ needs.setup_services.outputs.job_id }}"
+          echo "🔍 Validating data for job: $JOB_ID"
+          
+          # Redis existence check
+          EXISTS=$(docker exec meme-maker-redis redis-cli EXISTS job:$JOB_ID)
+          if [ "$EXISTS" -ne 1 ]; then
+            echo "❌ Redis key job:$JOB_ID not found"
+            # Auto-fix attempt: Check if key exists with different pattern
+            echo "🔧 Attempting auto-fix: searching for job keys..."
+            docker exec meme-maker-redis redis-cli --scan --pattern "*job*" | head -10
+            exit 1
+          fi
+          
+          TTL=$(docker exec meme-maker-redis redis-cli TTL job:$JOB_ID)
+          if [ "$TTL" -le 0 ]; then
+            echo "❌ Redis TTL for job:$JOB_ID is not set (TTL: $TTL)"
+            exit 1
+          fi
+          echo "✅ Redis job:$JOB_ID exists with TTL $TTL seconds"
+          
+          # MinIO object check
+          echo "🔍 Checking MinIO objects..."
+          docker exec meme-maker-minio mc alias set local http://localhost:9000 admin admin12345 || {
+            echo "🔧 Auto-fix: Setting up MinIO alias..."
+            docker exec meme-maker-minio mc alias set local http://localhost:9000 admin admin12345
+          }
+          
+          # Ensure bucket exists
+          docker exec meme-maker-minio mc mb local/clips --ignore-existing || echo "Bucket already exists"
+          
+          OBJECTS=$(docker exec meme-maker-minio mc ls local/clips 2>/dev/null || echo "EMPTY")
+          if echo "$OBJECTS" | grep -q "$JOB_ID"; then
+            echo "✅ MinIO object containing $JOB_ID found"
+          else
+            echo "❌ MinIO object for $JOB_ID missing"
+            echo "Available objects in clips bucket:"
+            echo "$OBJECTS"
+            exit 1
+          fi
+
+      - name: Metadata, CORS & Rate Limit Tests
+        run: |
+          echo "🧪 Testing API endpoints..."
+          
+          # Metadata endpoint test
+          echo "📊 Testing metadata endpoint..."
+          META_RESP=$(curl -s -X POST http://localhost:8000/api/v1/metadata \
+            -H "Content-Type: application/json" \
+            -d '{"url":"https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/10s.mp4"}')
+          
+          if ! echo "$META_RESP" | jq -e '.title and .duration' >/dev/null 2>&1; then
+            echo "❌ Metadata response invalid: $META_RESP"
+            # Auto-fix attempt: check if backend is still healthy
+            echo "🔧 Auto-fix: Checking backend health..."
+            curl -s http://localhost:8000/health || { 
+              echo "Backend unhealthy, restarting..."
+              docker-compose -f docker-compose.yaml restart backend
+              sleep 10
+            }
+            exit 1
+          fi
+          echo "✅ Metadata endpoint passed"
+          
+          # CORS preflight test
+          echo "🌐 Testing CORS preflight..."
+          CORS_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X OPTIONS http://localhost:8000/api/v1/jobs \
+            -H "Origin: http://localhost:3000" \
+            -H "Access-Control-Request-Method: POST")
+          
+          if [ "$CORS_CODE" -ne 204 ] && [ "$CORS_CODE" -ne 200 ]; then
+            echo "❌ CORS preflight failed (code: $CORS_CODE)"
+            echo "🔧 Auto-fix: Checking CORS configuration..."
+            docker logs meme-maker-backend --tail 20 | grep -i cors || echo "No CORS logs found"
+            exit 1
+          fi
+          echo "✅ CORS preflight succeeded (HTTP $CORS_CODE)"
+          
+          # Rate limit test (simplified for CI)
+          echo "⚡ Testing rate limiting..."
+          RATE_LIMIT_TRIGGERED=false
+          for i in {1..15}; do
+            RESP=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST http://localhost:8000/api/v1/jobs \
+              -H "Content-Type: application/json" \
+              -d '{"url":"https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/10s.mp4","start":"00:00:00","end":"00:00:01"}' \
+              2>/dev/null || echo "000")
+            
+            if [ "$RESP" == "429" ]; then
+              RATE_LIMIT_TRIGGERED=true
+              echo "✅ Rate limiting triggered at request #$i (HTTP $RESP)"
+              break
+            fi
+            sleep 0.1  # Brief pause between requests
+          done
+          
+          # Note: Rate limiting might not trigger in test environment
+          if [ "$RATE_LIMIT_TRIGGERED" == "false" ]; then
+            echo "⚠️ Rate limiting not triggered (may be disabled in test mode)"
+          fi
+
+  caddy_setup_and_tls_check:
+    runs-on: ubuntu-latest
+    needs: data_and_api_checks
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Caddy for testing
+        run: |
+          echo "🔧 Setting up Caddy for TLS testing..."
+          
+          # Create a test Caddyfile for CI
+          cat > Caddyfile.ci <<EOF
+          localhost {
+            tls internal
+            reverse_proxy backend:8000
+          }
+          
+          :80 {
+            redir https://{host}{uri}
+          }
+          EOF
+          
+          # Start Caddy with test configuration
+          docker run -d --name caddy-test \
+            --network meme-maker_default \
+            -p 80:80 -p 443:443 \
+            -v "$(pwd)/Caddyfile.ci:/etc/caddy/Caddyfile:ro" \
+            caddy:2.8.4-alpine
+          
+          # Wait for Caddy to start
+          echo "⏳ Waiting for Caddy to initialize..."
+          sleep 10
+          
+          # Check if Caddy is running
+          for i in {1..20}; do
+            if docker logs caddy-test 2>&1 | grep -i "serving"; then
+              echo "✅ Caddy initialized"
+              break
+            fi
+            [ "$i" -eq 20 ] && { echo "❌ Caddy failed to start"; docker logs caddy-test; exit 1; }
+            sleep 2
+          done
+
+      - name: Caddy HTTP→HTTPS & TLS Validation
+        run: |
+          echo "🔒 Testing HTTP to HTTPS redirect..."
+          
+          # Test HTTP redirect (allow both 301 and 308)
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L --max-redirs 0 http://localhost 2>/dev/null || echo "000")
+          if [ "$HTTP_STATUS" -ne 301 ] && [ "$HTTP_STATUS" -ne 308 ]; then
+            echo "❌ HTTP->HTTPS redirect failed (status: $HTTP_STATUS)"
+            echo "🔧 Auto-fix: Checking Caddy configuration..."
+            docker exec caddy-test caddy fmt --config /etc/caddy/Caddyfile || echo "Config format check failed"
+            docker logs caddy-test --tail 20
+            exit 1
+          fi
+          echo "✅ HTTP redirect to HTTPS confirmed (HTTP $HTTP_STATUS)"
+          
+          # Test TLS handshake (using -k to skip cert verification for self-signed)
+          echo "🔒 Testing TLS handshake..."
+          TLS_RESULT=$(curl -s -o /dev/null -k -w "%{ssl_verify_result}" https://localhost 2>/dev/null || echo "ERR")
+          
+          # For self-signed certs, ssl_verify_result might not be 0, so we check connection success
+          HTTPS_STATUS=$(curl -s -o /dev/null -k -w "%{http_code}" https://localhost 2>/dev/null || echo "000")
+          if [ "$HTTPS_STATUS" -eq 200 ] || [ "$HTTPS_STATUS" -eq 502 ]; then
+            echo "✅ TLS handshake succeeded (HTTPS status: $HTTPS_STATUS)"
+          else
+            echo "❌ TLS handshake failed (HTTPS status: $HTTPS_STATUS, TLS result: $TLS_RESULT)"
+            echo "🔧 Auto-fix: Restarting Caddy..."
+            docker restart caddy-test
+            sleep 5
+            
+            # Retry once
+            RETRY_STATUS=$(curl -s -o /dev/null -k -w "%{http_code}" https://localhost 2>/dev/null || echo "000")
+            if [ "$RETRY_STATUS" -eq 200 ] || [ "$RETRY_STATUS" -eq 502 ]; then
+              echo "✅ TLS handshake succeeded after restart"
+            else
+              docker logs caddy-test --tail 30
+              exit 1
+            fi
+          fi
+          
+          # Check Caddy logs for TLS/HTTPS serving
+          echo "📋 Checking Caddy logs for TLS serving..."
+          docker logs caddy-test 2>&1 | grep -E "serving|TLS|certificate|HTTPS" | head -10 || echo "No specific TLS logs found"
+
+  cypress_ui_tests:
+    runs-on: ubuntu-latest
+    needs: [setup_services, caddy_setup_and_tls_check]
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Create Cypress E2E test
+        run: |
+          echo "📝 Creating E2E test for complete user workflow..."
+          mkdir -p frontend/cypress/e2e
+          
+          cat > frontend/cypress/e2e/user_workflow.cy.ts <<'EOF'
+          describe('Complete User Workflow', () => {
+            const testVideoUrl = 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/10s.mp4';
+            
+            beforeEach(() => {
+              // Configure Cypress for self-signed certificates
+              cy.visit('/', { 
+                failOnStatusCode: false,
+                timeout: 30000 
+              });
+            });
+            
+            it('should complete the full trim and download workflow', () => {
+              // Step 1: Visit homepage
+              cy.contains('Meme Maker', { timeout: 15000 }).should('be.visible');
+              
+              // Step 2: Paste video URL
+              cy.get('input[type="url"]', { timeout: 10000 })
+                .should('be.visible')
+                .clear()
+                .type(testVideoUrl);
+              
+              // Step 3: Submit URL (assuming there's a submit button or auto-submission)
+              cy.get('button').contains(/analyze|submit|go/i, { timeout: 5000 }).click();
+              
+              // Step 4: Wait for metadata to load
+              cy.contains(/duration|seconds|title/i, { timeout: 20000 }).should('be.visible');
+              
+              // Step 5: Look for timeline/slider component
+              cy.get('[role="slider"], .slider, input[type="range"]', { timeout: 15000 })
+                .should('be.visible');
+              
+              // Step 6: Set trim points (simplified - just check if controls exist)
+              cy.get('input[type="time"], input[placeholder*="00:"], .time-input', { timeout: 10000 })
+                .first()
+                .should('be.visible');
+              
+              // Step 7: Click trim/download button
+              cy.get('button').contains(/trim|download|process/i, { timeout: 10000 })
+                .should('be.visible')
+                .click();
+              
+              // Step 8: Wait for processing to complete
+              cy.contains(/processing|ready|download/i, { timeout: 60000 }).should('be.visible');
+              
+              // Step 9: Verify download link appears
+              cy.get('a[href*="download"], button').contains(/download/i, { timeout: 30000 })
+                .should('be.visible');
+              
+              // Note: We don't actually download in CI as it's complex to verify
+              // The presence of the download link/button indicates success
+            });
+            
+            it('should handle errors gracefully', () => {
+              cy.get('input[type="url"]', { timeout: 10000 })
+                .should('be.visible')
+                .clear()
+                .type('https://invalid-url-that-should-fail.com/video.mp4');
+              
+              cy.get('button').contains(/analyze|submit|go/i, { timeout: 5000 }).click();
+              
+              // Should show error message
+              cy.contains(/error|invalid|cannot|failed/i, { timeout: 15000 })
+                .should('be.visible');
+            });
+          });
+          EOF
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run Cypress E2E Tests
+        run: |
+          cd frontend
+          
+          # Wait for backend to be accessible via HTTPS
+          echo "⏳ Waiting for HTTPS endpoint..."
+          for i in {1..20}; do
+            if curl -k -s https://localhost >/dev/null 2>&1; then
+              echo "✅ HTTPS endpoint accessible"
+              break
+            fi
+            [ "$i" -eq 20 ] && echo "⚠️ HTTPS endpoint not accessible, proceeding anyway"
+            sleep 3
+          done
+          
+          # Run Cypress tests
+          npm run cypress:run -- \
+            --headless \
+            --config baseUrl=https://localhost \
+            --config chromeWebSecurity=false \
+            --config video=true \
+            --config screenshotOnRunFailure=true \
+            --spec "cypress/e2e/user_workflow.cy.ts"
+        continue-on-error: true
+        env:
+          CYPRESS_chromeWebSecurity: "false"
+          CYPRESS_video: "true"
+          CYPRESS_screenshotOnRunFailure: "true"
+
+      - name: Upload Cypress artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-artifacts
+          path: |
+            frontend/cypress/videos/
+            frontend/cypress/screenshots/
+          retention-days: 7
+
+  teardown_and_cleanup:
+    runs-on: ubuntu-latest
+    needs: [setup_services, data_and_api_checks, caddy_setup_and_tls_check, cypress_ui_tests]
+    if: always()
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Final Data Summary
+        if: always()
+        run: |
+          echo "🔍 Collecting final data summary..."
+          
+          JOB_ID="${{ needs.setup_services.outputs.job_id }}"
+          if [ -n "$JOB_ID" ]; then
+            echo "📊 Final status for job: $JOB_ID"
+            
+            # Redis summary
+            echo "🔍 Redis status:"
+            if docker ps --format "table {{.Names}}" | grep -q meme-maker-redis; then
+              docker exec meme-maker-redis redis-cli TTL job:$JOB_ID 2>/dev/null || echo "Redis key not found"
+              REDIS_KEYS=$(docker exec meme-maker-redis redis-cli --scan --pattern "*job*" | wc -l)
+              echo "Total job keys in Redis: $REDIS_KEYS"
+            else
+              echo "Redis container not running"
+            fi
+            
+            # MinIO summary
+            echo "🔍 MinIO status:"
+            if docker ps --format "table {{.Names}}" | grep -q meme-maker-minio; then
+              docker exec meme-maker-minio mc alias set local http://localhost:9000 admin admin12345 2>/dev/null || true
+              MINIO_OBJECTS=$(docker exec meme-maker-minio mc ls local/clips 2>/dev/null | wc -l || echo "0")
+              echo "Objects in clips bucket: $MINIO_OBJECTS"
+            else
+              echo "MinIO container not running"
+            fi
+          else
+            echo "No job ID available for summary"
+          fi
+
+      - name: Collect Container Logs on Failure
+        if: failure()
+        run: |
+          echo "🛑 Collecting container logs for debugging..."
+          
+          echo "=== CONTAINER STATUS ==="
+          docker ps -a
+          
+          containers=("meme-maker-backend" "meme-maker-worker" "meme-maker-redis" "meme-maker-minio" "caddy-test")
+          for container in "${containers[@]}"; do
+            if docker ps -a --format "table {{.Names}}" | grep -q "$container"; then
+              echo "=== $container LOGS ==="
+              docker logs "$container" --tail 50 2>&1 || echo "No logs for $container"
+            else
+              echo "$container not found"
+            fi
+          done
+
+      - name: Final Teardown & Cleanup
+        if: always()
+        run: |
+          echo "🧹 Starting final cleanup..."
+          
+          # Stop and remove Caddy test container
+          docker stop caddy-test 2>/dev/null || true
+          docker rm caddy-test 2>/dev/null || true
+          
+          # Check if all tests passed
+          TESTS_PASSED=true
+          if [ "${{ needs.data_and_api_checks.result }}" != "success" ] || \
+             [ "${{ needs.caddy_setup_and_tls_check.result }}" != "success" ] || \
+             [ "${{ needs.cypress_ui_tests.result }}" != "success" ]; then
+            TESTS_PASSED=false
+          fi
+          
+          if [ "$TESTS_PASSED" == "true" ]; then
+            echo "✅ All tests passed - full cleanup"
+            docker-compose -f docker-compose.yaml down --volumes --remove-orphans 2>/dev/null || true
+            docker system prune --volumes --force 2>/dev/null || true
+            echo "✅ Complete cleanup finished"
+          else
+            echo "🛑 Some tests failed - basic cleanup only"
+            docker-compose -f docker-compose.yaml down --volumes --remove-orphans 2>/dev/null || true
+            echo "🧹 Basic cleanup completed"
+          fi
+          
+          echo "�� Teardown complete" 

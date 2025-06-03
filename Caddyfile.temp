@@ -3,8 +3,8 @@
     admin off
 }
 
-# HTTP-only configuration for immediate testing
-memeit.pro:80, www.memeit.pro:80 {
+# Temporary HTTP-only configuration for testing
+memeit.pro:80 {
     # API routes - proxy to FastAPI backend
     @api path /api/* /health /metrics /docs /redoc /openapi.json
     handle @api {
