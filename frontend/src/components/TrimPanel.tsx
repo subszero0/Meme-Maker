@@ -196,15 +196,24 @@ export default function TrimPanel({
     debouncedOutChange(value);
   }, [debouncedOutChange]);
 
-  const handleSubmit = useCallback(() => {
-    if (!canSubmit) return;
-    
+  const submitTrim = useDebouncedCallback(async () => {
+    if (clipDuration > maxDuration || !state.rights) return;
+
     try {
       onSubmit({ in: state.in, out: state.out, rights: true });
     } catch (error) {
-      pushToast({ type: 'error', message: 'Failed to submit clip request' });
+      console.error('Error submitting trim:', error);
+      pushToast({
+        type: 'error',
+        message: 'Failed to submit trim. Please try again.'
+      });
     }
-  }, [canSubmit, state.in, state.out, onSubmit, pushToast]);
+  }, 300);
+
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    submitTrim();
+  }, [submitTrim]);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-6">

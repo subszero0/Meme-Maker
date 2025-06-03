@@ -1,5 +1,6 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
 import Home from '../page';
 import * as api from '@/lib/api';
 import useJobPoller from '@/hooks/useJobPoller';
@@ -18,7 +19,7 @@ jest.mock('@/components/ToastProvider', () => ({
   }),
 }));
 jest.mock('@/components/TrimPanel', () => {
-  return function MockTrimPanel({ onSubmit }: { onSubmit: (params: any) => void }) {
+  return function MockTrimPanel({ onSubmit }: { onSubmit: (params: { in: number; out: number; rights: boolean }) => void }) {
     return (
       <div data-testid="trim-panel">
         <button
@@ -34,7 +35,7 @@ jest.mock('@/components/TrimPanel', () => {
 
 jest.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: React.ComponentProps<'div'>) => <div {...props}>{children}</div>,
   },
 }));
 

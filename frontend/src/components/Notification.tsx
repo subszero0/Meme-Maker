@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, ReactNode } from 'react';
+import { useEffect, useState, ReactNode, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   CheckCircleIcon, 
@@ -40,6 +40,8 @@ export interface NotificationProps {
   showProgress?: boolean;
   /** Unique identifier for testing */
   'data-cy'?: string;
+  /** Test ID for testing */
+  'data-testid'?: string;
 }
 
 // Style configurations for each notification type
@@ -133,6 +135,7 @@ export default function Notification({
   countdown,
   showProgress = false,
   'data-cy': dataCy = 'notification',
+  'data-testid': dataTestId,
   ...props
 }: NotificationProps) {
   const [isVisible, setIsVisible] = useState(true);
@@ -141,6 +144,14 @@ export default function Notification({
   const config = typeConfig[type];
   const posConfig = positionConfig[position];
   const IconComponent = config.icon;
+
+  const handleClose = useCallback(() => {
+    setIsVisible(false);
+    // Delay onClose to allow exit animation
+    setTimeout(() => {
+      onClose?.();
+    }, 200);
+  }, [onClose]);
 
   // Auto-dismiss logic with pause on hover/focus
   useEffect(() => {
@@ -151,15 +162,7 @@ export default function Notification({
     }, duration);
 
     return () => clearTimeout(timer);
-  }, [duration, isVisible, isPaused]);
-
-  const handleClose = () => {
-    setIsVisible(false);
-    // Delay onClose to allow exit animation
-    setTimeout(() => {
-      onClose?.();
-    }, 200);
-  };
+  }, [duration, isVisible, isPaused, handleClose]);
 
   const handleMouseEnter = () => setIsPaused(true);
   const handleMouseLeave = () => setIsPaused(false);
@@ -178,6 +181,7 @@ export default function Notification({
       role={config.ariaRole}
       aria-live={config.ariaLive}
       data-cy={dataCy}
+      data-testid={dataTestId}
       className={`
         ${posConfig.container}
         ${config.bg}

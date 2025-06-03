@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Notification from './Notification';
-import { formatRetryTime } from '@/lib/api';
 
 export interface RateLimitNotificationProps {
   message: string;

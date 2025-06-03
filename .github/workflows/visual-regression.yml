@@ -92,7 +92,8 @@ jobs:
       - name: Start frontend server
         run: |
           cd frontend
-          npm start &
+          npm install -g serve
+          serve out -s -l 3000 &
           sleep 10
         env:
           NODE_ENV: production

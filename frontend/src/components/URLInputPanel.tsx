@@ -132,6 +132,7 @@ export default function URLInputPanel({ onSubmit, loading = false, disabled = fa
               message={error}
               position="inline"
               data-cy="url-error"
+              data-testid="url-error"
             />
           )}
         </div>

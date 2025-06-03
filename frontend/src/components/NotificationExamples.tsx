@@ -172,8 +172,8 @@ export default function NotificationExamples() {
         <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
           <h3 className="font-medium">ARIA Roles & Live Regions</h3>
           <div className="space-y-2 text-sm">
-            <p><code>success/info</code>: role="status" aria-live="polite"</p>
-            <p><code>error/warning</code>: role="alert" aria-live="assertive"</p>
+            <p><code>success/info</code>: role=&quot;status&quot; aria-live=&quot;polite&quot;</p>
+            <p><code>error/warning</code>: role=&quot;alert&quot; aria-live=&quot;assertive&quot;</p>
             <p><strong>Keyboard navigation</strong>: Dismiss buttons are focusable</p>
             <p><strong>Pause on hover/focus</strong>: Auto-dismiss pauses for screen readers</p>
             <p><strong>44×44px touch targets</strong>: All dismiss buttons meet accessibility requirements</p>
@@ -226,6 +226,21 @@ export default function NotificationExamples() {
   position="toast"
 />`}
           </pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Error Notification Description</h2>
+        <div className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+          <p>
+            Error notifications should be used for critical issues that require immediate attention. 
+            They use <code>role=&quot;alert&quot;</code> and <code>aria-live=&quot;assertive&quot;</code> to ensure 
+            screen readers announce them immediately.
+          </p>
+          <p className="mt-2">
+            Success notifications confirm completed actions using <code>role=&quot;status&quot;</code> 
+            and <code>aria-live=&quot;polite&quot;</code> for less intrusive announcements.
+          </p>
         </div>
       </section>
     </div>

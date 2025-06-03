@@ -4,6 +4,36 @@ import { toHaveNoViolations } from 'jest-axe';
 // Extend Jest matchers to include jest-axe accessibility matchers
 expect.extend(toHaveNoViolations);
 
+// Mock window.scrollTo and other JSDOM missing implementations
+Object.defineProperty(window, 'scrollTo', {
+  value: jest.fn(),
+  writable: true,
+});
+
+Object.defineProperty(window, 'scrollBy', {
+  value: jest.fn(),
+  writable: true,
+});
+
+Object.defineProperty(window, 'scrollIntoView', {
+  value: jest.fn(),
+  writable: true,
+});
+
+// Mock ResizeObserver
+global.ResizeObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
+// Mock IntersectionObserver
+global.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
 // Configure jest-axe for consistent testing
 import { configureAxe } from 'jest-axe';
 
