@@ -151,7 +151,12 @@ jobs:
         if: matrix.test-type == 'frontend'
         run: |
           cd frontend
-          npm ci --silent
+          # Use --prefer-offline to speed up and timeout for safety
+          timeout 600 npm ci --prefer-offline --no-audit --no-fund || {
+            echo "npm ci failed, trying with cache clean..."
+            npm cache clean --force
+            timeout 600 npm ci --prefer-offline --no-audit --no-fund
+          }
           npm test
           npm run build
       

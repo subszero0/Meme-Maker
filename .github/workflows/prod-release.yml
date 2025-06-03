@@ -212,7 +212,12 @@ jobs:
         if: matrix.test-type == 'frontend'
         run: |
           cd frontend
-          npm ci --silent
+          # Use --prefer-offline to speed up and timeout for safety
+          timeout 600 npm ci --prefer-offline --no-audit --no-fund || {
+            echo "npm ci failed, trying with cache clean..."
+            npm cache clean --force
+            timeout 600 npm ci --prefer-offline --no-audit --no-fund
+          }
           npm run test:ci
           npm run build
 
@@ -232,7 +237,12 @@ jobs:
           # Install Cypress
           npm install -g cypress
           cd frontend
-          npm ci --silent
+          # Use --prefer-offline to speed up and timeout for safety
+          timeout 600 npm ci --prefer-offline --no-audit --no-fund || {
+            echo "npm ci failed, trying with cache clean..."
+            npm cache clean --force
+            timeout 600 npm ci --prefer-offline --no-audit --no-fund
+          }
           # Run E2E tests against built application
           npm run test:e2e:headless
 
@@ -358,7 +368,12 @@ jobs:
       - name: Run Cypress E2E against production
         run: |
           cd frontend
-          npm ci --silent
+          # Use --prefer-offline to speed up and timeout for safety
+          timeout 600 npm ci --prefer-offline --no-audit --no-fund || {
+            echo "npm ci failed, trying with cache clean..."
+            npm cache clean --force
+            timeout 600 npm ci --prefer-offline --no-audit --no-fund
+          }
           export CYPRESS_BASE_URL="https://app.memeit.pro"
           npx cypress run --config video=false --spec "cypress/e2e/critical-path.cy.js"
 

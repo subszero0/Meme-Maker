@@ -41,7 +41,7 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
       with:
-        terraform-version: '1.6'
+        terraform_version: '1.6'
 
     - name: Cache Poetry dependencies
       uses: actions/cache@v4
@@ -56,9 +56,26 @@ jobs:
         curl -sSL https://install.python-poetry.org | python3 -
         echo "$HOME/.local/bin" >> $GITHUB_PATH
 
+    - name: Install dependencies
+      run: |
+        # Use --prefer-offline to speed up and timeout for safety
+        timeout 600 npm ci --prefer-offline --no-audit --no-fund || {
+          echo "npm ci failed, trying with cache clean..."
+          npm cache clean --force
+          timeout 600 npm ci --prefer-offline --no-audit --no-fund
+        }
+      timeout-minutes: 12
+
     - name: Install frontend dependencies
       working-directory: frontend
-      run: npm ci --silent
+      run: |
+        # Use --prefer-offline to speed up and timeout for safety
+        timeout 600 npm ci --prefer-offline --no-audit --no-fund || {
+          echo "npm ci failed, trying with cache clean..."
+          npm cache clean --force
+          timeout 600 npm ci --prefer-offline --no-audit --no-fund
+        }
+      timeout-minutes: 12
 
     - name: Install backend dependencies
       working-directory: backend

@@ -50,8 +50,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y google-chrome-stable
           
-          # Install dependencies - use silent to suppress all warnings and output
-          npm ci --silent
+          # Use --prefer-offline to speed up and timeout for safety
+          timeout 600 npm ci --prefer-offline --no-audit --no-fund || {
+            echo "npm ci failed, trying with cache clean..."
+            npm cache clean --force
+            timeout 600 npm ci --prefer-offline --no-audit --no-fund
+          }
         timeout-minutes: 12
 
       - name: Install backend dependencies
@@ -80,13 +84,46 @@ jobs:
         run: |
           timeout 30 sh -c 'until curl -f http://localhost:8000/health; do sleep 1; done'
 
-      - name: Run visual regression tests
+      - name: Start frontend server
         run: |
           cd frontend
-          npx percy exec -- npx cypress run --spec 'cypress/e2e/visual_regression.cy.ts' --config baseUrl=http://localhost:8000
+          npm start &
+          sleep 10
+        env:
+          NODE_ENV: production
+          PORT: 3000
+
+      - name: Wait for frontend to be ready
+        run: |
+          timeout 60 sh -c 'until curl -f http://localhost:3000; do sleep 1; done'
+
+      - name: Check if Percy token is available
+        id: percy-check
+        run: |
+          if [ -z "${{ secrets.PERCY_TOKEN }}" ]; then
+            echo "percy_available=false" >> $GITHUB_OUTPUT
+            echo "Percy token not available, running Cypress tests without visual comparison"
+          else
+            echo "percy_available=true" >> $GITHUB_OUTPUT
+            echo "Percy token available, running full visual regression tests"
+          fi
+
+      - name: Run visual regression tests with Percy
+        if: steps.percy-check.outputs.percy_available == 'true'
+        run: |
+          cd frontend
+          npx percy exec -- npx cypress run --spec 'cypress/e2e/visual_regression.cy.ts' --config baseUrl=http://localhost:3000
         env:
           PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
-          CYPRESS_baseUrl: http://localhost:8000
+          CYPRESS_baseUrl: http://localhost:3000
+
+      - name: Run Cypress tests without Percy
+        if: steps.percy-check.outputs.percy_available == 'false'
+        run: |
+          cd frontend
+          npx cypress run --spec 'cypress/e2e/visual_regression.cy.ts' --config baseUrl=http://localhost:3000
+        env:
+          CYPRESS_baseUrl: http://localhost:3000
 
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4

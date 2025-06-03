@@ -25,10 +25,16 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
         
-    - name: Install dependencies
+    - name: Install frontend dependencies
       run: |
         cd frontend
-        npm ci --silent
+        # Use --prefer-offline to speed up and timeout for safety
+        timeout 600 npm ci --prefer-offline --no-audit --no-fund || {
+          echo "npm ci failed, trying with cache clean..."
+          npm cache clean --force
+          timeout 600 npm ci --prefer-offline --no-audit --no-fund
+        }
+      timeout-minutes: 12
         
     - name: Build frontend
       run: |
