@@ -45,18 +45,23 @@ jobs:
           # Set puppeteer to use system Chrome if available to avoid downloading
           export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
           export PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+          export CYPRESS_INSTALL_BINARY=0
+          export NODE_ENV=production
           
           # Install system Chrome for puppeteer (faster than downloading)
           sudo apt-get update -qq
           sudo apt-get install -y google-chrome-stable
           
-          # Use --prefer-offline to speed up and timeout for safety
-          timeout 600 npm ci --prefer-offline --no-audit --no-fund || {
-            echo "npm ci failed, trying with cache clean..."
-            npm cache clean --force
-            timeout 600 npm ci --prefer-offline --no-audit --no-fund
+          # Clear any existing npm cache and use npm install instead of npm ci
+          npm cache clean --force
+          
+          # Use npm install instead of npm ci for better compatibility with deprecated packages
+          timeout 300 npm install --production=false --legacy-peer-deps --no-audit --no-fund --maxsockets 1 || {
+            echo "First attempt failed, trying with different approach..."
+            rm -rf node_modules package-lock.json
+            timeout 300 npm install --production=false --legacy-peer-deps --no-audit --no-fund --no-optional --maxsockets 1
           }
-        timeout-minutes: 12
+        timeout-minutes: 8
 
       - name: Install backend dependencies
         run: |

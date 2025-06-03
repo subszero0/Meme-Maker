@@ -15,8 +15,9 @@ ENV CYPRESS_INSTALL_BINARY=0
 RUN apk add --no-cache chromium chromium-chromedriver && \
     rm -rf /var/cache/apk/*
 
-# Install npm dependencies with better error handling
-RUN npm ci --prefer-offline --no-audit --no-fund
+# Install npm dependencies with better error handling for deprecated packages
+RUN npm cache clean --force && \
+    npm install --production=false --legacy-peer-deps --no-audit --no-fund --maxsockets 1
 
 # Copy frontend source and build
 COPY frontend/ ./
