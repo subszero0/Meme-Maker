@@ -32,18 +32,18 @@ def fake_queue(fake_redis):
 
 @pytest.fixture
 def client_with_mock_storage(fake_redis, fake_queue, mock_storage):
-    """
-    Test client with mocked Redis, RQ, and storage.
+    """TestClient with mocked Redis, RQ and MockStorage as storage backend."""
+    # Create async mock functions that do nothing (bypass rate limiting entirely)
+    async def mock_rate_limiter(*args, **kwargs):
+        return None
     
-    Uses the mock_storage fixture from conftest.py which patches get_storage()
-    to return an InMemoryStorage instance.
-    """
     with patch('app.redis', fake_redis), \
          patch('app.q', fake_queue), \
          patch('app.api.jobs.redis', fake_redis), \
          patch('app.api.jobs.q', fake_queue), \
          patch('app.ratelimit.init_rate_limit', new_callable=AsyncMock), \
-         patch('app.api.jobs.clip_limiter', return_value=None):
+         patch('fastapi_limiter.FastAPILimiter.redis', fake_redis), \
+         patch('fastapi_limiter.depends.RateLimiter.__call__', new_callable=lambda: mock_rate_limiter):
         yield TestClient(app)
 
 
