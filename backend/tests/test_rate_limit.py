@@ -113,9 +113,14 @@ class TestRateLimiting:
     
     def test_different_endpoints_share_global_limit(self, client):
         """Test that different endpoints share the same global rate limit"""
-        # Mock FastAPILimiter to avoid initialization issues
+        # Mock FastAPILimiter and Redis to avoid infrastructure dependencies
         with patch('fastapi_limiter.FastAPILimiter.init', new_callable=AsyncMock), \
-             patch('fastapi_limiter.depends.RateLimiter.__call__', new_callable=lambda: AsyncMock(return_value=None)):
+             patch('fastapi_limiter.depends.RateLimiter.__call__', new_callable=lambda: AsyncMock(return_value=None)), \
+             patch('app.api.jobs.redis') as mock_redis, \
+             patch('app.api.jobs.q.enqueue') as mock_enqueue:
+            
+            # Configure mocks
+            mock_enqueue.return_value.id = "test-job-id"
             
             metadata_requests = 0
             job_requests = 0
