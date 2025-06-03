@@ -171,7 +171,7 @@ jobs:
       
       - name: Start services for audit
         run: |
-          docker-compose up -d redis
+          docker compose up -d redis
           cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           sleep 10
           for i in {1..30}; do

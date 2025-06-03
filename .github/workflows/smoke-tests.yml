@@ -63,11 +63,13 @@ jobs:
         cd backend
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pytest-xdist  # For parallel test execution
+        pip install pytest-xdist fakeredis  # For parallel test execution and mocking
     
     - name: Determine test environment
       id: env-config
       run: |
+        echo "🔧 Determining test environment configuration..."
+        
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
           if [ "${{ github.event.inputs.environment }}" = "custom" ]; then
             echo "BASE_URL=${{ github.event.inputs.custom_url }}" >> $GITHUB_ENV
@@ -89,6 +91,12 @@ jobs:
         if [ -z "$TEST_VIDEO_URL" ]; then
           echo "TEST_VIDEO_URL=${{ secrets.TEST_VIDEO_URL || 'https://www.youtube.com/watch?v=BaW_jenozKc' }}" >> $GITHUB_ENV
         fi
+        
+        echo "📊 Environment configuration:"
+        echo "  Event: ${{ github.event_name }}"
+        echo "  Branch: ${{ github.ref_name }}"
+        echo "  Staging URL secret: ${{ secrets.STAGING_API_URL && '***SET***' || 'NOT SET' }}"
+        echo "  Production URL secret: ${{ secrets.PRODUCTION_API_URL && '***SET***' || 'NOT SET' }}"
     
     - name: Wait for deployment (if needed)
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -99,11 +107,29 @@ jobs:
     - name: Run API health check
       run: |
         echo "Testing API availability at: $BASE_URL"
-        timeout 60 bash -c 'until curl -f "$BASE_URL/health"; do sleep 5; done'
-        echo "API is responding!"
+        
+        # Check if this is localhost (which means we need to start a local server)
+        if [[ "$BASE_URL" == *"localhost"* ]]; then
+          echo "⚠️  Local API server required but not running at $BASE_URL"
+          echo "ℹ️  This workflow is designed to test remote APIs (staging/production)"
+          echo "ℹ️  For local testing, use the 'local-dev-test' job instead"
+          echo "ℹ️  Skipping smoke tests against localhost in this context"
+          exit 0
+        fi
+        
+        # Test remote API availability
+        echo "🔍 Testing remote API at: $BASE_URL"
+        timeout 60 bash -c 'until curl -f "$BASE_URL/health"; do echo "Waiting for API..."; sleep 5; done'
+        echo "✅ API is responding!"
     
     - name: Run quick smoke tests
       run: |
+        # Skip if localhost (already handled in health check)
+        if [[ "$BASE_URL" == *"localhost"* ]]; then
+          echo "ℹ️  Skipping smoke tests for localhost - use local-dev-test job instead"
+          exit 0
+        fi
+        
         cd backend
         python -m pytest tests/test_e2e_smoke.py -m "smoke and not slow" -v
       env:
@@ -116,6 +142,12 @@ jobs:
       # Only run full E2E on main branch and manual triggers
       if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
       run: |
+        # Skip if localhost (already handled in health check)
+        if [[ "$BASE_URL" == *"localhost"* ]]; then
+          echo "ℹ️  Skipping full E2E test for localhost - use local-dev-test job instead"
+          exit 0
+        fi
+        
         cd backend
         python -m pytest tests/test_e2e_smoke.py::TestE2EUserFlow::test_complete_user_flow -v -s
       env:
@@ -205,17 +237,54 @@ jobs:
         cd backend
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install fakeredis  # For mocking in tests
+    
+    - name: Diagnose API startup
+      run: |
+        cd backend
+        echo "🔍 Running API startup diagnostics..."
+        python ../scripts/test_api_startup.py || echo "⚠️  Diagnostics failed, but continuing..."
+      env:
+        DEBUG: true
+        REDIS_URL: redis://localhost:6379
+        CORS_ORIGINS: "*"
+        AWS_ACCESS_KEY_ID: test
+        AWS_SECRET_ACCESS_KEY: test
+        S3_BUCKET: test-bucket
     
     - name: Start API server
       run: |
         cd backend
-        python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
         
-        # Wait for server to start
-        timeout 30 bash -c 'until curl -f http://localhost:8000/health; do sleep 2; done'
+        # Set environment variables for minimal API startup
+        export DEBUG=true
+        export REDIS_URL=redis://localhost:6379
+        export CORS_ORIGINS=*
+        export AWS_ACCESS_KEY_ID=test
+        export AWS_SECRET_ACCESS_KEY=test
+        export S3_BUCKET=test-bucket
+        
+        echo "🚀 Starting API server..."
+        python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level info &
+        
+        # Wait for server to start with better error reporting
+        echo "⏳ Waiting for API server to be ready..."
+        timeout 60 bash -c '
+          while ! curl -f http://localhost:8000/health 2>/dev/null; do 
+            echo "  Waiting for server startup... ($(date))"
+            sleep 3
+          done
+        '
+        
+        echo "✅ API server is ready!"
+        curl -s http://localhost:8000/health | jq .
       env:
         DEBUG: true
         REDIS_URL: redis://localhost:6379
+        CORS_ORIGINS: "*"
+        AWS_ACCESS_KEY_ID: test
+        AWS_SECRET_ACCESS_KEY: test
+        S3_BUCKET: test-bucket
     
     - name: Run smoke tests against local server
       run: |

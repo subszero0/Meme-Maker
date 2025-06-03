@@ -109,15 +109,15 @@ jobs:
 
       - name: Start services
         run: |
-          # Verify docker-compose is available
-          docker-compose --version
+          # Verify docker is available
           docker --version
+          docker compose version
           
-          docker-compose -f docker-compose.test.yml up -d --build
+          docker compose -f docker-compose.test.yml up -d --build
           
           # Wait for all services to be healthy
           echo "Waiting for services to be ready..."
-          timeout 120 bash -c 'until docker-compose -f docker-compose.test.yml ps | grep -q "healthy.*healthy.*healthy"; do sleep 5; echo "Still waiting..."; done'
+          timeout 120 bash -c 'until docker compose -f docker-compose.test.yml ps | grep -q "healthy.*healthy.*healthy"; do sleep 5; echo "Still waiting..."; done'
 
       - name: Setup MinIO bucket
         run: |
@@ -145,17 +145,17 @@ jobs:
         if: failure()
         run: |
           echo "=== Service Status ==="
-          docker-compose -f docker-compose.test.yml ps
+          docker compose -f docker-compose.test.yml ps
           echo "=== Backend logs ==="
-          docker-compose -f docker-compose.test.yml logs backend
+          docker compose -f docker-compose.test.yml logs backend
           echo "=== Worker logs ==="
-          docker-compose -f docker-compose.test.yml logs worker
+          docker compose -f docker-compose.test.yml logs worker
           echo "=== Redis logs ==="
-          docker-compose -f docker-compose.test.yml logs redis
+          docker compose -f docker-compose.test.yml logs redis
           echo "=== MinIO logs ==="
-          docker-compose -f docker-compose.test.yml logs minio
+          docker compose -f docker-compose.test.yml logs minio
 
       - name: Cleanup
         if: always()
         run: |
-          docker-compose -f docker-compose.test.yml down -v 
+          docker compose -f docker-compose.test.yml down -v 

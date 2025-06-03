@@ -25,13 +25,14 @@ jobs:
         run: pip install -r requirements.txt
       
       - name: Install pytest dependencies
-        run: pip install pytest pytest-asyncio pytest-xdist httpx requests
+        run: pip install pytest pytest-asyncio pytest-xdist httpx requests fakeredis
       
       - name: Verify dependencies
         run: |
           python -c "import pytest; print(f'pytest version: {pytest.__version__}')"
           python -c "import httpx; print(f'httpx version: {httpx.__version__}')"
           python -c "import requests; print(f'requests version: {requests.__version__}')"
+          python -c "import fakeredis; print(f'fakeredis version: {fakeredis.__version__}')"
       
       - name: Run backend tests with mock storage
         run: |
@@ -141,7 +142,7 @@ jobs:
       - name: Start services for audit
         run: |
           # Start backend services
-          docker-compose up -d redis
+          docker compose up -d redis
           cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           
           # Wait for services to be ready

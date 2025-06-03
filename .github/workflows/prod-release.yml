@@ -219,7 +219,7 @@ jobs:
       - name: Integration Tests
         if: matrix.test-type == 'integration'
         run: |
-          docker-compose -f docker-compose.yaml up -d redis minio
+          docker compose -f docker-compose.yaml up -d redis minio
           sleep 10
           cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           sleep 15
