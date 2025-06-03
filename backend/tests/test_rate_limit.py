@@ -59,7 +59,7 @@ class TestRateLimiting:
             
             job_data = {
                 "url": "https://example.com/video",
-                "start": 0,
+                "start": 1,
                 "end": 10,
                 "accepted_terms": True
             }
@@ -116,7 +116,7 @@ class TestRateLimiting:
             else:
                 response = client.post("/api/v1/jobs", json={
                     "url": "https://example.com/video",
-                    "start": 0,
+                    "start": 1,
                     "end": 10,
                     "accepted_terms": True
                 })
