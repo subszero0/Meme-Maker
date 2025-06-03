@@ -134,7 +134,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       
       - name: Install dependencies
-        run: npm ci --loglevel=warn || npm ci --loglevel=warn --legacy-peer-deps
+        run: npm ci --silent || npm ci --legacy-peer-deps --silent
       
       - name: Run unit tests
         run: npm test
@@ -166,7 +166,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd backend && pip install -r requirements.txt
-          cd frontend && (npm ci --loglevel=warn || npm ci --loglevel=warn --legacy-peer-deps)
+          cd frontend && npm ci --silent || npm ci --legacy-peer-deps --silent
           npm install -g @lhci/cli @axe-core/cli
       
       - name: Start services for audit
@@ -269,7 +269,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       
       - name: Install dependencies
-        run: npm ci --loglevel=warn || npm ci --loglevel=warn --legacy-peer-deps
+        run: npm ci --silent || npm ci --legacy-peer-deps --silent
       
       - name: Run Cypress smoke tests against staging
         run: npx cypress run --spec 'cypress/e2e/smoke.cy.ts' --config baseUrl=https://${{ secrets.STAGING_DOMAIN || 'staging.memeit.pro' }}

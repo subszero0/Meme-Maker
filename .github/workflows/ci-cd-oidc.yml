@@ -58,7 +58,7 @@ jobs:
 
     - name: Install frontend dependencies
       working-directory: frontend
-      run: npm ci --loglevel=warn || npm ci --loglevel=warn --legacy-peer-deps
+      run: npm ci --silent || npm ci --legacy-peer-deps --silent
 
     - name: Install backend dependencies
       working-directory: backend
