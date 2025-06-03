@@ -433,7 +433,9 @@ def test_create_job_with_end_before_start(client_with_fake_redis):
     response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
     
     assert response.status_code == 422
-    assert "end time must be greater than start time" in response.json()["detail"]
+    error_detail = response.json()["detail"]
+    # Handle Pydantic validation error format (list of error objects)
+    assert any("end time must be greater than start time" in str(error) for error in error_detail)
 
 
 # Terms acceptance tests
