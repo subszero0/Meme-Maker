@@ -44,19 +44,24 @@ if PROMETHEUS_AVAILABLE:
     instrumentator = Instrumentator()
     instrumentator.instrument(app).expose(app, endpoint="/metrics")
     
-    # Start the queue metrics updater
-    start_queue_metrics_updater()
+    # Queue metrics updater will be started in startup event handler
 
 # Security headers middleware (must be added before routers)
 app.add_middleware(SecurityHeadersMiddleware)
 
 @app.on_event("startup")
 async def startup():
-    """Initialize rate limiting on startup"""
+    """Initialize rate limiting and metrics on startup"""
     try:
         await init_rate_limit()
     except Exception as e:
         print(f"Warning: Rate limiting initialization failed: {str(e)}")
+    
+    # Start queue metrics updater
+    try:
+        start_queue_metrics_updater()
+    except Exception as e:
+        print(f"Warning: Queue metrics updater failed to start: {str(e)}")
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:

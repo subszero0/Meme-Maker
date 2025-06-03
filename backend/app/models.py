@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Optional, Union
-from pydantic import BaseModel, HttpUrl, Field, validator
+from pydantic import BaseModel, HttpUrl, Field, field_validator
 from decimal import Decimal
 from dataclasses import dataclass
 import os
@@ -47,7 +47,8 @@ class JobCreate(BaseModel):
     end: Union[str, float, int] = Field(..., description="End time in hh:mm:ss format or seconds")
     accepted_terms: bool = Field(..., description="User agreement to Terms of Use")
     
-    @validator("start", "end", pre=True)
+    @field_validator("start", "end", mode="before")
+    @classmethod
     def _to_seconds(cls, v):
         """Convert start/end to seconds - accepts hh:mm:ss strings or numeric seconds"""
         # already numeric → ok
@@ -63,10 +64,11 @@ class JobCreate(BaseModel):
         except ValueError:
             raise ValueError("Invalid time format - use hh:mm:ss or numeric seconds")
     
-    @validator("end")
-    def validate_clip_duration(cls, end_seconds, values):
+    @field_validator("end")
+    @classmethod
+    def validate_clip_duration(cls, end_seconds, info):
         """Validate that clip duration doesn't exceed maximum allowed"""
-        start_seconds = values.get("start", 0)
+        start_seconds = info.data.get("start", 0)
         
         # Check that end > start
         if end_seconds <= start_seconds:
