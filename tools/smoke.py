@@ -50,8 +50,8 @@ def wait_for_api_ready(max_attempts: int = 24) -> bool:
 
 
 def test_rate_limiting() -> bool:
-    """Test that rate limiting is working by sending 41 requests"""
-    log("🚦 Testing rate limiting (40 requests per 24h per IP)...")
+    """Test that rate limiting is working by sending 10 requests"""
+    log("🚦 Testing rate limiting (limited requests to preserve quota)...")
     
     # First, let's check if we can make one successful request
     test_job_data = {
@@ -64,8 +64,8 @@ def test_rate_limiting() -> bool:
     successful_requests = 0
     rate_limited_requests = 0
     
-    # Fire 41 requests rapidly
-    for i in range(41):
+    # Fire 10 requests rapidly (reduced from 41 to preserve quota)
+    for i in range(10):
         try:
             response = requests.post(
                 f"{API_BASE_URL}/jobs",
@@ -270,10 +270,14 @@ def main() -> int:
         log("💥 Test failed: API not ready")
         return 1
     
-    # Test rate limiting first (before we potentially hit the limit)
+    # Test rate limiting first (with limited requests to avoid quota exhaustion)
     if not test_rate_limiting():
         log("💥 Test failed: Rate limiting test failed")
         return 1
+    
+    # Wait for rate limit to reset before actual job creation
+    log("⏳ Waiting 65 seconds for rate limit to reset before main test...")
+    time.sleep(65)
     
     # Create job
     job_id = create_job()

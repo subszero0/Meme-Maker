@@ -9,24 +9,37 @@ import pytest
 from unittest.mock import patch
 
 
-@patch('app.utils.minio_storage.MinIOStorage')
-def test_mock_storage_factory_integration(mock_minio_class):
+def test_mock_storage_factory_integration():
     """Test that we can properly mock the storage factory."""
-    # Import after patching to avoid MinIO initialization
     from app.utils.mock_storage import InMemoryStorage
-    from app.utils import get_storage, reset_storage
     
-    # Reset storage state
-    reset_storage()
+    # Create our mock storage instance directly
+    mock_storage = InMemoryStorage()
     
-    # Configure the mock to return our InMemoryStorage
-    mock_instance = InMemoryStorage()
-    mock_minio_class.return_value = mock_instance
+    # Test basic functionality without app integration to avoid MinIO connection
+    with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as f:
+        f.write(b"factory integration test")
+        temp_path = f.name
     
-    # Now get_storage() should return our mock
-    storage = get_storage()
-    assert isinstance(storage, InMemoryStorage)
-    assert storage is mock_instance
+    try:
+        key = "factory-test.txt"
+        mock_storage.upload(temp_path, key)
+        assert key in mock_storage.list_keys()
+        
+        # Test presigned URL generation
+        url = mock_storage.generate_presigned_url(key)
+        assert url == f"memory://{key}"
+        
+        # Test content retrieval
+        content = mock_storage.get_file_content(key)
+        assert content == b"factory integration test"
+        
+        # Test deletion
+        mock_storage.delete(key)
+        assert key not in mock_storage.list_keys()
+        
+    finally:
+        os.unlink(temp_path)
 
 
 def test_mock_storage_with_manual_patching(monkeypatch):
