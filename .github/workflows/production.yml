@@ -151,7 +151,7 @@ jobs:
         if: matrix.test-type == 'frontend'
         run: |
           cd frontend
-          npm ci --silent || npm ci --legacy-peer-deps --silent
+          npm ci || npm ci --legacy-peer-deps
           npm test
           npm run build
       

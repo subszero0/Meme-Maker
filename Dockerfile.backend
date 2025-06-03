@@ -16,7 +16,7 @@ RUN apk add --no-cache chromium chromium-chromedriver && \
     rm -rf /var/cache/apk/*
 
 # Install npm dependencies with optimizations and extended timeout
-RUN npm ci --prefer-offline --no-audit --no-fund --silent || npm ci --legacy-peer-deps --silent
+RUN npm ci --prefer-offline --no-audit --no-fund || npm ci --legacy-peer-deps
 
 # Copy frontend source and build
 COPY frontend/ ./

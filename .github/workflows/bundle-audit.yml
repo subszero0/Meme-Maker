@@ -28,7 +28,7 @@ jobs:
     - name: Install dependencies
       run: |
         cd frontend
-        npm ci --silent || npm ci --legacy-peer-deps --silent
+        npm ci || npm ci --legacy-peer-deps
         
     - name: Build frontend
       run: |
