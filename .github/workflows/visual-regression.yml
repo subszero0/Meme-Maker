@@ -50,8 +50,8 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y google-chrome-stable
           
-          # Install dependencies - show output to debug issues
-          npm ci --prefer-offline --no-audit --no-fund || npm ci --legacy-peer-deps
+          # Install dependencies with basic command
+          npm ci || npm ci --legacy-peer-deps
         timeout-minutes: 12
 
       - name: Install backend dependencies
