@@ -290,5 +290,5 @@ class TestRateLimitConfiguration:
         job_key = job_rate_limit_key_func(request)
         
         assert global_key == "global_rate_limit:192.168.1.1"
-        assert job_key == "job_rate_limit:192.168.1.1"
+        assert job_key == "job_create:192.168.1.1"
         assert global_key != job_key  # Should be different key spaces 
