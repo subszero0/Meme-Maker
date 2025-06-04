@@ -1,5 +1,6 @@
 import logging
 from typing import Callable
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
@@ -32,7 +33,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Import settings here to avoid circular imports and get current values
         from ..config import settings
 
-        # Warn if CORS is set to allow all origins in production (only check once per request)
+        # Warn if CORS is set to allow all origins in production
+        # (only check once)
         if (
             "*" in settings.cors_origins
             and not settings.debug
@@ -63,7 +65,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def _add_security_headers(self, response: Response, request: Request) -> None:
         """Add all security headers to the response"""
 
-        # Skip ALL security headers for Swagger UI, ReDoc and OpenAPI endpoints
+        # Skip ALL security headers for Swagger UI, ReDoc and OpenAPI
+        # endpoints
         swagger_paths = ["/docs", "/redoc", "/openapi.json"]
         if any(request.url.path.startswith(path) for path in swagger_paths):
             return
@@ -76,12 +79,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         csp_header = self.csp_header
 
         security_headers = {
-            "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+            "Strict-Transport-Security": (
+                "max-age=63072000; includeSubDomains; preload"
+            ),
             "Content-Security-Policy": csp_header,
             "X-Content-Type-Options": "nosniff",
             "X-Frame-Options": "DENY",
             "Referrer-Policy": "no-referrer",
-            "Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+            "Permissions-Policy": (
+                "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+            ),
         }
 
         response.headers.update(security_headers)

@@ -79,8 +79,6 @@ jobs:
           # Set environment variables to skip problematic downloads
           export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
           export PUPPETEER_SKIP_DOWNLOAD=true
-          export CYPRESS_INSTALL_BINARY=0
-          export CYPRESS_DOWNLOAD_MIRROR=https://download.cypress.io/desktop
           export NODE_ENV=production
           
           # Clear any existing npm cache
@@ -93,6 +91,13 @@ jobs:
             timeout 300 npm install --production=false --legacy-peer-deps --no-audit --no-fund --no-optional --maxsockets 1
           }
         timeout-minutes: 8
+      
+      - name: Install Cypress binary
+        run: |
+          echo "Installing Cypress binary..."
+          npx cypress install
+          echo "Verifying Cypress installation..."
+          npx cypress verify
       
       - name: Run unit tests
         run: npm test
@@ -150,7 +155,6 @@ jobs:
           # Set environment variables to skip problematic downloads
           export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
           export PUPPETEER_SKIP_DOWNLOAD=true
-          export CYPRESS_INSTALL_BINARY=0
           export NODE_ENV=production
           
           # Clear any existing npm cache
