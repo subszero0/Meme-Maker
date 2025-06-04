@@ -56,15 +56,15 @@ cd frontend
 
 echo -e "${BLUE}📦 Installing frontend dependencies...${NC}"
 # Ensure all dependencies are properly installed before building
-npm ci --production=false --legacy-peer-deps --no-audit --no-fund || {
+npm ci --production=false --legacy-peer-deps --no-audit --no-fund --silent || {
     echo -e "${YELLOW}⚠️  npm ci failed, trying with cache clean...${NC}"
     npm cache clean --force
-    npm install --production=false --legacy-peer-deps --no-audit --no-fund
+    npm install --production=false --legacy-peer-deps --no-audit --no-fund --silent
 }
 
 echo -e "${BLUE}🏗️  Building frontend for testing...${NC}"
 # Use npm run build instead of npx to use local dependencies
-npm run build
+npm run build --silent
 
 # Start local server for testing
 echo -e "${BLUE}🌐 Starting local server...${NC}"
