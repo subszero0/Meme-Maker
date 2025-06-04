@@ -302,12 +302,22 @@ jobs:
           chmod +x ../scripts/install-npm-deps.sh
           ../scripts/install-npm-deps.sh 180 .
         timeout-minutes: 5
+        env:
+          CI: true
+          DISPLAY: ""
+          ELECTRON_ENABLE_LOGGING: false
+          CYPRESS_CRASH_REPORTS: 0
       
       - name: Run Cypress smoke tests against staging
         run: npx cypress run --spec 'cypress/e2e/visual_regression.cy.ts'
         env:
           CYPRESS_BASE_URL: https://${{ secrets.STAGING_DOMAIN || 'staging.memeit.pro' }}
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+          CI: true
+          DISPLAY: ""
+          ELECTRON_ENABLE_LOGGING: false
+          ELECTRON_DISABLE_SANDBOX: true
+          CYPRESS_CRASH_REPORTS: 0
 
       - name: Upload Cypress screenshots on failure
         uses: actions/upload-artifact@v4
