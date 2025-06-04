@@ -123,11 +123,10 @@ async def create_job(job_data: JobCreate) -> JobResponse:
         clip_jobs_queued_total.inc()
 
     except Exception as e:
-        # Clean up job from Redis if enqueueing fails
-        redis.delete(f"job:{job_id}")
+        logger.error(f"Failed to enqueue job: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to enqueue job: {str(e)}",
+            detail="Failed to enqueue job",
         )
 
     return JobResponse(

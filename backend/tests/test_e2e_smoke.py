@@ -82,9 +82,7 @@ class TestE2EUserFlow:
         file_size = self._download_clip(
             session, final_status["link"], e2e_config["min_clip_size"]
         )
-        assert (
-            file_size >= e2e_config["min_clip_size"]
-        ), (
+        assert file_size >= e2e_config["min_clip_size"], (
             f"Downloaded file should be at least "
             f"{e2e_config['min_clip_size']} bytes, got {file_size}"
         )

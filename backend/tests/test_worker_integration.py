@@ -172,10 +172,7 @@ class TestWorkerPipelineLogic:
     ):
         """Test the complete clipping workflow with mocked dependencies"""
         job_id = "test_workflow_job"
-        # Mock workflow with settings that aren't used in this isolated test
-        # url = "https://example.com/video"
-        # in_ts = 5.0
-        # out_ts used for worker simulation but not in this test scope
+        # Mock workflow - actual values used by worker but not in this test scope
 
         # Setup mocks
         temp_dir = "/tmp/test_clip_123"

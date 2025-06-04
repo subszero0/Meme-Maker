@@ -10,8 +10,7 @@ import requests
 @pytest.mark.e2e
 @pytest.mark.skip(
     reason=(
-        "E2E test for deployed environments only - "
-        "run manually with pytest -m e2e"
+        "E2E test for deployed environments only - " "run manually with pytest -m e2e"
     )
 )
 def test_health_endpoint():

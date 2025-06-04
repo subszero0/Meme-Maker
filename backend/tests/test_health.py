@@ -1,10 +1,9 @@
-import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 
 
-def test_health_check():
+def test_health():
     """Test the health check endpoint"""
     client = TestClient(app)
     response = client.get("/health")
