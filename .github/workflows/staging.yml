@@ -173,7 +173,7 @@ jobs:
         run: |
           cd backend && pip install -r requirements.txt
           
-          # Use robust npm installation script for frontend
+          # Use robust npm installation script for frontend (correct path from repo root)
           chmod +x scripts/install-npm-deps.sh
           ./scripts/install-npm-deps.sh 180 frontend
           

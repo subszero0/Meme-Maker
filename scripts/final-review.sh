@@ -75,23 +75,59 @@ npm run build --silent
 echo -e "${BLUE}🌐 Starting local server with serve...${NC}"
 # Kill any existing serve processes
 pkill -f "serve" || true
-sleep 2
+pkill -f ":3000" || true
+sleep 3
 
 # Serve the static export on port 3000
-npx serve@latest out -l 3000 &
+echo "📍 Starting serve on port 3000..."
+npx serve@latest out -l 3000 --no-clipboard --silent &
 SERVER_PID=$!
-sleep 5
+echo "🔍 Server PID: $SERVER_PID"
 
-# Wait for server to be ready
+# Wait for server to be ready with more robust checking
 echo "⏳ Waiting for server to be ready..."
-for i in {1..30}; do
-    if curl -f http://localhost:3000 > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ Server is ready${NC}"
+SERVER_READY=false
+for i in {1..60}; do  # Increased timeout to 60 attempts (2 minutes)
+    # Check if process is still running
+    if ! kill -0 $SERVER_PID 2>/dev/null; then
+        echo "❌ Server process died unexpectedly"
+        # Try to restart once
+        echo "🔄 Attempting to restart server..."
+        npx serve@latest out -l 3000 --no-clipboard --silent &
+        SERVER_PID=$!
+        sleep 5
+    fi
+    
+    # Test connection with more detailed checking
+    if curl -f -s -o /dev/null -w "%{http_code}" http://localhost:3000 | grep -q "200"; then
+        echo -e "${GREEN}✅ Server is ready (attempt $i)${NC}"
+        SERVER_READY=true
         break
     fi
-    echo "   Waiting for server... ($i/30)"
+    echo "   Waiting for server... ($i/60) - checking http://localhost:3000"
     sleep 2
 done
+
+if [ "$SERVER_READY" = false ]; then
+    echo -e "${RED}❌ Server failed to start after 2 minutes${NC}"
+    echo "🔍 Checking if port 3000 is in use..."
+    netstat -tlnp 2>/dev/null | grep :3000 || echo "No process found on port 3000"
+    echo "🔍 Checking serve process..."
+    ps aux | grep serve | grep -v grep || echo "No serve processes found"
+    echo "🔍 Checking out directory..."
+    ls -la out/ || echo "Out directory doesn't exist"
+    exit 1
+fi
+
+# Verify the content is being served correctly
+echo "🔍 Testing server response..."
+RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" http://localhost:3000)
+HTTP_CODE=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+if [ "$HTTP_CODE" != "200" ]; then
+    echo -e "${RED}❌ Server responding with HTTP $HTTP_CODE${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✅ Server responding correctly with HTTP 200${NC}"
 
 # Function to cleanup on exit
 cleanup() {
