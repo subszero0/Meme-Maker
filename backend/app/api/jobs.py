@@ -43,6 +43,13 @@ async def create_job(job_data: JobCreate) -> JobResponse:
     - Global: 10 requests per minute per IP
     - Job creation: 3 jobs per hour per IP
     """
+    # Check if Redis is available
+    if redis is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service temporarily unavailable",
+        )
+    
     # Validate terms acceptance
     if not job_data.accepted_terms:
         raise HTTPException(
@@ -110,6 +117,9 @@ async def create_job(job_data: JobCreate) -> JobResponse:
 
     # Enqueue RQ job with individual parameters instead of dataclass
     try:
+        if q is None:
+            raise Exception("Job queue not available")
+            
         q.enqueue(
             "clip_processor.process_clip",
             job_id,
@@ -145,6 +155,13 @@ async def get_job(job_id: str) -> JobResponse:
     Rate limits:
     - Global: 10 requests per minute per IP
     """
+    # Check if Redis is available
+    if redis is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service temporarily unavailable",
+        )
+    
     # Look up job in Redis
     job_data = redis.hgetall(f"job:{job_id}")
 
@@ -155,8 +172,13 @@ async def get_job(job_id: str) -> JobResponse:
 
     # Parse job data from Redis
     try:
-        # Redis returns bytes, need to decode
-        decoded_data = {k.decode(): v.decode() for k, v in job_data.items()}
+        # Handle both bytes and string responses from Redis
+        if job_data and isinstance(next(iter(job_data.keys())), bytes):
+            # Redis returns bytes, need to decode
+            decoded_data = {k.decode(): v.decode() for k, v in job_data.items()}
+        else:
+            # Redis returns strings (when decode_responses=True was used)
+            decoded_data = {str(k): str(v) for k, v in job_data.items()}
 
         # Convert back to proper types for Job model
         parsed_data = {}

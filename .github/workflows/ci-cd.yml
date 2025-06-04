@@ -38,11 +38,15 @@ jobs:
         run: |
           echo "🧪 Running backend tests excluding E2E tests..."
           python -m pytest tests/ --ignore=tests/e2e --ignore=tests/test_e2e_smoke.py -v --maxfail=1 --disable-warnings --tb=short
+        env:
+          TESTING: "1"
           
       - name: Run simplified mock storage tests
         run: |
           echo "🔍 Running simplified mock storage validation..."
           python -m pytest tests/test_jobs_mock_storage_simplified.py -v --disable-warnings
+        env:
+          TESTING: "1"
           
       - name: Validate mock storage integration
         run: |
@@ -57,6 +61,8 @@ jobs:
           assert len(storage.list_keys()) == 0
           print('✅ Mock storage validation passed!')
           "
+        env:
+          TESTING: "1"
 
   frontend-test:
     runs-on: ubuntu-latest
