@@ -10,6 +10,13 @@ NC='\033[0m' # No Color
 
 # Ensure we're in CI mode to prevent interactive tools from opening
 export CI=true
+# Comprehensive headless environment setup
+export DISPLAY=""
+export ELECTRON_ENABLE_LOGGING=false
+export ELECTRON_DISABLE_SANDBOX=true
+export CYPRESS_CRASH_REPORTS=0
+export CYPRESS_VERIFY_TIMEOUT=10000
+export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 echo -e "${BLUE}🚀 Starting Final Pre-Launch Review...${NC}"
 
@@ -66,17 +73,15 @@ cd frontend
 echo -e "${BLUE}📦 Installing frontend dependencies...${NC}"
 # Use the robust npm installation script
 chmod +x ../scripts/install-npm-deps.sh
-# Ensure Cypress runs in headless mode without changing its cache location
-export DISPLAY=:99.0 2>/dev/null || true
 ../scripts/install-npm-deps.sh 180 .
 
 echo -e "${GREEN}✅ Dependencies installed successfully${NC}"
 
-# Ensure Cypress binary is properly installed
-echo -e "${BLUE}🔧 Verifying Cypress binary...${NC}"
-if ! npx cypress verify >/dev/null 2>&1; then
-    echo -e "${YELLOW}⚠️  Cypress binary missing, installing...${NC}"
-    npx cypress install
+# Check if Cypress binary exists without running verify (which might trigger GUI)
+echo -e "${BLUE}🔧 Checking Cypress installation...${NC}"
+if [ ! -f "node_modules/.bin/cypress" ]; then
+    echo -e "${YELLOW}⚠️  Cypress binary missing in node_modules${NC}"
+    npm install cypress --save-dev --silent
 fi
 
 echo -e "${BLUE}🏗️  Building frontend for testing...${NC}"
