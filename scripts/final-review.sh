@@ -66,12 +66,18 @@ cd frontend
 echo -e "${BLUE}📦 Installing frontend dependencies...${NC}"
 # Use the robust npm installation script
 chmod +x ../scripts/install-npm-deps.sh
-# Ensure Cypress doesn't try to open during installation
-export CYPRESS_CACHE_FOLDER=/tmp/cypress-cache
+# Ensure Cypress runs in headless mode without changing its cache location
 export DISPLAY=:99.0 2>/dev/null || true
 ../scripts/install-npm-deps.sh 180 .
 
 echo -e "${GREEN}✅ Dependencies installed successfully${NC}"
+
+# Ensure Cypress binary is properly installed
+echo -e "${BLUE}🔧 Verifying Cypress binary...${NC}"
+if ! npx cypress verify >/dev/null 2>&1; then
+    echo -e "${YELLOW}⚠️  Cypress binary missing, installing...${NC}"
+    npx cypress install
+fi
 
 echo -e "${BLUE}🏗️  Building frontend for testing...${NC}"
 # Use npm run build instead of npx to use local dependencies
