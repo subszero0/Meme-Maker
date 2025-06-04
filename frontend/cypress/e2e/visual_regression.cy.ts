@@ -63,7 +63,7 @@ describe("Visual Regression Tests", () => {
 
     // Wait for the page to load completely
     cy.get("body").should("be.visible");
-    
+
     // Wait for hydration to complete in Next.js
     cy.wait(2000);
 

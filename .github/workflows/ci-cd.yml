@@ -87,6 +87,12 @@ jobs:
           echo "Verifying Cypress installation..."
           npx cypress verify
       
+      - name: Format code with Prettier
+        run: |
+          echo "Running Prettier to fix code formatting..."
+          npx prettier --write . --ignore-path .gitignore
+          echo "Code formatting complete"
+      
       - name: Run unit tests
         run: npm test
       
@@ -163,11 +169,23 @@ jobs:
       
       - name: Start services for audit
         run: |
-          # Start backend services
+          # Start Redis first and wait for it to be ready
           docker compose up -d redis
+          
+          echo "Waiting for Redis to be ready..."
+          for i in {1..10}; do
+            if docker compose exec -T redis redis-cli ping | grep -q "PONG"; then
+              echo "✅ Redis is ready"
+              break
+            fi
+            echo "   Waiting for Redis... ($i/10)"
+            sleep 2
+          done
+          
+          # Start backend with Redis retry logic
           cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           
-          # Wait for services to be ready
+          # Wait for backend to be ready
           sleep 10
           for i in {1..30}; do
             if curl -s http://localhost:8000/health > /dev/null; then

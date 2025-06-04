@@ -56,7 +56,7 @@ cd frontend
 
 echo -e "${BLUE}📦 Installing frontend dependencies...${NC}"
 # Use the robust npm installation script
-chmod +x scripts/install-npm-deps.sh
+chmod +x ../scripts/install-npm-deps.sh
 ../scripts/install-npm-deps.sh 180 .
 
 echo -e "${GREEN}✅ Dependencies installed successfully${NC}"
