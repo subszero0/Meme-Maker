@@ -5,6 +5,7 @@ This file contains shared fixtures and configuration for all test modules.
 """
 
 import os
+
 import pytest
 
 
@@ -70,8 +71,8 @@ def mock_storage(monkeypatch):
             # get_storage() will return this instance
             pass
     """
-    from app.utils.mock_storage import InMemoryStorage
     from app.utils import reset_storage
+    from app.utils.mock_storage import InMemoryStorage
 
     # Reset storage singleton to ensure clean state
     reset_storage()

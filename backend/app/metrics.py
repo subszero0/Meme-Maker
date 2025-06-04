@@ -2,14 +2,14 @@
 
 # Import all metrics from the dedicated definitions module
 from .metrics_definitions import (
+    JOB_DURATION,
+    JOB_FAIL,
     METRICS_AVAILABLE,
+    QUEUE_DEPTH,
+    RATE_DENIED,
     clip_job_latency_seconds,
     clip_jobs_inflight,
     clip_jobs_queued_total,
-    QUEUE_DEPTH,
-    JOB_DURATION,
-    JOB_FAIL,
-    RATE_DENIED,
 )
 
 # Re-export everything for backward compatibility

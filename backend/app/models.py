@@ -1,10 +1,11 @@
+import os
+from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 from typing import Optional, Union
-from pydantic import BaseModel, HttpUrl, Field, field_validator
-from decimal import Decimal
-from dataclasses import dataclass
-import os
+
+from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 
 class JobStatus(str, Enum):

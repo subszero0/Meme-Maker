@@ -3,10 +3,11 @@
 import asyncio
 import logging
 import os
+
 from redis import Redis
 from rq import Queue
 
-from ..metrics_definitions import QUEUE_DEPTH, METRICS_AVAILABLE
+from ..metrics_definitions import METRICS_AVAILABLE, QUEUE_DEPTH
 
 logger = logging.getLogger(__name__)
 

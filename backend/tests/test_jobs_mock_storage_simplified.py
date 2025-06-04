@@ -5,10 +5,11 @@ This module tests the job flow components using the InMemoryStorage mock
 without importing the full FastAPI app to avoid aioredis import issues.
 """
 
-import pytest
 import uuid
 from datetime import datetime
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from app.utils.mock_storage import InMemoryStorage
 

@@ -3,6 +3,7 @@ Simple test to verify basic imports and app creation work.
 """
 
 import pytest
+
 from app.main import app
 
 

@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pathlib import Path
-import os
 
 # Try to import prometheus components, but continue if not available
 try:
@@ -17,7 +16,6 @@ except ImportError:
 from .api import jobs, metadata
 from .config import settings
 from .middleware.security_headers import SecurityHeadersMiddleware
-from . import metrics  # Import to register custom metrics
 from .metrics import start_queue_metrics_updater
 from .ratelimit import init_rate_limit, rate_limit_exception_handler
 

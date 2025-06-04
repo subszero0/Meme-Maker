@@ -5,12 +5,12 @@ This module tests the complete job flow from creation to download cleanup
 using the InMemoryStorage mock to avoid hitting real S3/MinIO.
 """
 
-import pytest
 import uuid
 from datetime import datetime
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import fakeredis
+import pytest
 from fastapi.testclient import TestClient
 from rq import Queue
 

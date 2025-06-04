@@ -10,8 +10,8 @@ Environment:
 - SKIP_E2E: Skip E2E tests if set to true/1/yes
 """
 
-import time
 import tempfile
+import time
 from pathlib import Path
 
 import pytest
@@ -74,7 +74,7 @@ class TestE2EUserFlow:
             final_status["status"] == "done"
         ), f"Job should complete successfully, got: {final_status.get('status')}"
         assert "link" in final_status, "Completed job should have download link"
-        print(f"   ✅ Job completed successfully")
+        print("   ✅ Job completed successfully")
         print(f"   ✅ Download link: {final_status['link'][:50]}...")
 
         # Step 4: Download clip
@@ -84,7 +84,10 @@ class TestE2EUserFlow:
         )
         assert (
             file_size >= e2e_config["min_clip_size"]
-        ), f"Downloaded file should be at least {e2e_config['min_clip_size']} bytes, got {file_size}"
+        ), (
+            f"Downloaded file should be at least "
+            f"{e2e_config['min_clip_size']} bytes, got {file_size}"
+        )
         print(f"   ✅ Downloaded clip: {file_size:,} bytes")
 
         print("\n🎉 Complete E2E flow successful!")
@@ -115,7 +118,7 @@ class TestE2EUserFlow:
         base_url = e2e_config["base_url"]
         test_video_url = e2e_config["test_video_url"]
 
-        print(f"\n🔍 Testing job creation validation")
+        print("\n🔍 Testing job creation validation")
 
         # Test valid job creation
         job_data = {"url": test_video_url, "start": "00:00:00", "end": "00:00:05"}
@@ -139,7 +142,7 @@ class TestE2EUserFlow:
 
         response = session.post(f"{base_url}/api/v1/jobs", json=long_job_data)
         assert response.status_code == 422, "Job over 3 minutes should be rejected"
-        print(f"   ✅ Long duration properly rejected")
+        print("   ✅ Long duration properly rejected")
 
         # Test invalid time range (end before start)
         invalid_job_data = {
@@ -150,7 +153,7 @@ class TestE2EUserFlow:
 
         response = session.post(f"{base_url}/api/v1/jobs", json=invalid_job_data)
         assert response.status_code == 422, "Invalid time range should be rejected"
-        print(f"   ✅ Invalid time range properly rejected")
+        print("   ✅ Invalid time range properly rejected")
 
     def _fetch_metadata(
         self, session: requests.Session, base_url: str, video_url: str
@@ -273,7 +276,7 @@ class TestHealthCheck:
         response = session.get(f"{base_url}/health")
         assert response.status_code == 200
         assert response.json() == {"status": "ok"}
-        print(f"   ✅ Health check passed")
+        print("   ✅ Health check passed")
 
 
 @pytest.mark.smoke
@@ -299,7 +302,7 @@ class TestAPIAvailability:
             response.status_code == 200
         ), f"Docs endpoint not reachable: {response.status_code}"
 
-        print(f"   ✅ All API endpoints reachable")
+        print("   ✅ All API endpoints reachable")
 
 
 if __name__ == "__main__":

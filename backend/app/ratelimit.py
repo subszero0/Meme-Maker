@@ -1,12 +1,13 @@
 """Rate limiting functionality for the Meme Maker API"""
 
-import os
 import math
 from typing import Optional
+
 import redis.asyncio as redis
 from fastapi import HTTPException, Request, status
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
+
 from .config import settings
 
 # Import metrics safely
@@ -110,9 +111,17 @@ async def rate_limit_exception_handler(request: Request, exc: HTTPException) -> 
 
         # Determine rate limit type based on path
         if "/jobs" in path and request.method == "POST":
-            detail_message = f"Job creation limit reached – you can create up to {settings.max_jobs_per_hour} clips per hour. Wait {retry_after_int} s."
+            detail_message = (
+                f"Job creation limit reached – you can create up to "
+                f"{settings.max_jobs_per_hour} clips per hour. "
+                f"Wait {retry_after_int} s."
+            )
         else:
-            detail_message = f"Rate limit exceeded. You can make {settings.global_rate_limit_requests} requests per minute. Please try again in {retry_after_int} seconds."
+            detail_message = (
+                f"Rate limit exceeded. You can make "
+                f"{settings.global_rate_limit_requests} requests per minute. "
+                f"Please try again in {retry_after_int} seconds."
+            )
 
         return {
             "detail": detail_message,

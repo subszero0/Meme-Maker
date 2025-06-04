@@ -1,10 +1,10 @@
 """Tests for rate limiting functionality"""
 
 import asyncio
-import pytest
 import time
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 

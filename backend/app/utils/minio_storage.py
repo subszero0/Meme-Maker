@@ -1,9 +1,11 @@
 import logging
 from typing import Optional
+
 import boto3
-from botocore.exceptions import ClientError, NoCredentialsError
-from .storage_interface import StorageInterface
+from botocore.exceptions import ClientError
+
 from ..config import settings
+from .storage_interface import StorageInterface
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
 # Storage utilities
-from .storage_interface import StorageInterface
 from .minio_storage import MinIOStorage
+from .storage_interface import StorageInterface
 
 # Global storage instance (singleton pattern)
 _storage_instance: StorageInterface = None

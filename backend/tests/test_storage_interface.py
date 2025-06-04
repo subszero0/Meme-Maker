@@ -1,8 +1,10 @@
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock
+
 from app.utils import get_storage, reset_storage
-from app.utils.storage_interface import StorageInterface
 from app.utils.minio_storage import MinIOStorage
+from app.utils.storage_interface import StorageInterface
 
 
 def test_storage_interface_definition():

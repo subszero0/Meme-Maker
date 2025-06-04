@@ -5,9 +5,9 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.metrics import (
-    clip_jobs_queued_total,
-    clip_jobs_inflight,
     clip_job_latency_seconds,
+    clip_jobs_inflight,
+    clip_jobs_queued_total,
 )
 
 

@@ -4,10 +4,11 @@ Integration tests for the InMemoryStorage mock.
 This module tests the integration between the mock storage and the storage factory.
 """
 
-import tempfile
 import os
-import pytest
+import tempfile
 from unittest.mock import patch
+
+import pytest
 
 
 def test_mock_storage_factory_integration():
@@ -45,8 +46,8 @@ def test_mock_storage_factory_integration():
 
 def test_mock_storage_with_manual_patching(monkeypatch):
     """Test mock storage with manual patching of the factory function."""
-    from app.utils.mock_storage import InMemoryStorage
     from app.utils import reset_storage
+    from app.utils.mock_storage import InMemoryStorage
 
     # Reset storage state
     reset_storage()

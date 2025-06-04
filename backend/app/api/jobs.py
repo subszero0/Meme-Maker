@@ -1,27 +1,22 @@
-import json
+import logging
 import uuid
 from datetime import datetime
-from typing import Dict, Any, Optional
-
-from fastapi import APIRouter, HTTPException, status, Depends
 from decimal import Decimal
-from fastapi import Request  # For rate limiting
-from fastapi.responses import JSONResponse
-import logging
 
-from ..models import JobCreate, JobResponse, JobStatus, Job, ClipJob
-from .. import redis, q
-from ..metrics import clip_jobs_queued_total
-from ..utils import get_storage
-from ..ratelimit import global_limiter, job_creation_limiter
+from fastapi import APIRouter, Depends, HTTPException, status
+from rq import Queue
+
+from .. import q, redis
 from ..config import settings
+from ..metrics import clip_jobs_queued_total
+from ..models import Job, JobCreate, JobResponse, JobStatus
+from ..ratelimit import global_limiter, job_creation_limiter
+from ..utils import get_storage
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # RQ queue setup
-from rq import Queue
-
 try:
     job_queue = Queue("clip_jobs", connection=redis)
 except Exception as e:
@@ -70,7 +65,10 @@ async def create_job(job_data: JobCreate) -> JobResponse:
         if duration > settings.max_clip_seconds:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Clip duration exceeds maximum allowed length of {settings.max_clip_seconds} seconds",
+                detail=(
+                    f"Clip duration exceeds maximum allowed length of "
+                    f"{settings.max_clip_seconds} seconds"
+                ),
             )
 
     except ValueError as e:
