@@ -304,8 +304,9 @@ jobs:
         timeout-minutes: 5
       
       - name: Run Cypress smoke tests against staging
-        run: npx cypress run --spec 'cypress/e2e/visual_regression.cy.ts' --config baseUrl=https://${{ secrets.STAGING_DOMAIN || 'staging.memeit.pro' }}
+        run: npx cypress run --spec 'cypress/e2e/visual_regression.cy.ts'
         env:
+          CYPRESS_BASE_URL: https://${{ secrets.STAGING_DOMAIN || 'staging.memeit.pro' }}
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
 
       - name: Upload Cypress screenshots on failure
