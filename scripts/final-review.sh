@@ -55,12 +55,11 @@ fi
 cd frontend
 
 echo -e "${BLUE}📦 Installing frontend dependencies...${NC}"
-# Ensure all dependencies are properly installed before building
-npm ci --production=false --legacy-peer-deps --no-audit --no-fund --silent || {
-    echo -e "${YELLOW}⚠️  npm ci failed, trying with cache clean...${NC}"
-    npm cache clean --force
-    npm install --production=false --legacy-peer-deps --no-audit --no-fund --silent
-}
+# Use the robust npm installation script
+chmod +x scripts/install-npm-deps.sh
+../scripts/install-npm-deps.sh 180 .
+
+echo -e "${GREEN}✅ Dependencies installed successfully${NC}"
 
 echo -e "${BLUE}🏗️  Building frontend for testing...${NC}"
 # Use npm run build instead of npx to use local dependencies

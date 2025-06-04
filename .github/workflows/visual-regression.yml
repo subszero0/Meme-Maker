@@ -49,27 +49,16 @@ jobs:
 
       - name: Install frontend dependencies
         run: |
-          cd frontend
-          
-          # Set environment variables for tools (but not Cypress)
-          export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-          export PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
-          export NODE_ENV=production
-          
           # Install system Chrome for puppeteer (faster than downloading)
           sudo apt-get update -qq
           sudo apt-get install -y google-chrome-stable
           
-          # Clear any existing npm cache and use npm install
-          npm cache clean --force
+          # Set puppeteer to use system Chrome
+          export PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
           
-          # Install dependencies without forcing specific Cypress version
-          timeout 300 npm install --production=false --legacy-peer-deps --no-audit --no-fund --maxsockets 1 || {
-            echo "First attempt failed, trying with different approach..."
-            rm -rf node_modules package-lock.json
-            timeout 300 npm install --production=false --legacy-peer-deps --no-audit --no-fund --no-optional --maxsockets 1
-          }
-        timeout-minutes: 8
+          # Use robust npm installation script
+          chmod +x scripts/install-npm-deps.sh
+          ./scripts/install-npm-deps.sh 180 frontend
 
       - name: Install Cypress binary
         run: |
