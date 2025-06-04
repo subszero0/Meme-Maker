@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useToast } from '@/components/ToastProvider';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useToast } from "@/components/ToastProvider";
 
 interface PollResult {
-  status: 'queued' | 'working' | 'done' | 'error';
+  status: "queued" | "working" | "done" | "error";
   progress?: number;
   url?: string;
   errorCode?: string;
@@ -12,13 +12,13 @@ interface PollResult {
 
 const DEFAULT_POLL_INTERVAL = 3000;
 const MAX_POLL_INTERVAL = 10000;
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function useJobPoller(
   jobId: string | null,
-  pollIntervalMs: number = DEFAULT_POLL_INTERVAL
+  pollIntervalMs: number = DEFAULT_POLL_INTERVAL,
 ): PollResult {
-  const [result, setResult] = useState<PollResult>({ status: 'queued' });
+  const [result, setResult] = useState<PollResult>({ status: "queued" });
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const currentIntervalRef = useRef<number>(pollIntervalMs);
@@ -37,7 +37,7 @@ export default function useJobPoller(
 
   const pollJob = useCallback(async () => {
     if (!jobId) {
-      setResult({ status: 'queued' });
+      setResult({ status: "queued" });
       return;
     }
 
@@ -51,7 +51,7 @@ export default function useJobPoller(
       const response = await fetch(`${BASE_URL}/api/v1/jobs/${jobId}`, {
         signal: abortControllerRef.current.signal,
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
@@ -66,48 +66,54 @@ export default function useJobPoller(
         status: jobData.status,
         progress: jobData.progress,
         url: jobData.download_url,
-        errorCode: jobData.error_code
+        errorCode: jobData.error_code,
       };
 
       setResult(newResult);
 
-      if (jobData.status === 'done' || jobData.status === 'error') {
+      if (jobData.status === "done" || jobData.status === "error") {
         cleanup();
-        if (jobData.status === 'error' && jobData.error_code !== 'QUEUE_FULL') {
+        if (jobData.status === "error" && jobData.error_code !== "QUEUE_FULL") {
           pushToast({
-            type: 'error',
-            message: jobData.error_message || 'Job failed to complete'
+            type: "error",
+            message: jobData.error_message || "Job failed to complete",
           });
         }
       }
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') return;
+      if (error instanceof Error && error.name === "AbortError") return;
 
-      let errorCode = 'NETWORK';
+      let errorCode = "NETWORK";
       let shouldRetry = true;
 
-      if (error instanceof Error && error.message.startsWith('HTTP ')) {
-        const status = parseInt(error.message.replace('HTTP ', ''));
+      if (error instanceof Error && error.message.startsWith("HTTP ")) {
+        const status = parseInt(error.message.replace("HTTP ", ""));
         if (status >= 500) {
-          currentIntervalRef.current = Math.min(currentIntervalRef.current * 2, MAX_POLL_INTERVAL);
+          currentIntervalRef.current = Math.min(
+            currentIntervalRef.current * 2,
+            MAX_POLL_INTERVAL,
+          );
         } else if (status === 404) {
-          errorCode = 'JOB_NOT_FOUND';
+          errorCode = "JOB_NOT_FOUND";
           shouldRetry = false;
         } else if (status === 429) {
-          errorCode = 'QUEUE_FULL';
+          errorCode = "QUEUE_FULL";
         }
       } else {
-        currentIntervalRef.current = Math.min(currentIntervalRef.current * 2, MAX_POLL_INTERVAL);
+        currentIntervalRef.current = Math.min(
+          currentIntervalRef.current * 2,
+          MAX_POLL_INTERVAL,
+        );
       }
 
-      setResult({ status: 'error', errorCode });
+      setResult({ status: "error", errorCode });
 
       if (!shouldRetry) cleanup();
 
-      if (errorCode === 'NETWORK') {
+      if (errorCode === "NETWORK") {
         pushToast({
-          type: 'error',
-          message: 'Network connection error. Retrying...'
+          type: "error",
+          message: "Network connection error. Retrying...",
         });
       }
     }
@@ -115,7 +121,7 @@ export default function useJobPoller(
 
   useEffect(() => {
     if (!jobId) {
-      setResult({ status: 'queued' });
+      setResult({ status: "queued" });
       cleanup();
       return;
     }
@@ -132,4 +138,4 @@ export default function useJobPoller(
   }, [pollIntervalMs]);
 
   return result;
-} 
+}

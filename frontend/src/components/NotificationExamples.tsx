@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Notification, { 
-  SuccessNotification, 
-  ErrorNotification, 
-  InfoNotification, 
-  WarningNotification 
-} from './Notification';
+import { useState } from "react";
+import Notification, {
+  SuccessNotification,
+  ErrorNotification,
+  InfoNotification,
+  WarningNotification,
+} from "./Notification";
 
 /**
  * Comprehensive examples of the unified Notification component
- * 
+ *
  * This file demonstrates all notification types, positions, and features
  * for documentation and development reference purposes.
  */
@@ -21,33 +21,35 @@ export default function NotificationExamples() {
   // Simulate countdown timer
   useState(() => {
     const interval = setInterval(() => {
-      setCountdown(prev => prev > 0 ? prev - 1 : 60);
+      setCountdown((prev) => (prev > 0 ? prev - 1 : 60));
     }, 1000);
     return () => clearInterval(interval);
   });
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
-      <h1 className="text-2xl font-bold mb-6">Notification Component Examples</h1>
+      <h1 className="text-2xl font-bold mb-6">
+        Notification Component Examples
+      </h1>
 
       {/* Toast Notifications */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Toast Notifications</h2>
         <div className="space-y-4">
-          <SuccessNotification 
-            message="Your clip has been successfully created!" 
+          <SuccessNotification
+            message="Your clip has been successfully created!"
             position="toast"
           />
-          <ErrorNotification 
-            message="Failed to process video. Please try again." 
+          <ErrorNotification
+            message="Failed to process video. Please try again."
             position="toast"
           />
-          <InfoNotification 
-            message="Processing your video clip..." 
+          <InfoNotification
+            message="Processing your video clip..."
             position="toast"
           />
-          <WarningNotification 
-            message="Your clip duration exceeds 3 minutes." 
+          <WarningNotification
+            message="Your clip duration exceeds 3 minutes."
             position="toast"
           />
         </div>
@@ -63,7 +65,7 @@ export default function NotificationExamples() {
             message="The video processing queue is currently full. Please try again in a few minutes."
             position="banner"
             dismissible={true}
-            onClose={() => console.log('Banner dismissed')}
+            onClose={() => console.log("Banner dismissed")}
           />
 
           <Notification
@@ -74,7 +76,7 @@ export default function NotificationExamples() {
             countdown={{
               timeLeft: countdown,
               totalTime: 60,
-              label: 'Retry in'
+              label: "Retry in",
             }}
             showProgress={true}
             duration={0}
@@ -97,27 +99,24 @@ export default function NotificationExamples() {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Video URL</label>
-            <input 
-              type="url" 
-              className="w-full px-3 py-2 border rounded-md" 
+            <input
+              type="url"
+              className="w-full px-3 py-2 border rounded-md"
               placeholder="https://www.youtube.com/watch?v=..."
             />
-            <ErrorNotification 
-              message="Please enter a valid video URL" 
+            <ErrorNotification
+              message="Please enter a valid video URL"
               position="inline"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Clip Duration</label>
-            <input 
-              type="range" 
-              className="w-full" 
-              min="0" 
-              max="300"
-            />
-            <WarningNotification 
-              message="Trim to three minutes or less to proceed." 
+            <label className="block text-sm font-medium mb-1">
+              Clip Duration
+            </label>
+            <input type="range" className="w-full" min="0" max="300" />
+            <WarningNotification
+              message="Trim to three minutes or less to proceed."
               position="inline"
             />
           </div>
@@ -151,7 +150,7 @@ export default function NotificationExamples() {
             onClick={() => setShowToast(!showToast)}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            {showToast ? 'Hide' : 'Show'} Toast
+            {showToast ? "Hide" : "Show"} Toast
           </button>
 
           {showToast && (
@@ -172,11 +171,26 @@ export default function NotificationExamples() {
         <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
           <h3 className="font-medium">ARIA Roles & Live Regions</h3>
           <div className="space-y-2 text-sm">
-            <p><code>success/info</code>: role=&quot;status&quot; aria-live=&quot;polite&quot;</p>
-            <p><code>error/warning</code>: role=&quot;alert&quot; aria-live=&quot;assertive&quot;</p>
-            <p><strong>Keyboard navigation</strong>: Dismiss buttons are focusable</p>
-            <p><strong>Pause on hover/focus</strong>: Auto-dismiss pauses for screen readers</p>
-            <p><strong>44×44px touch targets</strong>: All dismiss buttons meet accessibility requirements</p>
+            <p>
+              <code>success/info</code>: role=&quot;status&quot;
+              aria-live=&quot;polite&quot;
+            </p>
+            <p>
+              <code>error/warning</code>: role=&quot;alert&quot;
+              aria-live=&quot;assertive&quot;
+            </p>
+            <p>
+              <strong>Keyboard navigation</strong>: Dismiss buttons are
+              focusable
+            </p>
+            <p>
+              <strong>Pause on hover/focus</strong>: Auto-dismiss pauses for
+              screen readers
+            </p>
+            <p>
+              <strong>44×44px touch targets</strong>: All dismiss buttons meet
+              accessibility requirements
+            </p>
           </div>
         </div>
       </section>
@@ -197,7 +211,7 @@ export default function NotificationExamples() {
         <h2 className="text-xl font-semibold mb-4">Usage Examples</h2>
         <div className="bg-gray-100 p-4 rounded-lg">
           <pre className="text-sm overflow-x-auto">
-{`// Basic usage
+            {`// Basic usage
 <Notification type="success" message="Operation completed!" />
 
 // Toast notification
@@ -230,19 +244,24 @@ export default function NotificationExamples() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold mb-4">Error Notification Description</h2>
+        <h2 className="text-xl font-semibold mb-4">
+          Error Notification Description
+        </h2>
         <div className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
           <p>
-            Error notifications should be used for critical issues that require immediate attention. 
-            They use <code>role=&quot;alert&quot;</code> and <code>aria-live=&quot;assertive&quot;</code> to ensure 
-            screen readers announce them immediately.
+            Error notifications should be used for critical issues that require
+            immediate attention. They use <code>role=&quot;alert&quot;</code>{" "}
+            and <code>aria-live=&quot;assertive&quot;</code> to ensure screen
+            readers announce them immediately.
           </p>
           <p className="mt-2">
-            Success notifications confirm completed actions using <code>role=&quot;status&quot;</code> 
-            and <code>aria-live=&quot;polite&quot;</code> for less intrusive announcements.
+            Success notifications confirm completed actions using{" "}
+            <code>role=&quot;status&quot;</code>
+            and <code>aria-live=&quot;polite&quot;</code> for less intrusive
+            announcements.
           </p>
         </div>
       </section>
     </div>
   );
-} 
+}

@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { Fragment, useEffect } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
-import { motion } from 'framer-motion';
-import { XMarkIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
-import { useToast } from './ToastProvider';
+import { Fragment, useEffect } from "react";
+import { Dialog, Transition } from "@headlessui/react";
+import { motion } from "framer-motion";
+import { XMarkIcon, ClipboardDocumentIcon } from "@heroicons/react/24/outline";
+import { useToast } from "./ToastProvider";
 
 interface DownloadModalProps {
   url: string;
@@ -20,8 +20,8 @@ export default function DownloadModal({ url, onClose }: DownloadModalProps) {
       try {
         await navigator.clipboard.writeText(url);
         pushToast({
-          type: 'success',
-          message: 'Download link copied to clipboard!'
+          type: "success",
+          message: "Download link copied to clipboard!",
         });
       } catch {
         // Silently fail if clipboard API is not available
@@ -37,8 +37,8 @@ export default function DownloadModal({ url, onClose }: DownloadModalProps) {
     try {
       await navigator.clipboard.writeText(url);
       pushToast({
-        type: 'success',
-        message: 'Link copied again!'
+        type: "success",
+        message: "Link copied again!",
       });
     } catch {
       // Silently fail if clipboard API is not available
@@ -70,7 +70,7 @@ export default function DownloadModal({ url, onClose }: DownloadModalProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel 
+              <Dialog.Panel
                 as={motion.div}
                 className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 text-left align-middle shadow-xl transition-all"
               >
@@ -89,19 +89,23 @@ export default function DownloadModal({ url, onClose }: DownloadModalProps) {
                   </button>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                  File will self-destruct after this download. Link copied to clipboard automatically.
+                  File will self-destruct after this download. Link copied to
+                  clipboard automatically.
                 </p>
                 <div className="flex space-x-3">
                   <a
-                    href={url} download rel="noopener noreferrer"
-                    onClick={handleDownload} data-testid="download-btn"
+                    href={url}
+                    download
+                    rel="noopener noreferrer"
+                    onClick={handleDownload}
+                    data-testid="download-btn"
                     data-cy="download-button"
                     className="flex-1 inline-flex justify-center items-center min-h-[44px] px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500 transition-colors"
                   >
                     Download Now
                   </a>
                   <button
-                    type="button" 
+                    type="button"
                     onClick={handleCopyAgain}
                     data-cy="copy-button"
                     className="inline-flex justify-center items-center min-w-[44px] min-h-[44px] px-3 py-3 border border-gray-300 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500 transition-colors"
@@ -110,7 +114,8 @@ export default function DownloadModal({ url, onClose }: DownloadModalProps) {
                     <ClipboardDocumentIcon className="h-4 w-4" />
                   </button>
                   <button
-                    type="button" onClick={onClose}
+                    type="button"
+                    onClick={onClose}
                     data-cy="close-modal-button"
                     className="inline-flex justify-center items-center min-h-[44px] px-4 py-3 border border-gray-300 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500 transition-colors"
                   >
@@ -124,4 +129,4 @@ export default function DownloadModal({ url, onClose }: DownloadModalProps) {
       </Dialog>
     </Transition>
   );
-} 
+}

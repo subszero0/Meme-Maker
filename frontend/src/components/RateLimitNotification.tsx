@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Notification from './Notification';
+import { useEffect, useState } from "react";
+import Notification from "./Notification";
 
 export interface RateLimitNotificationProps {
   message: string;
   retryAfter: number; // seconds
-  limitType: 'global' | 'job_creation';
+  limitType: "global" | "job_creation";
   onRetryAvailable?: () => void;
   onDismiss?: () => void;
 }
@@ -16,7 +16,7 @@ export default function RateLimitNotification({
   retryAfter,
   limitType,
   onRetryAvailable,
-  onDismiss
+  onDismiss,
 }: RateLimitNotificationProps) {
   const [timeLeft, setTimeLeft] = useState(retryAfter);
 
@@ -27,24 +27,24 @@ export default function RateLimitNotification({
     }
 
     const timer = setTimeout(() => {
-      setTimeLeft(prev => prev - 1);
+      setTimeLeft((prev) => prev - 1);
     }, 1000);
 
     return () => clearTimeout(timer);
   }, [timeLeft, onRetryAvailable]);
 
   const getTitle = () => {
-    if (limitType === 'job_creation') {
-      return 'Job Creation Limit Reached';
+    if (limitType === "job_creation") {
+      return "Job Creation Limit Reached";
     }
-    return 'Rate Limit Exceeded';
+    return "Rate Limit Exceeded";
   };
 
   const getType = () => {
-    if (limitType === 'job_creation') {
-      return 'warning' as const;
+    if (limitType === "job_creation") {
+      return "warning" as const;
     }
-    return 'error' as const;
+    return "error" as const;
   };
 
   return (
@@ -59,7 +59,7 @@ export default function RateLimitNotification({
       countdown={{
         timeLeft,
         totalTime: retryAfter,
-        label: 'Retry in'
+        label: "Retry in",
       }}
       showProgress={true}
       data-cy="rate-limit-notification"
@@ -74,10 +74,14 @@ export function useRateLimitNotification() {
   const [notification, setNotification] = useState<{
     message: string;
     retryAfter: number;
-    limitType: 'global' | 'job_creation';
+    limitType: "global" | "job_creation";
   } | null>(null);
 
-  const showNotification = (message: string, retryAfter: number, limitType: 'global' | 'job_creation') => {
+  const showNotification = (
+    message: string,
+    retryAfter: number,
+    limitType: "global" | "job_creation",
+  ) => {
     setNotification({ message, retryAfter, limitType });
   };
 
@@ -88,6 +92,6 @@ export function useRateLimitNotification() {
   return {
     notification,
     showNotification,
-    clearNotification
+    clearNotification,
   };
-} 
+}

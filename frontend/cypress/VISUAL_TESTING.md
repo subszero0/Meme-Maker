@@ -27,6 +27,7 @@ The visual regression test suite covers these core user flows:
 ### 📱 **Viewport Testing**
 
 Screenshots are captured at multiple viewport sizes:
+
 - **Mobile**: 375px (iPhone SE)
 - **Tablet**: 768px (iPad)
 - **Desktop**: 1280px (Standard desktop)
@@ -76,10 +77,12 @@ npm run cypress:run -- --spec 'cypress/e2e/visual_regression.cy.ts'
 ### GitHub Actions
 
 Visual regression tests run automatically on:
+
 - Pull requests to `main` or `develop` branches
 - Pushes to `main` branch
 
 The workflow:
+
 1. Builds the frontend
 2. Starts the backend server
 3. Runs Cypress tests with Percy
@@ -131,16 +134,19 @@ Tests use consistent mocking to ensure stable visual states:
 
 ### Common Issues
 
-**Flaky screenshots**: 
+**Flaky screenshots**:
+
 - Increase wait times in tests
 - Mock more dynamic content
 - Check for animations or loading states
 
 **Percy token issues**:
+
 - Verify token is correctly set in environment
 - Check project name matches Percy dashboard
 
 **Backend not starting**:
+
 - Ensure Redis is running
 - Check backend health endpoint
 - Review CI logs for startup errors
@@ -180,4 +186,4 @@ When visual changes are intentional:
 
 - [Percy Dashboard](https://percy.io/projects/meme-maker)
 - [Cypress Documentation](https://docs.cypress.io/)
-- [Percy/Cypress Integration](https://docs.percy.io/docs/cypress) 
+- [Percy/Cypress Integration](https://docs.percy.io/docs/cypress)

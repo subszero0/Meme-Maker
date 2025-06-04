@@ -7,12 +7,12 @@ snapshot:
     .react-player video {
       background: #000 !important;
     }
-    
+
     /* Ensure consistent loading states */
     .loading-spinner {
       animation-play-state: paused !important;
     }
-    
+
     /* Hide dynamic timestamps/progress that change */
     [data-testid="current-time"],
     [data-testid="duration"] {
@@ -22,4 +22,4 @@ snapshot:
 discovery:
   request-headers:
     User-Agent: Percy/Cypress
-  network-idle-timeout: 750 
+  network-idle-timeout: 750

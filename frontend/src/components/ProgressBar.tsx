@@ -1,13 +1,16 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 interface ProgressBarProps {
   progress?: number; // 0-100, undefined for indeterminate
   className?: string;
 }
 
-export default function ProgressBar({ progress, className = '' }: ProgressBarProps) {
+export default function ProgressBar({
+  progress,
+  className = "",
+}: ProgressBarProps) {
   const isIndeterminate = progress === undefined;
   const [animatedProgress, setAnimatedProgress] = useState(0);
 
@@ -18,7 +21,9 @@ export default function ProgressBar({ progress, className = '' }: ProgressBarPro
   }, [progress]);
 
   return (
-    <div className={`w-full bg-gray-200 rounded-full h-2 overflow-hidden ${className}`}>
+    <div
+      className={`w-full bg-gray-200 rounded-full h-2 overflow-hidden ${className}`}
+    >
       {isIndeterminate ? (
         <div className="h-full bg-blue-600 rounded-full w-1/3 animate-bounce" />
       ) : (
@@ -29,4 +34,4 @@ export default function ProgressBar({ progress, className = '' }: ProgressBarPro
       )}
     </div>
   );
-} 
+}

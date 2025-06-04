@@ -1,17 +1,21 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export',
+  output: "export",
   trailingSlash: true,
   images: {
-    unoptimized: true
+    unoptimized: true,
   },
   eslint: {
-    ignoreDuringBuilds: true
+    ignoreDuringBuilds: true,
   },
   // Bundle optimization settings
   experimental: {
-    optimizePackageImports: ['react-range', 'framer-motion', '@headlessui/react'],
+    optimizePackageImports: [
+      "react-range",
+      "framer-motion",
+      "@headlessui/react",
+    ],
   },
   // Webpack configuration for better tree shaking
   webpack: (config, { dev, isServer }) => {
@@ -23,11 +27,11 @@ const nextConfig: NextConfig = {
         sideEffects: false,
       };
     }
-    
+
     // Alias react-player to lazy version by default
     config.resolve.alias = {
       ...config.resolve.alias,
-      'react-player$': 'react-player/lazy',
+      "react-player$": "react-player/lazy",
     };
 
     return config;

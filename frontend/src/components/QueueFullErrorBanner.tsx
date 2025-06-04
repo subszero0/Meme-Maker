@@ -1,12 +1,14 @@
-'use client';
+"use client";
 
-import Notification from './Notification';
+import Notification from "./Notification";
 
 interface QueueFullErrorBannerProps {
   onDismiss?: () => void;
 }
 
-export default function QueueFullErrorBanner({ onDismiss }: QueueFullErrorBannerProps) {
+export default function QueueFullErrorBanner({
+  onDismiss,
+}: QueueFullErrorBannerProps) {
   return (
     <Notification
       type="warning"
@@ -18,4 +20,4 @@ export default function QueueFullErrorBanner({ onDismiss }: QueueFullErrorBanner
       data-cy="queue-full-banner"
     />
   );
-} 
+}

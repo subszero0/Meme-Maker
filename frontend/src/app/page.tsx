@@ -1,19 +1,26 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import dynamic from 'next/dynamic';
-import URLInputPanel from '@/components/URLInputPanel';
-import QueueFullErrorBanner from '@/components/QueueFullErrorBanner';
-import ProgressBar from '@/components/ProgressBar';
-import RateLimitNotification, { useRateLimitNotification } from '@/components/RateLimitNotification';
-import Footer from '@/components/Footer';
-import { useToast } from '@/components/ToastProvider';
-import useJobPoller from '@/hooks/useJobPoller';
-import { fetchVideoMetadata, createJob, isRateLimitError, type VideoMetadata } from '@/lib/api';
-import { formatTimeForAPI } from '@/lib/formatTime';
+import { useState } from "react";
+import dynamic from "next/dynamic";
+import URLInputPanel from "@/components/URLInputPanel";
+import QueueFullErrorBanner from "@/components/QueueFullErrorBanner";
+import ProgressBar from "@/components/ProgressBar";
+import RateLimitNotification, {
+  useRateLimitNotification,
+} from "@/components/RateLimitNotification";
+import Footer from "@/components/Footer";
+import { useToast } from "@/components/ToastProvider";
+import useJobPoller from "@/hooks/useJobPoller";
+import {
+  fetchVideoMetadata,
+  createJob,
+  isRateLimitError,
+  type VideoMetadata,
+} from "@/lib/api";
+import { formatTimeForAPI } from "@/lib/formatTime";
 
 // Dynamically import TrimPanel since it's only needed after metadata is loaded
-const TrimPanel = dynamic(() => import('@/components/TrimPanel'), {
+const TrimPanel = dynamic(() => import("@/components/TrimPanel"), {
   loading: () => (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div className="aspect-video bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg"></div>
@@ -22,66 +29,82 @@ const TrimPanel = dynamic(() => import('@/components/TrimPanel'), {
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-3/4"></div>
       </div>
     </div>
-  )
+  ),
 });
 
 // Dynamically import DownloadModal since it's only shown at the end
-const DownloadModal = dynamic(() => import('@/components/DownloadModal'), {
-  loading: () => <div className="fixed inset-0 bg-black bg-opacity-50" />
+const DownloadModal = dynamic(() => import("@/components/DownloadModal"), {
+  loading: () => <div className="fixed inset-0 bg-black bg-opacity-50" />,
 });
 
-type AppState = 
-  | { phase: 'idle' }
-  | { phase: 'loading-metadata'; url: string }
-  | { phase: 'trim'; metadata: VideoMetadata }
-  | { phase: 'processing'; metadata: VideoMetadata; jobId: string }
-  | { phase: 'download'; metadata: VideoMetadata; downloadUrl: string }
-  | { phase: 'queue-full'; metadata: VideoMetadata };
+type AppState =
+  | { phase: "idle" }
+  | { phase: "loading-metadata"; url: string }
+  | { phase: "trim"; metadata: VideoMetadata }
+  | { phase: "processing"; metadata: VideoMetadata; jobId: string }
+  | { phase: "download"; metadata: VideoMetadata; downloadUrl: string }
+  | { phase: "queue-full"; metadata: VideoMetadata };
 
 export default function Home() {
   const { pushToast } = useToast();
-  const { notification, showNotification, clearNotification } = useRateLimitNotification();
-  const [state, setState] = useState<AppState>({ phase: 'idle' });
+  const { notification, showNotification, clearNotification } =
+    useRateLimitNotification();
+  const [state, setState] = useState<AppState>({ phase: "idle" });
   const [isRetryDisabled, setIsRetryDisabled] = useState(false);
-  
-  const jobId = state.phase === 'processing' ? state.jobId : null;
+
+  const jobId = state.phase === "processing" ? state.jobId : null;
   const pollerResult = useJobPoller(jobId);
 
   // Handle job polling results
-  if (state.phase === 'processing' && pollerResult.status === 'done' && pollerResult.url) {
+  if (
+    state.phase === "processing" &&
+    pollerResult.status === "done" &&
+    pollerResult.url
+  ) {
     setState({
-      phase: 'download',
+      phase: "download",
       metadata: state.metadata,
       downloadUrl: pollerResult.url,
     });
-  } else if (state.phase === 'processing' && pollerResult.status === 'error' && pollerResult.errorCode === 'QUEUE_FULL') {
+  } else if (
+    state.phase === "processing" &&
+    pollerResult.status === "error" &&
+    pollerResult.errorCode === "QUEUE_FULL"
+  ) {
     setState({
-      phase: 'queue-full',
+      phase: "queue-full",
       metadata: state.metadata,
     });
   }
 
   const handleUrlSubmit = async (url: string) => {
-    setState({ phase: 'loading-metadata', url });
-    
+    setState({ phase: "loading-metadata", url });
+
     try {
       const metadata = await fetchVideoMetadata(url);
-      setState({ phase: 'trim', metadata });
-      pushToast({ type: 'success', message: 'Video loaded successfully!' });
+      setState({ phase: "trim", metadata });
+      pushToast({ type: "success", message: "Video loaded successfully!" });
     } catch (error) {
-      setState({ phase: 'idle' });
-      
+      setState({ phase: "idle" });
+
       if (isRateLimitError(error)) {
         showNotification(error.message, error.retryAfter, error.limitType);
         setIsRetryDisabled(true);
       } else {
-        pushToast({ type: 'error', message: 'Failed to load video. Please check the URL and try again.' });
+        pushToast({
+          type: "error",
+          message: "Failed to load video. Please check the URL and try again.",
+        });
       }
     }
   };
 
-  const handleTrimSubmit = async (params: { in: number; out: number; rights: boolean }) => {
-    if (state.phase !== 'trim') return;
+  const handleTrimSubmit = async (params: {
+    in: number;
+    out: number;
+    rights: boolean;
+  }) => {
+    if (state.phase !== "trim") return;
 
     try {
       const response = await createJob({
@@ -90,9 +113,9 @@ export default function Home() {
         end: formatTimeForAPI(params.out),
         accepted_terms: params.rights,
       });
-      
+
       setState({
-        phase: 'processing',
+        phase: "processing",
         metadata: state.metadata,
         jobId: response.jobId,
       });
@@ -101,27 +124,30 @@ export default function Home() {
         showNotification(error.message, error.retryAfter, error.limitType);
         setIsRetryDisabled(true);
       } else {
-        pushToast({ type: 'error', message: 'Failed to start processing. Please try again.' });
+        pushToast({
+          type: "error",
+          message: "Failed to start processing. Please try again.",
+        });
       }
     }
   };
 
   const handleDownloadClose = () => {
-    setState({ phase: 'idle' });
+    setState({ phase: "idle" });
   };
 
   const handleQueueFullDismiss = () => {
-    if (state.phase === 'queue-full') {
-      setState({ phase: 'trim', metadata: state.metadata });
+    if (state.phase === "queue-full") {
+      setState({ phase: "trim", metadata: state.metadata });
     }
   };
 
   const handleRateLimitRetryAvailable = () => {
     setIsRetryDisabled(false);
     clearNotification();
-    pushToast({ 
-      type: 'info', 
-      message: 'Rate limit has expired. You can now make requests again.' 
+    pushToast({
+      type: "info",
+      message: "Rate limit has expired. You can now make requests again.",
     });
   };
 
@@ -130,7 +156,7 @@ export default function Home() {
   };
 
   const resetToIdle = () => {
-    setState({ phase: 'idle' });
+    setState({ phase: "idle" });
   };
 
   return (
@@ -141,8 +167,8 @@ export default function Home() {
             Meme Maker
           </h1>
           <p className="text-lg text-text-secondary dark:text-text-secondary max-w-2xl mx-auto">
-            Paste a video URL from YouTube, Instagram, Facebook, Threads, or Reddit.
-            Trim your clip and download it instantly.
+            Paste a video URL from YouTube, Instagram, Facebook, Threads, or
+            Reddit. Trim your clip and download it instantly.
           </p>
         </div>
 
@@ -160,17 +186,17 @@ export default function Home() {
         )}
 
         {/* URL Input Phase */}
-        {(state.phase === 'idle' || state.phase === 'loading-metadata') && (
-          <URLInputPanel 
-            onSubmit={handleUrlSubmit} 
-            loading={state.phase === 'loading-metadata'}
+        {(state.phase === "idle" || state.phase === "loading-metadata") && (
+          <URLInputPanel
+            onSubmit={handleUrlSubmit}
+            loading={state.phase === "loading-metadata"}
             disabled={isRetryDisabled}
           />
         )}
 
         {/* Trim Phase */}
-        {state.phase === 'trim' && (
-          <TrimPanel 
+        {state.phase === "trim" && (
+          <TrimPanel
             jobMeta={state.metadata}
             onSubmit={handleTrimSubmit}
             disabled={isRetryDisabled}
@@ -178,7 +204,7 @@ export default function Home() {
         )}
 
         {/* Processing Phase */}
-        {state.phase === 'processing' && (
+        {state.phase === "processing" && (
           <div className="max-w-2xl mx-auto space-y-6">
             <div className="text-center">
               <h3 className="text-lg font-medium text-text-primary dark:text-white mb-2">
@@ -189,8 +215,8 @@ export default function Home() {
               </p>
               <ProgressBar progress={pollerResult.progress} />
               <p className="text-xs text-text-muted dark:text-text-muted mt-2">
-                {pollerResult.status === 'queued' && 'Waiting in queue...'}
-                {pollerResult.status === 'working' && 'Trimming video...'}
+                {pollerResult.status === "queued" && "Waiting in queue..."}
+                {pollerResult.status === "working" && "Trimming video..."}
               </p>
             </div>
             <div className="text-center">
@@ -205,7 +231,7 @@ export default function Home() {
         )}
 
         {/* Queue Full Error */}
-        {state.phase === 'queue-full' && (
+        {state.phase === "queue-full" && (
           <div className="max-w-2xl mx-auto space-y-6">
             <QueueFullErrorBanner onDismiss={handleQueueFullDismiss} />
             <div className="text-center">
@@ -223,8 +249,8 @@ export default function Home() {
         <Footer />
 
         {/* Download Modal */}
-        {state.phase === 'download' && (
-          <DownloadModal 
+        {state.phase === "download" && (
+          <DownloadModal
             url={state.downloadUrl}
             onClose={handleDownloadClose}
           />

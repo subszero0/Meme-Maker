@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { en } from '@/i18n/en';
-import getPlatform, { Platform } from '@/lib/getPlatform';
-import Notification from './Notification';
+import { useState, useEffect, useCallback } from "react";
+import { en } from "@/i18n/en";
+import getPlatform, { Platform } from "@/lib/getPlatform";
+import Notification from "./Notification";
 
 interface URLInputPanelProps {
   onSubmit: (url: string) => void;
@@ -11,24 +11,24 @@ interface URLInputPanelProps {
   disabled?: boolean;
 }
 
-type ComponentPlatform = Exclude<Platform, 'unknown'> | null;
+type ComponentPlatform = Exclude<Platform, "unknown"> | null;
 
 const PLATFORM_ICONS = {
-  youtube: '🎬',
-  instagram: '📷',
-  facebook: '👥',
-  threads: '🧵',
-  reddit: '🔗',
+  youtube: "🎬",
+  instagram: "📷",
+  facebook: "👥",
+  threads: "🧵",
+  reddit: "🔗",
 };
 
 const detectPlatform = (url: string): ComponentPlatform => {
   const platform = getPlatform(url);
-  return platform === 'unknown' ? null : platform;
+  return platform === "unknown" ? null : platform;
 };
 
 const isValidUrl = (url: string): boolean => {
   if (!url.trim()) return false;
-  
+
   try {
     new URL(url);
     return detectPlatform(url) !== null;
@@ -37,9 +37,13 @@ const isValidUrl = (url: string): boolean => {
   }
 };
 
-export default function URLInputPanel({ onSubmit, loading = false, disabled = false }: URLInputPanelProps) {
-  const [url, setUrl] = useState('');
-  const [error, setError] = useState('');
+export default function URLInputPanel({
+  onSubmit,
+  loading = false,
+  disabled = false,
+}: URLInputPanelProps) {
+  const [url, setUrl] = useState("");
+  const [error, setError] = useState("");
   const [platform, setPlatform] = useState<ComponentPlatform>(null);
   const [isDebouncing, setIsDebouncing] = useState(false);
 
@@ -56,7 +60,7 @@ export default function URLInputPanel({ onSubmit, loading = false, disabled = fa
     if (!isValidUrl(inputUrl)) {
       setError(en.urlInputPanel.errors.invalid);
     } else {
-      setError('');
+      setError("");
     }
   }, []);
 
@@ -72,7 +76,7 @@ export default function URLInputPanel({ onSubmit, loading = false, disabled = fa
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!url.trim()) {
       setError(en.urlInputPanel.errors.required);
       return;
@@ -92,8 +96,8 @@ export default function URLInputPanel({ onSubmit, loading = false, disabled = fa
     <div className="mx-auto max-w-md">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>
-          <label 
-            htmlFor="video-url" 
+          <label
+            htmlFor="video-url"
             className="block text-sm font-medium text-text-primary dark:text-gray-200 mb-2"
           >
             {en.urlInputPanel.labels.videoUrl}
@@ -101,7 +105,9 @@ export default function URLInputPanel({ onSubmit, loading = false, disabled = fa
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <span className="text-gray-400 text-sm">
-                {platform && platform in PLATFORM_ICONS ? PLATFORM_ICONS[platform] : '🌐'}
+                {platform && platform in PLATFORM_ICONS
+                  ? PLATFORM_ICONS[platform]
+                  : "🌐"}
               </span>
             </div>
             <input
@@ -111,15 +117,16 @@ export default function URLInputPanel({ onSubmit, loading = false, disabled = fa
               onChange={(e) => setUrl(e.target.value)}
               placeholder={en.urlInputPanel.placeholder}
               aria-invalid={hasError}
-              aria-describedby={hasError ? 'url-error' : undefined}
+              aria-describedby={hasError ? "url-error" : undefined}
               data-testid="url-input"
               data-cy="url-input"
               className={`
                 block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm
                 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500
-                ${hasError 
-                  ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
-                  : 'border-gray-300 focus:border-indigo-500'
+                ${
+                  hasError
+                    ? "border-red-300 focus:border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:border-indigo-500"
                 }
                 dark:bg-gray-800 dark:border-gray-600 dark:text-white
                 dark:placeholder-gray-400 dark:focus:border-indigo-400
@@ -150,9 +157,9 @@ export default function URLInputPanel({ onSubmit, loading = false, disabled = fa
             transition-colors duration-200
           "
         >
-          {loading ? 'Loading...' : en.urlInputPanel.startButton}
+          {loading ? "Loading..." : en.urlInputPanel.startButton}
         </button>
       </form>
     </div>
   );
-} 
+}

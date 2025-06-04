@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Fragment, useEffect, useCallback } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { Fragment, useEffect, useCallback } from "react";
+import { Dialog, Transition } from "@headlessui/react";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 
 interface FeedbackWidgetProps {
   isOpen: boolean;
@@ -11,7 +11,8 @@ interface FeedbackWidgetProps {
 
 // Google Form URL for the feedback survey
 // This form contains 5 questions: satisfaction rating, URL ease-of-use, slider intuitiveness, error encounters, and open feedback
-const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdV8JzQ2nR5K4WxY9Hg7TqPbN1uLmF3XvC9A6E0ZzRtOp8IkJ/viewform?embedded=true';
+const FEEDBACK_FORM_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLSdV8JzQ2nR5K4WxY9Hg7TqPbN1uLmF3XvC9A6E0ZzRtOp8IkJ/viewform?embedded=true";
 
 // Type for Google Analytics gtag function
 interface GtagFunction {
@@ -19,25 +20,27 @@ interface GtagFunction {
 }
 
 /**
- * @ux @analytics 
+ * @ux @analytics
  * Feedback widget with embedded Google Forms survey for collecting qualitative user feedback.
  * Tracks open/submit events via analytics and maintains ARIA compliance.
  */
-export default function FeedbackWidget({ isOpen, onClose }: FeedbackWidgetProps) {
-  
+export default function FeedbackWidget({
+  isOpen,
+  onClose,
+}: FeedbackWidgetProps) {
   // Track feedback modal open event
   useEffect(() => {
     if (isOpen) {
       // Analytics: Track feedback modal opened
-      if (typeof window !== 'undefined' && 'gtag' in window) {
-        (window.gtag as GtagFunction)('event', 'feedback_open', {
-          event_category: 'engagement',
-          event_label: 'feedback_modal'
+      if (typeof window !== "undefined" && "gtag" in window) {
+        (window.gtag as GtagFunction)("event", "feedback_open", {
+          event_category: "engagement",
+          event_label: "feedback_modal",
         });
       }
-      
+
       // Console tracking for development
-      console.log('Analytics: feedback_open event fired');
+      console.log("Analytics: feedback_open event fired");
     }
   }, [isOpen]);
 
@@ -45,34 +48,34 @@ export default function FeedbackWidget({ isOpen, onClose }: FeedbackWidgetProps)
   const handleIframeLoad = () => {
     // Note: Due to cross-origin restrictions, we can't directly detect form submission
     // This is a placeholder for when the iframe loads
-    console.log('Feedback form loaded');
+    console.log("Feedback form loaded");
   };
 
   // Track when user closes modal (assumption: they may have submitted)
   const handleClose = useCallback(() => {
-    // Analytics: Track potential feedback submission 
-    if (typeof window !== 'undefined' && 'gtag' in window) {
-      (window.gtag as GtagFunction)('event', 'feedback_submit', {
-        event_category: 'engagement', 
-        event_label: 'feedback_modal_closed'
+    // Analytics: Track potential feedback submission
+    if (typeof window !== "undefined" && "gtag" in window) {
+      (window.gtag as GtagFunction)("event", "feedback_submit", {
+        event_category: "engagement",
+        event_label: "feedback_modal_closed",
       });
     }
-    
-    console.log('Analytics: feedback_submit event fired (modal closed)');
+
+    console.log("Analytics: feedback_submit event fired (modal closed)");
     onClose();
   }, [onClose]);
 
   // Handle escape key
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen) {
+      if (event.key === "Escape" && isOpen) {
         handleClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      return () => document.removeEventListener('keydown', handleEscape);
+      document.addEventListener("keydown", handleEscape);
+      return () => document.removeEventListener("keydown", handleEscape);
     }
   }, [isOpen, handleClose]);
 
@@ -90,7 +93,7 @@ export default function FeedbackWidget({ isOpen, onClose }: FeedbackWidgetProps)
         >
           <div className="fixed inset-0 bg-black bg-opacity-50" />
         </Transition.Child>
-        
+
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4 text-center">
             <Transition.Child
@@ -102,7 +105,7 @@ export default function FeedbackWidget({ isOpen, onClose }: FeedbackWidgetProps)
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel 
+              <Dialog.Panel
                 className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 text-left align-middle shadow-xl transition-all"
                 role="dialog"
                 aria-modal="true"
@@ -112,17 +115,18 @@ export default function FeedbackWidget({ isOpen, onClose }: FeedbackWidgetProps)
               >
                 <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
                   <div>
-                    <Dialog.Title 
+                    <Dialog.Title
                       id="feedback-title"
                       className="text-lg font-medium leading-6 text-gray-900 dark:text-white"
                     >
                       Share Your Feedback
                     </Dialog.Title>
-                    <p 
+                    <p
                       id="feedback-description"
                       className="text-sm text-gray-600 dark:text-gray-400 mt-1"
                     >
-                      Help us improve Meme Maker with your thoughts and suggestions
+                      Help us improve Meme Maker with your thoughts and
+                      suggestions
                     </p>
                   </div>
                   <button
@@ -135,7 +139,7 @@ export default function FeedbackWidget({ isOpen, onClose }: FeedbackWidgetProps)
                     <XMarkIcon className="h-5 w-5" aria-hidden="true" />
                   </button>
                 </div>
-                
+
                 <div className="p-0">
                   <iframe
                     src={FEEDBACK_FORM_URL}
@@ -151,8 +155,8 @@ export default function FeedbackWidget({ isOpen, onClose }: FeedbackWidgetProps)
                     data-cy="feedback-iframe"
                   >
                     <p className="text-center p-6 text-gray-600 dark:text-gray-400">
-                      Loading feedback form... 
-                      <a 
+                      Loading feedback form...
+                      <a
                         href={FEEDBACK_FORM_URL}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -170,4 +174,4 @@ export default function FeedbackWidget({ isOpen, onClose }: FeedbackWidgetProps)
       </Dialog>
     </Transition>
   );
-} 
+}

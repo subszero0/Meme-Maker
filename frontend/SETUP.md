@@ -56,18 +56,21 @@ frontend/
 ## 3. Key Features Implemented
 
 ### Components
+
 - **UrlInput**: Form component for pasting video URLs
 - **VideoPreview**: React Player wrapper for video preview
 - **TimeRangeSlider**: Dual-handle slider for video trimming
 - **HomePage**: Main landing page with complete user flow
 
 ### Validation
+
 - 3-minute clip duration limit
 - Rights confirmation checkbox
 - URL validation (client-side)
 - Mobile-responsive design (44px+ touch targets)
 
 ### User Flow
+
 1. Paste video URL (YouTube, Instagram, Facebook, Threads, Reddit)
 2. Video metadata fetched and preview shown
 3. Dual-handle slider for precise trimming
@@ -105,4 +108,4 @@ The app runs on `http://localhost:3000` by default with Turbopack enabled for fa
 - [ ] Add job status polling
 - [ ] Implement download functionality
 - [ ] Add error handling and user feedback
-- [ ] Add loading states and progress indicators 
+- [ ] Add loading states and progress indicators

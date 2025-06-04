@@ -1,21 +1,23 @@
-'use client';
+"use client";
 
-import { useReducer, useCallback, useState, useEffect, useRef } from 'react';
-import dynamic from 'next/dynamic';
-import { useDebouncedCallback } from 'use-debounce';
-import { formatTime, parseTime } from '@/lib/formatTime';
-import { useToast } from './ToastProvider';
-import Notification from './Notification';
-import SimpleRange from './ui/SimpleRange';
+import { useReducer, useCallback, useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
+import { useDebouncedCallback } from "use-debounce";
+import { formatTime, parseTime } from "@/lib/formatTime";
+import { useToast } from "./ToastProvider";
+import Notification from "./Notification";
+import SimpleRange from "./ui/SimpleRange";
 
 // Dynamically import ReactPlayer to reduce initial bundle size
-const ReactPlayer = dynamic(() => import('react-player/lazy'), {
+const ReactPlayer = dynamic(() => import("react-player/lazy"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-64 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg flex items-center justify-center">
-      <span className="text-gray-500 dark:text-gray-400">Loading video player...</span>
+      <span className="text-gray-500 dark:text-gray-400">
+        Loading video player...
+      </span>
     </div>
-  )
+  ),
 });
 
 interface TrimPanelProps {
@@ -32,31 +34,31 @@ interface TrimState {
 }
 
 type TrimAction =
-  | { type: 'SET_IN'; payload: number }
-  | { type: 'SET_OUT'; payload: number }
-  | { type: 'SET_RIGHTS'; payload: boolean }
-  | { type: 'SET_RANGE'; payload: { in: number; out: number } };
+  | { type: "SET_IN"; payload: number }
+  | { type: "SET_OUT"; payload: number }
+  | { type: "SET_RIGHTS"; payload: boolean }
+  | { type: "SET_RANGE"; payload: { in: number; out: number } };
 
 function trimReducer(state: TrimState, action: TrimAction): TrimState {
   switch (action.type) {
-    case 'SET_IN':
+    case "SET_IN":
       return { ...state, in: action.payload };
-    case 'SET_OUT':
+    case "SET_OUT":
       return { ...state, out: action.payload };
-    case 'SET_RIGHTS':
+    case "SET_RIGHTS":
       return { ...state, rights: action.payload };
-    case 'SET_RANGE':
+    case "SET_RANGE":
       return { ...state, in: action.payload.in, out: action.payload.out };
     default:
       return state;
   }
 }
 
-export default function TrimPanel({ 
-  jobMeta, 
-  onSubmit, 
+export default function TrimPanel({
+  jobMeta,
+  onSubmit,
   disabled,
-  stepSize = 0.1 // @accessibility - Default 0.1 second increment
+  stepSize = 0.1, // @accessibility - Default 0.1 second increment
 }: TrimPanelProps) {
   const { pushToast } = useToast();
   const [state, dispatch] = useReducer(trimReducer, {
@@ -67,10 +69,13 @@ export default function TrimPanel({
 
   const [inTimeInput, setInTimeInput] = useState(formatTime(state.in));
   const [outTimeInput, setOutTimeInput] = useState(formatTime(state.out));
-  
+
   // @accessibility - Refs for screen reader announcements
   const announcementRef = useRef<HTMLDivElement>(null);
-  const lastAnnouncedValues = useRef<{ in: number; out: number }>({ in: state.in, out: state.out });
+  const lastAnnouncedValues = useRef<{ in: number; out: number }>({
+    in: state.in,
+    out: state.out,
+  });
 
   // Update time inputs when state changes
   useEffect(() => {
@@ -87,9 +92,9 @@ export default function TrimPanel({
 
   // @accessibility - Announce value changes to screen readers
   const announceValue = useCallback((index: number, value: number) => {
-    const handleName = index === 0 ? 'Start' : 'End';
+    const handleName = index === 0 ? "Start" : "End";
     const announcement = `${handleName} time: ${formatTime(value)}`;
-    
+
     if (announcementRef.current) {
       announcementRef.current.textContent = announcement;
     }
@@ -99,48 +104,62 @@ export default function TrimPanel({
   const debouncedInChange = useDebouncedCallback((value: string) => {
     const parsed = parseTime(value);
     if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
-      dispatch({ type: 'SET_IN', payload: parsed });
+      dispatch({ type: "SET_IN", payload: parsed });
     }
   }, 150);
 
   const debouncedOutChange = useDebouncedCallback((value: string) => {
     const parsed = parseTime(value);
     if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
-      dispatch({ type: 'SET_OUT', payload: parsed });
+      dispatch({ type: "SET_OUT", payload: parsed });
     }
   }, 150);
 
-  const handleSliderChange = useCallback((values: number[]) => {
-    const [newIn, newOut] = values;
-    // Snap to 0.1s precision
-    const snappedIn = Math.round(newIn * 10) / 10;
-    const snappedOut = Math.round(newOut * 10) / 10;
-    
-    // Ensure minimum gap of 0.1s
-    if (snappedOut - snappedIn >= 0.1) {
-      dispatch({ type: 'SET_RANGE', payload: { in: snappedIn, out: snappedOut } });
-      
-      // @accessibility - Announce value changes for significant moves only
-      if (Math.abs(snappedIn - lastAnnouncedValues.current.in) >= 1 || 
-          Math.abs(snappedOut - lastAnnouncedValues.current.out) >= 1) {
-        announceValue(0, snappedIn);
-        announceValue(1, snappedOut);
-        lastAnnouncedValues.current = { in: snappedIn, out: snappedOut };
+  const handleSliderChange = useCallback(
+    (values: number[]) => {
+      const [newIn, newOut] = values;
+      // Snap to 0.1s precision
+      const snappedIn = Math.round(newIn * 10) / 10;
+      const snappedOut = Math.round(newOut * 10) / 10;
+
+      // Ensure minimum gap of 0.1s
+      if (snappedOut - snappedIn >= 0.1) {
+        dispatch({
+          type: "SET_RANGE",
+          payload: { in: snappedIn, out: snappedOut },
+        });
+
+        // @accessibility - Announce value changes for significant moves only
+        if (
+          Math.abs(snappedIn - lastAnnouncedValues.current.in) >= 1 ||
+          Math.abs(snappedOut - lastAnnouncedValues.current.out) >= 1
+        ) {
+          announceValue(0, snappedIn);
+          announceValue(1, snappedOut);
+          lastAnnouncedValues.current = { in: snappedIn, out: snappedOut };
+        }
       }
-    }
-  }, [announceValue]);
+    },
+    [announceValue],
+  );
 
-  const handleInTimeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setInTimeInput(value);
-    debouncedInChange(value);
-  }, [debouncedInChange]);
+  const handleInTimeChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setInTimeInput(value);
+      debouncedInChange(value);
+    },
+    [debouncedInChange],
+  );
 
-  const handleOutTimeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setOutTimeInput(value);
-    debouncedOutChange(value);
-  }, [debouncedOutChange]);
+  const handleOutTimeChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setOutTimeInput(value);
+      debouncedOutChange(value);
+    },
+    [debouncedOutChange],
+  );
 
   const submitTrim = useDebouncedCallback(async () => {
     if (clipDuration > maxDuration || !state.rights) return;
@@ -148,23 +167,26 @@ export default function TrimPanel({
     try {
       onSubmit({ in: state.in, out: state.out, rights: true });
     } catch (error) {
-      console.error('Error submitting trim:', error);
+      console.error("Error submitting trim:", error);
       pushToast({
-        type: 'error',
-        message: 'Failed to submit trim. Please try again.'
+        type: "error",
+        message: "Failed to submit trim. Please try again.",
       });
     }
   }, 300);
 
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    submitTrim();
-  }, [submitTrim]);
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      submitTrim();
+    },
+    [submitTrim],
+  );
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-6">
       {/* @accessibility - Hidden live region for screen reader announcements */}
-      <div 
+      <div
         ref={announcementRef}
         className="sr-only"
         aria-live="polite"
@@ -187,15 +209,19 @@ export default function TrimPanel({
 
       {/* Video Info */}
       <div className="text-center">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">{jobMeta.title}</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400">Duration: {formatTime(jobMeta.duration)}</p>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+          {jobMeta.title}
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Duration: {formatTime(jobMeta.duration)}
+        </p>
       </div>
 
       {/* Time Inputs */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label 
-            htmlFor="in-time" 
+          <label
+            htmlFor="in-time"
             id="start-time-label"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
@@ -217,8 +243,8 @@ export default function TrimPanel({
           </div>
         </div>
         <div>
-          <label 
-            htmlFor="out-time" 
+          <label
+            htmlFor="out-time"
             id="end-time-label"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
@@ -245,9 +271,11 @@ export default function TrimPanel({
       <div className="space-y-2">
         <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300 mb-2">
           <span>Video Timeline</span>
-          <span>Use arrow keys to adjust by {stepSize}s, Page Up/Down for 10s jumps</span>
+          <span>
+            Use arrow keys to adjust by {stepSize}s, Page Up/Down for 10s jumps
+          </span>
         </div>
-        
+
         <SimpleRange
           values={[state.in, state.out]}
           step={stepSize}
@@ -255,16 +283,24 @@ export default function TrimPanel({
           max={jobMeta.duration}
           onChange={handleSliderChange}
         />
-        
+
         <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-          <span aria-label={`Current start time: ${formatTime(state.in)}`}>{formatTime(state.in)}</span>
-          <span 
-            className={clipDuration > maxDuration ? 'text-red-600 dark:text-red-400 font-medium' : ''}
-            aria-label={`Clip duration: ${formatTime(clipDuration)}${clipDuration > maxDuration ? ' - exceeds maximum allowed duration' : ''}`}
+          <span aria-label={`Current start time: ${formatTime(state.in)}`}>
+            {formatTime(state.in)}
+          </span>
+          <span
+            className={
+              clipDuration > maxDuration
+                ? "text-red-600 dark:text-red-400 font-medium"
+                : ""
+            }
+            aria-label={`Clip duration: ${formatTime(clipDuration)}${clipDuration > maxDuration ? " - exceeds maximum allowed duration" : ""}`}
           >
             Duration: {formatTime(clipDuration)}
           </span>
-          <span aria-label={`Current end time: ${formatTime(state.out)}`}>{formatTime(state.out)}</span>
+          <span aria-label={`Current end time: ${formatTime(state.out)}`}>
+            {formatTime(state.out)}
+          </span>
         </div>
       </div>
 
@@ -295,13 +331,18 @@ export default function TrimPanel({
           data-cy="rights-checkbox"
           type="checkbox"
           checked={state.rights}
-          onChange={(e) => dispatch({ type: 'SET_RIGHTS', payload: e.target.checked })}
+          onChange={(e) =>
+            dispatch({ type: "SET_RIGHTS", payload: e.target.checked })
+          }
           className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-800"
           aria-describedby="rights-description"
         />
         <div>
-          <label htmlFor="rights-checkbox" className="text-sm text-text-primary dark:text-gray-200">
-            I confirm I have the right to download this content and agree to the{' '}
+          <label
+            htmlFor="rights-checkbox"
+            className="text-sm text-text-primary dark:text-gray-200"
+          >
+            I confirm I have the right to download this content and agree to the{" "}
             <a
               href="/terms"
               target="_blank"
@@ -313,7 +354,8 @@ export default function TrimPanel({
             .
           </label>
           <div id="rights-description" className="sr-only">
-            Required: You must confirm you have the legal right to download this video content
+            Required: You must confirm you have the legal right to download this
+            video content
           </div>
         </div>
       </div>
@@ -326,23 +368,22 @@ export default function TrimPanel({
         data-cy="clip-button"
         className={`w-full min-h-[44px] py-3 px-4 rounded-md font-semibold text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
           canSubmit && !disabled
-            ? 'bg-primary-800 hover:bg-primary-900 focus-visible:ring-primary-500 dark:focus-visible:ring-offset-gray-900'
-            : 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
+            ? "bg-primary-800 hover:bg-primary-900 focus-visible:ring-primary-500 dark:focus-visible:ring-offset-gray-900"
+            : "bg-gray-400 dark:bg-gray-600 cursor-not-allowed"
         }`}
         aria-describedby="submit-button-help"
       >
         Clip & Download
       </button>
       <div id="submit-button-help" className="sr-only">
-        {!isValidClip && !state.rights ? 
-          'Button disabled: Please set valid clip times and accept terms' :
-          !isValidClip ? 
-            'Button disabled: Please set valid clip times within 3 minutes' :
-            !state.rights ? 
-              'Button disabled: Please accept the terms of use' :
-              'Create and download your video clip'
-        }
+        {!isValidClip && !state.rights
+          ? "Button disabled: Please set valid clip times and accept terms"
+          : !isValidClip
+            ? "Button disabled: Please set valid clip times within 3 minutes"
+            : !state.rights
+              ? "Button disabled: Please accept the terms of use"
+              : "Create and download your video clip"}
       </div>
     </div>
   );
-} 
+}

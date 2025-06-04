@@ -1,4 +1,4 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export interface VideoMetadata {
   url: string;
@@ -9,7 +9,7 @@ export interface VideoMetadata {
 export interface JobRequest {
   url: string;
   start: string; // Time in hh:mm:ss format
-  end: string;   // Time in hh:mm:ss format  
+  end: string; // Time in hh:mm:ss format
   accepted_terms: boolean;
 }
 
@@ -18,7 +18,7 @@ export interface JobResponse {
 }
 
 export interface JobStatus {
-  status: 'queued' | 'working' | 'done' | 'error';
+  status: "queued" | "working" | "done" | "error";
   progress?: number;
   url?: string;
   errorCode?: string;
@@ -27,18 +27,22 @@ export interface JobStatus {
 
 export interface RateLimitError extends Error {
   isRateLimitError: true;
-  limitType: 'global' | 'job_creation';
+  limitType: "global" | "job_creation";
   retryAfter: number;
 }
 
 export class RateLimitErrorClass extends Error implements RateLimitError {
   isRateLimitError = true as const;
-  limitType: 'global' | 'job_creation';
+  limitType: "global" | "job_creation";
   retryAfter: number;
 
-  constructor(message: string, limitType: 'global' | 'job_creation', retryAfter: number) {
+  constructor(
+    message: string,
+    limitType: "global" | "job_creation",
+    retryAfter: number,
+  ) {
     super(message);
-    this.name = 'RateLimitError';
+    this.name = "RateLimitError";
     this.limitType = limitType;
     this.retryAfter = retryAfter;
   }
@@ -51,22 +55,22 @@ async function handleApiError(response: Response): Promise<never> {
   if (response.status === 429) {
     const data = await response.json().catch(() => ({}));
     throw new RateLimitErrorClass(
-      data.detail || 'Rate limit exceeded',
-      data.limit_type || 'global',
-      data.retry_after || 60
+      data.detail || "Rate limit exceeded",
+      data.limit_type || "global",
+      data.retry_after || 60,
     );
   }
-  
+
   // For other errors, throw a generic error
-  const errorText = await response.text().catch(() => 'Unknown error');
+  const errorText = await response.text().catch(() => "Unknown error");
   throw new Error(`API Error ${response.status}: ${errorText}`);
 }
 
 export async function fetchVideoMetadata(url: string): Promise<VideoMetadata> {
   const response = await fetch(`${BASE_URL}/api/v1/metadata`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({ url }),
   });
@@ -80,9 +84,9 @@ export async function fetchVideoMetadata(url: string): Promise<VideoMetadata> {
 
 export async function createJob(request: JobRequest): Promise<JobResponse> {
   const response = await fetch(`${BASE_URL}/api/v1/jobs`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(request),
   });
@@ -96,9 +100,9 @@ export async function createJob(request: JobRequest): Promise<JobResponse> {
 
 export async function getJobStatus(jobId: string): Promise<JobStatus> {
   const response = await fetch(`${BASE_URL}/api/v1/jobs/${jobId}`, {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
   });
 
@@ -113,7 +117,12 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
  * Check if an error is a rate limit error
  */
 export function isRateLimitError(error: unknown): error is RateLimitErrorClass {
-  return error !== null && typeof error === 'object' && 'isRateLimitError' in error && error.isRateLimitError === true;
+  return (
+    error !== null &&
+    typeof error === "object" &&
+    "isRateLimitError" in error &&
+    error.isRateLimitError === true
+  );
 }
 
 /**
@@ -121,15 +130,15 @@ export function isRateLimitError(error: unknown): error is RateLimitErrorClass {
  */
 export function formatRetryTime(seconds: number): string {
   if (seconds < 60) {
-    return `${seconds} second${seconds !== 1 ? 's' : ''}`;
+    return `${seconds} second${seconds !== 1 ? "s" : ""}`;
   }
-  
+
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
-  
+
   if (remainingSeconds === 0) {
-    return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+    return `${minutes} minute${minutes !== 1 ? "s" : ""}`;
   }
-  
+
   return `${minutes}m ${remainingSeconds}s`;
-} 
+}
