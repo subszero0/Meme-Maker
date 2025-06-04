@@ -9,6 +9,7 @@ import os
 
 class JobStatus(str, Enum):
     """Job status enumeration"""
+
     queued = "queued"
     working = "working"
     done = "done"
@@ -18,11 +19,12 @@ class JobStatus(str, Enum):
 @dataclass
 class ClipJob:
     """Dataclass for clip job data passed to RQ worker"""
+
     job_id: str
     url: str
     start_seconds: float
     end_seconds: float
-    
+
     def duration(self) -> float:
         """Calculate clip duration in seconds"""
         return self.end_seconds - self.start_seconds
@@ -30,6 +32,7 @@ class ClipJob:
 
 class Job(BaseModel):
     """Core job model for Redis storage"""
+
     id: str
     url: HttpUrl
     in_ts: Decimal = Field(gt=0)  # seconds
@@ -42,11 +45,16 @@ class Job(BaseModel):
 
 class JobCreate(BaseModel):
     """Request model for creating a new job"""
+
     url: HttpUrl
-    start: Union[str, float, int] = Field(..., description="Start time in hh:mm:ss format or seconds")
-    end: Union[str, float, int] = Field(..., description="End time in hh:mm:ss format or seconds")
+    start: Union[str, float, int] = Field(
+        ..., description="Start time in hh:mm:ss format or seconds"
+    )
+    end: Union[str, float, int] = Field(
+        ..., description="End time in hh:mm:ss format or seconds"
+    )
     accepted_terms: bool = Field(..., description="User agreement to Terms of Use")
-    
+
     @field_validator("start", "end", mode="before")
     @classmethod
     def _to_seconds(cls, v):
@@ -63,31 +71,33 @@ class JobCreate(BaseModel):
             return h * 3600 + m * 60 + s
         except ValueError:
             raise ValueError("Invalid time format - use hh:mm:ss or numeric seconds")
-    
+
     @field_validator("end")
     @classmethod
     def validate_clip_duration(cls, end_seconds, info):
         """Validate that clip duration doesn't exceed maximum allowed"""
         start_seconds = info.data.get("start", 0)
-        
+
         # Check that end > start
         if end_seconds <= start_seconds:
             raise ValueError("end time must be greater than start time")
-        
+
         # Check maximum clip duration using environment variable
-        MAX_CLIP_SECONDS = int(os.getenv("MAX_CLIP_SECONDS", "1800"))  # 30 minutes default
+        MAX_CLIP_SECONDS = int(
+            os.getenv("MAX_CLIP_SECONDS", "1800")
+        )  # 30 minutes default
         duration = end_seconds - start_seconds
-        
+
         if duration > MAX_CLIP_SECONDS:
             raise ValueError("Clip too long")
-        
+
         return end_seconds
-    
-    @property 
+
+    @property
     def start_seconds(self) -> float:
         """Get start time in seconds"""
         return self.start
-    
+
     @property
     def end_seconds(self) -> float:
         """Get end time in seconds"""
@@ -96,6 +106,7 @@ class JobCreate(BaseModel):
 
 class JobResponse(BaseModel):
     """Response model for job operations"""
+
     job_id: str
     status: JobStatus
     created_at: datetime
@@ -106,11 +117,13 @@ class JobResponse(BaseModel):
 
 class MetadataRequest(BaseModel):
     """Request model for fetching video metadata"""
+
     url: HttpUrl
 
 
 class MetadataResponse(BaseModel):
     """Response model for video metadata"""
+
     title: str
     duration: float  # seconds
     thumbnail_url: Optional[str] = None
@@ -119,4 +132,5 @@ class MetadataResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     """Response model for health check"""
-    status: str 
+
+    status: str

@@ -1,4 +1,4 @@
-# Storage utilities 
+# Storage utilities
 from .storage_interface import StorageInterface
 from .minio_storage import MinIOStorage
 
@@ -18,4 +18,4 @@ def get_storage() -> StorageInterface:
 def reset_storage() -> None:
     """Reset the storage instance (useful for testing)"""
     global _storage_instance
-    _storage_instance = None 
+    _storage_instance = None

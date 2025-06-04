@@ -9,7 +9,7 @@ from ..metrics_definitions import (
     QUEUE_DEPTH,
     JOB_DURATION,
     JOB_FAIL,
-    RATE_DENIED
+    RATE_DENIED,
 )
 
 # Then import the updater function
@@ -19,11 +19,11 @@ from .rq_updater import start_queue_metrics_updater
 __all__ = [
     "METRICS_AVAILABLE",
     "clip_job_latency_seconds",
-    "clip_jobs_inflight", 
+    "clip_jobs_inflight",
     "clip_jobs_queued_total",
     "QUEUE_DEPTH",
-    "JOB_DURATION", 
+    "JOB_DURATION",
     "JOB_FAIL",
     "RATE_DENIED",
-    "start_queue_metrics_updater"
-] 
+    "start_queue_metrics_updater",
+]

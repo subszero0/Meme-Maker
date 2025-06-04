@@ -6,6 +6,7 @@ This bypasses the full FastAPI test infrastructure to focus on model validation.
 
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "app"))
 
 from pydantic import ValidationError
@@ -18,9 +19,9 @@ def test_numeric_seconds():
         "url": "https://www.youtube.com/watch?v=test",
         "start": 10.5,
         "end": 70.25,
-        "accepted_terms": True
+        "accepted_terms": True,
     }
-    
+
     job = JobCreate(**job_data)
     assert job.start_seconds == 10.5
     assert job.end_seconds == 70.25
@@ -33,9 +34,9 @@ def test_integer_seconds():
         "url": "https://www.youtube.com/watch?v=test",
         "start": 15,
         "end": 75,
-        "accepted_terms": True
+        "accepted_terms": True,
     }
-    
+
     job = JobCreate(**job_data)
     assert job.start_seconds == 15.0
     assert job.end_seconds == 75.0
@@ -48,9 +49,9 @@ def test_string_timestamps():
         "url": "https://www.youtube.com/watch?v=test",
         "start": "00:00:10",
         "end": "00:01:10",
-        "accepted_terms": True
+        "accepted_terms": True,
     }
-    
+
     job = JobCreate(**job_data)
     assert job.start_seconds == 10.0
     assert job.end_seconds == 70.0
@@ -63,9 +64,9 @@ def test_fractional_string_timestamps():
         "url": "https://www.youtube.com/watch?v=test",
         "start": "00:00:10.5",
         "end": "00:01:10.25",
-        "accepted_terms": True
+        "accepted_terms": True,
     }
-    
+
     job = JobCreate(**job_data)
     assert job.start_seconds == 10.5
     assert job.end_seconds == 70.25
@@ -78,9 +79,9 @@ def test_invalid_string_format():
         "url": "https://www.youtube.com/watch?v=test",
         "start": "10:30",  # Missing seconds
         "end": "00:01:10",
-        "accepted_terms": True
+        "accepted_terms": True,
     }
-    
+
     try:
         job = JobCreate(**job_data)
         assert False, "Should have raised ValidationError"
@@ -95,9 +96,9 @@ def test_invalid_time_values():
         "url": "https://www.youtube.com/watch?v=test",
         "start": "00:00:abc",
         "end": "00:01:10",
-        "accepted_terms": True
+        "accepted_terms": True,
     }
-    
+
     try:
         job = JobCreate(**job_data)
         assert False, "Should have raised ValidationError"
@@ -108,13 +109,13 @@ def test_invalid_time_values():
 
 if __name__ == "__main__":
     print("Testing JobCreate model with numeric seconds...")
-    
+
     test_numeric_seconds()
     test_integer_seconds()
     test_string_timestamps()
     test_fractional_string_timestamps()
     test_invalid_string_format()
     test_invalid_time_values()
-    
+
     print("\nAll tests passed! ✅")
-    print("JobCreate model successfully accepts both numeric and string time formats.") 
+    print("JobCreate model successfully accepts both numeric and string time formats.")

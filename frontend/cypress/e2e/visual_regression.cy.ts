@@ -46,12 +46,15 @@ describe("Visual Regression Tests", () => {
   it("should capture URL Input Screen - Empty State", () => {
     cy.visit("/");
 
+    // Wait for Next.js hydration to complete
+    cy.window().should('have.property', 'next');
+    
     // Wait for page load and ensure stable state
     cy.get('[data-testid="url-input"]').should("be.visible");
-    cy.get("h1").should("contain", "Meme Maker");
+    cy.get("h1").should("contain", "Clip Downloader");
 
-    // Wait for any animations to settle
-    cy.wait(500);
+    // Wait for any animations and hydration to settle
+    cy.wait(1000);
 
     // Capture baseline snapshot
     cy.percySnapshot("URL Input – Empty State", {
@@ -73,6 +76,10 @@ describe("Visual Regression Tests", () => {
 
     cy.visit("/");
 
+    // Wait for hydration
+    cy.window().should('have.property', 'next');
+    cy.wait(1000);
+
     // Enter URL and submit
     cy.get('[data-testid="url-input"]')
       .should("be.visible")
@@ -82,7 +89,7 @@ describe("Visual Regression Tests", () => {
 
     // Wait for loading state to be visible
     cy.get('[data-testid="start-button"]').should("be.disabled");
-    cy.wait(200); // Allow loading animation to start
+    cy.wait(500); // Allow loading animation to start
 
     cy.percySnapshot("URL Input – Loading State", {
       widths: [375, 768, 1280],
@@ -91,6 +98,10 @@ describe("Visual Regression Tests", () => {
 
   it("should capture Trim Panel - Default State", () => {
     cy.visit("/");
+
+    // Wait for hydration
+    cy.window().should('have.property', 'next');
+    cy.wait(1000);
 
     // Enter URL and proceed to trim panel
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
@@ -103,8 +114,8 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="end-time"]').should("be.visible");
     cy.get('[data-testid="video-player"]').should("be.visible");
 
-    // Wait for any video player initialization
-    cy.wait(1000);
+    // Wait for any video player initialization and hydration
+    cy.wait(1500);
 
     cy.percySnapshot("Trim Panel – Default State", {
       widths: [375, 768, 1280],

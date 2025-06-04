@@ -25,14 +25,13 @@ def pytest_configure(config):
 def e2e_config():
     """
     E2E test configuration from environment variables.
-    
+
     Returns a dictionary with test configuration values.
     """
     return {
         "base_url": os.environ.get("BASE_URL", "http://localhost:8000"),
         "test_video_url": os.environ.get(
-            "TEST_VIDEO_URL", 
-            "https://www.youtube.com/watch?v=BaW_jenozKc"
+            "TEST_VIDEO_URL", "https://www.youtube.com/watch?v=BaW_jenozKc"
         ),
         "max_wait_timeout": int(os.environ.get("MAX_WAIT_TIMEOUT_SECONDS", "60")),
         "poll_interval": int(os.environ.get("POLL_INTERVAL_SECONDS", "2")),
@@ -44,7 +43,7 @@ def e2e_config():
 def skip_e2e():
     """
     Skip E2E tests if SKIP_E2E environment variable is set.
-    
+
     Useful for CI environments where external dependencies aren't available.
     """
     if os.environ.get("SKIP_E2E", "").lower() in ("true", "1", "yes"):
@@ -61,10 +60,10 @@ def test_timeout():
 def mock_storage(monkeypatch):
     """
     Fixture to patch get_storage to return InMemoryStorage.
-    
+
     Use this fixture in tests that need to mock storage operations.
     This is not autouse to avoid import issues with aioredis.
-    
+
     Example:
         def test_something(mock_storage):
             # mock_storage is an InMemoryStorage instance
@@ -73,17 +72,17 @@ def mock_storage(monkeypatch):
     """
     from app.utils.mock_storage import InMemoryStorage
     from app.utils import reset_storage
-    
+
     # Reset storage singleton to ensure clean state
     reset_storage()
-    
+
     # Create a fresh InMemoryStorage instance for this test
     mock_storage_instance = InMemoryStorage()
-    
+
     # Patch the get_storage function to return our mock
-    monkeypatch.setattr('app.utils.get_storage', lambda: mock_storage_instance)
-    
+    monkeypatch.setattr("app.utils.get_storage", lambda: mock_storage_instance)
+
     yield mock_storage_instance
-    
+
     # Clean up after the test
-    mock_storage_instance.clear() 
+    mock_storage_instance.clear()

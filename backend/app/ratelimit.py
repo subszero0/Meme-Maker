@@ -22,19 +22,17 @@ async def init_rate_limit() -> None:
     if settings.debug or settings.rate_limit.lower() == "off":
         print("Rate limiting disabled (debug mode or RATE_LIMIT=off)")
         return
-        
+
     try:
         # Create async Redis connection for rate limiting
         redis_client = redis.from_url(
-            settings.redis_url, 
-            encoding="utf-8", 
-            decode_responses=True
+            settings.redis_url, encoding="utf-8", decode_responses=True
         )
-        
+
         # Initialize FastAPI limiter
         await FastAPILimiter.init(redis_client)
         print("Rate limiting initialized successfully")
-        
+
     except Exception as e:
         print(f"Warning: Failed to initialize rate limiting: {str(e)}")
         raise
@@ -47,12 +45,12 @@ def get_client_ip(request: Request) -> str:
     if forwarded_for:
         # Take the first IP in the chain (original client)
         return forwarded_for.split(",")[0].strip()
-    
+
     # Check for real IP header
     real_ip = request.headers.get("X-Real-IP")
     if real_ip:
         return real_ip.strip()
-    
+
     # Fallback to direct connection IP
     return request.client.host if request.client else "unknown"
 
@@ -74,30 +72,24 @@ def create_job_limiter() -> Optional[RateLimiter]:
     # Skip rate limiting in debug mode or when explicitly disabled
     if settings.debug or settings.rate_limit.lower() == "off":
         return None
-    
+
     # Calculate requests per minute from hourly limit (round up)
     requests_per_minute = math.ceil(settings.max_jobs_per_hour / 60)
-    
-    return RateLimiter(
-        times=requests_per_minute,
-        seconds=60  # 1 minute window
-    )
+
+    return RateLimiter(times=requests_per_minute, seconds=60)  # 1 minute window
 
 
 # Global rate limiter: 10 requests per minute for all API routes
 global_limiter = RateLimiter(
     times=settings.global_rate_limit_requests,  # 10 requests
-    seconds=settings.global_rate_limit_window  # 60 seconds (1 minute)
+    seconds=settings.global_rate_limit_window,  # 60 seconds (1 minute)
 )
 
 # Create job creation limiter with configurable limits
 job_creation_limiter = create_job_limiter()
 
 # Legacy limiter for backward compatibility (can be removed later)
-clip_limiter = RateLimiter(
-    times=40, 
-    seconds=60*60*24  # 24 hours
-)
+clip_limiter = RateLimiter(times=40, seconds=60 * 60 * 24)  # 24 hours
 
 
 async def rate_limit_exception_handler(request: Request, exc: HTTPException) -> dict:
@@ -105,28 +97,32 @@ async def rate_limit_exception_handler(request: Request, exc: HTTPException) -> 
     # Increment rate limit denied metric if available
     if RATE_DENIED:
         RATE_DENIED.inc()
-    
+
     # Log rate limit event for monitoring
     client_ip = get_client_ip(request)
     path = request.url.path
     print(f"Rate limit exceeded: IP={client_ip}, Path={path}")
-    
+
     # Check if this is a rate limit exception
     if exc.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
         retry_after = exc.headers.get("Retry-After", "60")  # Default to 1 minute
         retry_after_int = int(retry_after) if retry_after.isdigit() else 60
-        
+
         # Determine rate limit type based on path
         if "/jobs" in path and request.method == "POST":
             detail_message = f"Job creation limit reached – you can create up to {settings.max_jobs_per_hour} clips per hour. Wait {retry_after_int} s."
         else:
             detail_message = f"Rate limit exceeded. You can make {settings.global_rate_limit_requests} requests per minute. Please try again in {retry_after_int} seconds."
-        
+
         return {
             "detail": detail_message,
             "retry_after": retry_after_int,
-            "limit_type": "job_creation" if "/jobs" in path and request.method == "POST" else "global"
+            "limit_type": (
+                "job_creation"
+                if "/jobs" in path and request.method == "POST"
+                else "global"
+            ),
         }
-    
+
     # For other exceptions, return original detail
-    return {"detail": exc.detail} 
+    return {"detail": exc.detail}

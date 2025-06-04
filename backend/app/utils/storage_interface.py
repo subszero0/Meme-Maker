@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 class StorageInterface(ABC):
     """Abstract interface for storage operations"""
-    
+
     @abstractmethod
     def upload(self, local_path: str, key: str) -> None:
         """Upload a file from local_path to the storage under key."""
@@ -17,4 +17,4 @@ class StorageInterface(ABC):
     @abstractmethod
     def delete(self, key: str) -> None:
         """Delete the object identified by key."""
-        pass 
+        pass

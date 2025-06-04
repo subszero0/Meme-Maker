@@ -1,6 +1,7 @@
 """
 Simple test to verify basic imports and app creation work.
 """
+
 import pytest
 from app.main import app
 
@@ -21,7 +22,7 @@ def test_health_endpoint_exists():
 def test_api_routes_exist():
     """Test that the main API routes are registered"""
     routes = [route.path for route in app.routes]
-    
+
     # Check for API v1 routes
     api_routes = [route for route in routes if route.startswith("/api/v1")]
-    assert len(api_routes) > 0, "API v1 routes should be registered" 
+    assert len(api_routes) > 0, "API v1 routes should be registered"

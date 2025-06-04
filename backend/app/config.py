@@ -6,45 +6,50 @@ import os
 
 class Settings(BaseSettings):
     """Application settings with environment variable support"""
-    
+
     model_config = ConfigDict(env_file=".env")
-    
+
     # Application
     debug: bool = False
-    
+
     # Redis Configuration
     redis_url: str = "redis://localhost:6379"
     redis_db: int = 0
-    
+
     # Rate Limiting Configuration
     global_rate_limit_requests: int = 10  # requests per minute globally
     global_rate_limit_window: int = 60  # 1 minute
     job_rate_limit_requests: int = 3  # job creations per hour
     job_rate_limit_window: int = 3600  # 1 hour
-    
+
     # New configurable rate limiting
     max_jobs_per_hour: int = int(os.getenv("MAX_JOBS_PER_HOUR", "20"))
     rate_limit: str = os.getenv("RATE_LIMIT", "on")  # "on" or "off"
-    
+
     # Clip length configuration
-    max_clip_seconds: int = int(os.getenv("MAX_CLIP_SECONDS", "1800"))  # 30 minutes default
-    
-    # MinIO/S3 Configuration  
+    max_clip_seconds: int = int(
+        os.getenv("MAX_CLIP_SECONDS", "1800")
+    )  # 30 minutes default
+
+    # MinIO/S3 Configuration
     aws_access_key_id: str = "admin"
     aws_secret_access_key: str = "admin12345"
-    aws_region: str = "ap-south-1" 
+    aws_region: str = "ap-south-1"
     aws_endpoint_url: str = "http://minio:9000"  # MinIO endpoint within Docker network
     s3_bucket: str = "clips"
-    
+
     # Worker Configuration
     max_concurrent_jobs: int = 20
     job_timeout: int = 300  # 5 minutes
     yt_dlp_path: str = "/usr/local/bin/yt-dlp"
     ffmpeg_path: str = "/usr/local/bin/ffmpeg"
-    
+
     # Security
-    cors_origins: Union[str, list[str]] = ["http://localhost:3000", "http://localhost:8000"]
-    
+    cors_origins: Union[str, list[str]] = [
+        "http://localhost:3000",
+        "http://localhost:8000",
+    ]
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def validate_cors_origins(cls, v):
@@ -56,4 +61,4 @@ class Settings(BaseSettings):
         return v
 
 
-settings = Settings() 
+settings = Settings()
