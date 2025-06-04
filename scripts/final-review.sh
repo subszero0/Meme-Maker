@@ -54,13 +54,21 @@ fi
 # Change to frontend directory for most operations
 cd frontend
 
+echo -e "${BLUE}📦 Installing frontend dependencies...${NC}"
+# Ensure all dependencies are properly installed before building
+npm ci --production=false --legacy-peer-deps --no-audit --no-fund || {
+    echo -e "${YELLOW}⚠️  npm ci failed, trying with cache clean...${NC}"
+    npm cache clean --force
+    npm install --production=false --legacy-peer-deps --no-audit --no-fund
+}
+
 echo -e "${BLUE}🏗️  Building frontend for testing...${NC}"
-# Use npx to ensure we can find the next binary
-npx next build
+# Use npm run build instead of npx to use local dependencies
+npm run build
 
 # Start local server for testing
 echo -e "${BLUE}🌐 Starting local server...${NC}"
-npx next start &
+npm run start &
 SERVER_PID=$!
 sleep 5
 

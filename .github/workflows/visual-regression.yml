@@ -43,9 +43,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/Cypress
-          key: cypress-cache-v2-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+          key: cypress-cache-v3-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
           restore-keys: |
-            cypress-cache-v2-${{ runner.os }}-
+            cypress-cache-v3-${{ runner.os }}-
 
       - name: Install frontend dependencies
         run: |
@@ -72,17 +72,14 @@ jobs:
         timeout-minutes: 8
 
       - name: Install Cypress binary
-        if: steps.cache-cypress.outputs.cache-hit != 'true'
         run: |
           cd frontend
-          # Ensure Cypress binary is installed
+          # Always install Cypress binary to ensure it's available
+          echo "Installing Cypress binary..."
           npx cypress install --force
-        timeout-minutes: 5
-
-      - name: Verify Cypress installation
-        run: |
-          cd frontend
+          echo "Verifying Cypress installation..."
           npx cypress verify
+        timeout-minutes: 5
 
       - name: Install backend dependencies
         run: |
