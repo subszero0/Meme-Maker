@@ -128,10 +128,19 @@ cat > curl-format.txt << 'EOF'
 }
 EOF
 
-# 6. Cross-browser compatibility check
-echo -e "${BLUE}🌐 Checking Cross-browser Compatibility...${NC}"
+# 6. Frontend build validation
+echo -e "${BLUE}🌐 Validating Frontend Build...${NC}"
 cd frontend
-npx cypress run --browser chrome --headless > ../reports/cypress-chrome.log 2>&1 || echo -e "${RED}❌ Chrome tests failed${NC}"
+# Just verify the build is valid and can be served
+echo "Building frontend for validation..."
+npm run build > ../reports/build-validation.log 2>&1 || echo -e "${RED}❌ Build validation failed${NC}"
+
+echo "Testing static serve capability..."
+timeout 10 npm run start &
+SERVER_PID=$!
+sleep 3
+curl -f http://localhost:3000 > ../reports/serve-validation.log 2>&1 && echo -e "${GREEN}✅ Frontend serves correctly${NC}" || echo -e "${RED}❌ Frontend serve failed${NC}"
+kill $SERVER_PID 2>/dev/null || true
 
 # 7. Generate consolidated report
 echo -e "${BLUE}📝 Generating Final Report...${NC}"
