@@ -63,10 +63,12 @@ describe("Visual Regression Tests", () => {
 
     // Wait for app to be ready by checking main components
     // Use more flexible selectors that work with static builds
-    cy.get('[data-testid="url-input"], input[type="text"], input[type="url"]', { timeout: 15000 })
+    cy.get('[data-testid="url-input"], input[type="text"], input[type="url"]', {
+      timeout: 15000,
+    })
       .first()
       .should("be.visible");
-    
+
     // Check for heading - be more flexible about the text
     cy.get("h1, h2, .title, [role='heading']", { timeout: 10000 })
       .first()

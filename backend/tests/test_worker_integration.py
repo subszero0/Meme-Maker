@@ -129,10 +129,27 @@ class TestWorkerPipelineLogic:
         def find_nearest_keyframe(video_path: str, timestamp: float) -> float:
             """
             Find the nearest keyframe to a given timestamp
-            using ffprobe
+            using ffprobe (mocked implementation for testing)
             """
-            # Mock implementation for testing
-            return timestamp  # Simplified for test
+            try:
+                # Use the mock subprocess that returns the predefined keyframe data
+                result = mock_subprocess([], capture_output=True, text=True, check=True)
+                
+                keyframes = []
+                for line in result.stdout.strip().split("\n"):
+                    if line:
+                        parts = line.split(",")
+                        if len(parts) >= 2 and parts[1] == "1":  # key_frame=1
+                            try:
+                                keyframe_time = float(parts[0])
+                                if keyframe_time <= timestamp:
+                                    keyframes.append(keyframe_time)
+                            except ValueError:
+                                continue
+
+                return max(keyframes) if keyframes else 0.0
+            except Exception:
+                return timestamp
 
         # Test finding keyframe before timestamp
         result = find_nearest_keyframe("/fake/path", 3.5)
