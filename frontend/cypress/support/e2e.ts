@@ -28,6 +28,15 @@ Cypress.on("uncaught:exception", (err, runnable) => {
     return false;
   }
 
+  // Ignore WebGL and system-level errors common in CI environments
+  if (err.message.includes("WebGL")) {
+    return false;
+  }
+
+  if (err.message.includes("UPower")) {
+    return false;
+  }
+
   // Allow other errors to fail the test
   return true;
 });
@@ -36,6 +45,7 @@ Cypress.on("uncaught:exception", (err, runnable) => {
 beforeEach(() => {
   // Wait for React/Next.js app to be ready by checking for the main app container
   // This works for both development and production builds
-  cy.get("body").should("be.visible");
-  cy.wait(500); // Allow time for initial hydration/rendering to complete
+  // Increase timeout for slower CI environments
+  cy.get("body", { timeout: 10000 }).should("be.visible");
+  cy.wait(1000); // Allow time for initial hydration/rendering to complete
 });
