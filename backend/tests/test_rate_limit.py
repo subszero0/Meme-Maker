@@ -41,7 +41,6 @@ class TestRateLimiting:
                 new_callable=lambda: AsyncMock(return_value=None),
             ),
         ):
-
             # Make requests up to the limit
             for i in range(settings.global_rate_limit_requests):
                 response = client.post(
@@ -73,7 +72,6 @@ class TestRateLimiting:
             patch("app.api.jobs.redis") as mock_redis,
             patch("app.api.jobs.q.enqueue") as mock_enqueue,
         ):
-
             # Configure mocks
             mock_enqueue.return_value.id = "test-job-id"
 
@@ -109,7 +107,6 @@ class TestRateLimiting:
                 new_callable=lambda: AsyncMock(return_value=None),
             ),
         ):
-
             # Make enough requests to trigger rate limit
             for _ in range(15):  # Exceed global limit
                 response = client.post(
@@ -145,7 +142,6 @@ class TestRateLimiting:
             patch("app.api.jobs.redis") as mock_redis,
             patch("app.api.jobs.q.enqueue") as mock_enqueue,
         ):
-
             # Configure mocks
             mock_enqueue.return_value.id = "test-job-id"
 
@@ -274,7 +270,6 @@ class TestRateLimiting:
                 new_callable=lambda: AsyncMock(return_value=None),
             ),
         ):
-
             # Make enough requests to trigger rate limit
             for _ in range(15):
                 response = client.post(
