@@ -328,7 +328,7 @@ describe.skip('useJobPoller', () => {
   });
 
   it('includes poll interval test element for timing assertions', () => {
-    const { result } = renderHook(() => useJobPoller('test-job'), {
+    renderHook(() => useJobPoller('test-job'), {
       wrapper: Wrapper
     });
 

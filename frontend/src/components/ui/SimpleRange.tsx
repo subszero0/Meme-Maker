@@ -25,8 +25,8 @@ export default function SimpleRange({
   const [isDragging, setIsDragging] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
 
-  const getPercentage = (value: number) => ((value - min) / (max - min)) * 100;
-  const getValueFromPercentage = (percentage: number) => min + (percentage / 100) * (max - min);
+  const getPercentage = useCallback((value: number) => ((value - min) / (max - min)) * 100, [min, max]);
+  const getValueFromPercentage = useCallback((percentage: number) => min + (percentage / 100) * (max - min), [min, max]);
 
   const handleMouseDown = useCallback((index: number, event: React.MouseEvent) => {
     event.preventDefault();

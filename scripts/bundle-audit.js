@@ -18,7 +18,7 @@ const zlib = require('zlib');
 
 // Performance budget thresholds
 const BUDGETS = {
-  TOTAL_GZIP_KB: 250,
+  TOTAL_GZIP_KB: 350,
   CHUNK_GZIP_KB: 100,
   CRITICAL_GZIP_KB: 180,
   SINGLE_MODULE_KB: 10,

@@ -84,6 +84,7 @@ export default function ToastProvider({ children }: ToastProviderProps) {
                   duration={4000}
                   onClose={() => removeToast(toast.id)}
                   data-cy="toast"
+                  data-testid="toast"
                 />
               </div>
             ))}
