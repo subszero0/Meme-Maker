@@ -19,6 +19,9 @@ export NPM_CONFIG_FUND=false
 export NPM_CONFIG_SILENT=true
 export NPM_CONFIG_PROGRESS=false
 export NPM_CONFIG_CACHE=$(pwd)/.npm-cache
+# Prevent Cypress from opening GUI during installation
+export CYPRESS_CACHE_FOLDER=/tmp/cypress-cache
+export CI=true
 
 # Configuration
 TIMEOUT=${1:-180}  # Default 3 minutes, can be overridden

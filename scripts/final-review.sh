@@ -8,6 +8,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Ensure we're in CI mode to prevent interactive tools from opening
+export CI=true
+
 echo -e "${BLUE}🚀 Starting Final Pre-Launch Review...${NC}"
 
 # Create reports directory
@@ -63,6 +66,9 @@ cd frontend
 echo -e "${BLUE}📦 Installing frontend dependencies...${NC}"
 # Use the robust npm installation script
 chmod +x ../scripts/install-npm-deps.sh
+# Ensure Cypress doesn't try to open during installation
+export CYPRESS_CACHE_FOLDER=/tmp/cypress-cache
+export DISPLAY=:99.0 2>/dev/null || true
 ../scripts/install-npm-deps.sh 180 .
 
 echo -e "${GREEN}✅ Dependencies installed successfully${NC}"
