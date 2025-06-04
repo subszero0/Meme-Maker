@@ -75,7 +75,10 @@ describe('Home Page Flow', () => {
       duration: 120,
     };
 
-    mockFetchVideoMetadata.mockResolvedValue(mockMetadata);
+    // Add a small delay to better simulate the loading state
+    mockFetchVideoMetadata.mockImplementation(() => 
+      new Promise(resolve => setTimeout(() => resolve(mockMetadata), 100))
+    );
 
     renderWithToast(<Home />);
 
@@ -86,8 +89,10 @@ describe('Home Page Flow', () => {
     await user.type(urlInput, 'https://youtube.com/watch?v=test');
     await user.click(submitBtn);
 
-    // Should show loading state
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    // Wait for and check loading state
+    await waitFor(() => {
+      expect(screen.getByText('Loading...')).toBeInTheDocument();
+    });
 
     // Wait for transition to trim state
     await waitFor(() => {

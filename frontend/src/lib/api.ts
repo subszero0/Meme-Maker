@@ -27,16 +27,16 @@ export interface JobStatus {
 
 export interface RateLimitError extends Error {
   isRateLimitError: true;
-  limitType: 'requests' | 'jobs';
+  limitType: 'global' | 'job_creation';
   retryAfter: number;
 }
 
 export class RateLimitErrorClass extends Error implements RateLimitError {
   isRateLimitError = true as const;
-  limitType: 'requests' | 'jobs';
+  limitType: 'global' | 'job_creation';
   retryAfter: number;
 
-  constructor(message: string, limitType: 'requests' | 'jobs', retryAfter: number) {
+  constructor(message: string, limitType: 'global' | 'job_creation', retryAfter: number) {
     super(message);
     this.name = 'RateLimitError';
     this.limitType = limitType;
@@ -112,8 +112,8 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
 /**
  * Check if an error is a rate limit error
  */
-export function isRateLimitError(error: any): error is RateLimitErrorClass {
-  return error && error.isRateLimitError === true;
+export function isRateLimitError(error: unknown): error is RateLimitErrorClass {
+  return error !== null && typeof error === 'object' && 'isRateLimitError' in error && error.isRateLimitError === true;
 }
 
 /**

@@ -38,7 +38,7 @@ export default function SimpleRange({
       const handleX = (getPercentage(values[index]) / 100) * rect.width;
       setDragOffset(clickX - handleX);
     }
-  }, [values]);
+  }, [values, getPercentage]);
 
   const handleMouseMove = useCallback((event: MouseEvent) => {
     if (isDragging === null || !trackRef.current) return;
@@ -57,7 +57,7 @@ export default function SimpleRange({
     }
 
     onChange(newValues);
-  }, [isDragging, dragOffset, values, min, max, step, onChange]);
+  }, [isDragging, dragOffset, values, min, max, step, onChange, getValueFromPercentage]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(null);

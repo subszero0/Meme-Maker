@@ -111,7 +111,7 @@ export default function useJobPoller(
         });
       }
     }
-  }, [jobId, cleanup, pushToast]);
+  }, [jobId, cleanup, pushToast, pollIntervalMs]);
 
   useEffect(() => {
     if (!jobId) {
