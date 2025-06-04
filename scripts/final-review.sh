@@ -80,7 +80,7 @@ sleep 3
 
 # Serve the static export on port 3000
 echo "📍 Starting serve on port 3000..."
-npx serve@latest out -l 3000 --no-clipboard --silent &
+npx serve@latest out -l 3000 --no-clipboard &
 SERVER_PID=$!
 echo "🔍 Server PID: $SERVER_PID"
 
@@ -93,7 +93,7 @@ for i in {1..60}; do  # Increased timeout to 60 attempts (2 minutes)
         echo "❌ Server process died unexpectedly"
         # Try to restart once
         echo "🔄 Attempting to restart server..."
-        npx serve@latest out -l 3000 --no-clipboard --silent &
+        npx serve@latest out -l 3000 --no-clipboard &
         SERVER_PID=$!
         sleep 5
     fi
