@@ -74,7 +74,7 @@ echo -e "${GREEN}✅ Dependencies installed successfully${NC}"
 echo -e "${BLUE}🔧 Verifying Cypress binary...${NC}"
 if ! npx cypress verify --silent >/dev/null 2>&1; then
     echo -e "${YELLOW}⚠️  Cypress binary missing, installing...${NC}"
-    npx cypress install --silent
+    npx cypress install
 fi
 
 echo -e "${BLUE}🏗️  Building frontend for testing...${NC}"
