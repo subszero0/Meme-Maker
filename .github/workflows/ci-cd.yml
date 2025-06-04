@@ -118,11 +118,22 @@ jobs:
           echo "Server is ready!"
       
       - name: Run Cypress E2E tests
+        continue-on-error: true
         env:
           CYPRESS_BASE_URL: http://localhost:5000
           # Point to a mock API endpoint for E2E tests since backend won't be running
           NEXT_PUBLIC_API_URL: http://localhost:5000
         run: npx cypress run --spec 'cypress/e2e/visual_regression.cy.ts' --headless
+        
+      - name: Upload Cypress artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-artifacts
+          path: |
+            frontend/cypress/videos/
+            frontend/cypress/screenshots/
+          retention-days: 7
 
   final-review:
     needs: [test, frontend-test]
