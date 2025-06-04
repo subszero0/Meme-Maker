@@ -55,11 +55,12 @@ fi
 cd frontend
 
 echo -e "${BLUE}🏗️  Building frontend for testing...${NC}"
-npm run build
+# Use npx to ensure we can find the next binary
+npx next build
 
 # Start local server for testing
 echo -e "${BLUE}🌐 Starting local server...${NC}"
-npm run start &
+npx next start &
 SERVER_PID=$!
 sleep 5
 

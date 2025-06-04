@@ -46,10 +46,7 @@ describe("Visual Regression Tests", () => {
   it("should capture URL Input Screen - Empty State", () => {
     cy.visit("/");
 
-    // Wait for Next.js hydration to complete
-    cy.window().should('have.property', 'next');
-    
-    // Wait for page load and ensure stable state
+    // Wait for app to be ready by checking main components
     cy.get('[data-testid="url-input"]').should("be.visible");
     cy.get("h1").should("contain", "Clip Downloader");
 
@@ -76,8 +73,8 @@ describe("Visual Regression Tests", () => {
 
     cy.visit("/");
 
-    // Wait for hydration
-    cy.window().should('have.property', 'next');
+    // Wait for app to be ready
+    cy.get('[data-testid="url-input"]').should("be.visible");
     cy.wait(1000);
 
     // Enter URL and submit
@@ -99,8 +96,8 @@ describe("Visual Regression Tests", () => {
   it("should capture Trim Panel - Default State", () => {
     cy.visit("/");
 
-    // Wait for hydration
-    cy.window().should('have.property', 'next');
+    // Wait for app to be ready
+    cy.get('[data-testid="url-input"]').should("be.visible");
     cy.wait(1000);
 
     // Enter URL and proceed to trim panel
