@@ -141,7 +141,19 @@ jobs:
           chmod +x ../scripts/install-npm-deps.sh
           ../scripts/install-npm-deps.sh 180 .
         timeout-minutes: 5
-      
+        env:
+          CI: true
+          DISPLAY: ""
+          ELECTRON_ENABLE_LOGGING: false
+          CYPRESS_CRASH_REPORTS: 0
+
+      - name: Complete Cypress setup
+        run: npx cypress install --force
+        env:
+          CI: true
+          DISPLAY: ""
+          CYPRESS_CRASH_REPORTS: 0
+
       - name: Run unit tests
         run: npm test
       
@@ -307,9 +319,16 @@ jobs:
           DISPLAY: ""
           ELECTRON_ENABLE_LOGGING: false
           CYPRESS_CRASH_REPORTS: 0
-      
+
+      - name: Complete Cypress setup
+        run: npx cypress install --force
+        env:
+          CI: true
+          DISPLAY: ""
+          CYPRESS_CRASH_REPORTS: 0
+
       - name: Run Cypress smoke tests against staging
-        run: npx cypress run --spec 'cypress/e2e/visual_regression.cy.ts'
+        run: npx cypress run --headless --spec 'cypress/e2e/visual_regression.cy.ts'
         env:
           CYPRESS_BASE_URL: https://${{ secrets.STAGING_DOMAIN || 'staging.memeit.pro' }}
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
