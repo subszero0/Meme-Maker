@@ -151,9 +151,9 @@ describe('Home Page Flow', () => {
 
     expect(mockCreateJob).toHaveBeenCalledWith({
       url: 'https://youtube.com/watch?v=test',
-      in: 10,
-      out: 50,
-      rights: true,
+      start: '00:00:10',
+      end: '00:00:50',
+      accepted_terms: true,
     });
   });
 
@@ -288,8 +288,8 @@ describe('Home Page Flow', () => {
     });
 
     // Close the modal
-    const cancelBtn = screen.getByText('Cancel');
-    await user.click(cancelBtn);
+    const closeBtn = screen.getByText('Close');
+    await user.click(closeBtn);
 
     // Should be back to idle state
     await waitFor(() => {

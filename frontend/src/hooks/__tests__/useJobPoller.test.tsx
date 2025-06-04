@@ -10,6 +10,16 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 const mockApiUrl = 'http://localhost:8000'; // Use default URL for tests
 
+// Mock fetch globally with proper typing
+const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+global.fetch = mockFetch;
+
+// Mock response helper with proper typing
+const createMockResponse = (data: unknown, status = 200) => ({
+  data,
+  status
+});
+
 // Test wrapper with ToastProvider
 const Wrapper = ({ children }: { children: ReactNode }) => (
   <ToastProvider>{children}</ToastProvider>

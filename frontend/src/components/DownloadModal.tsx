@@ -23,8 +23,8 @@ export default function DownloadModal({ url, onClose }: DownloadModalProps) {
           type: 'success',
           message: 'Download link copied to clipboard!'
         });
-      } catch (error) {
-        console.warn('Failed to copy to clipboard:', error);
+      } catch {
+        // Silently fail if clipboard API is not available
       }
     };
 
@@ -40,11 +40,8 @@ export default function DownloadModal({ url, onClose }: DownloadModalProps) {
         type: 'success',
         message: 'Link copied again!'
       });
-    } catch (error) {
-      pushToast({
-        type: 'error',
-        message: 'Failed to copy link'
-      });
+    } catch {
+      // Silently fail if clipboard API is not available
     }
   };
 

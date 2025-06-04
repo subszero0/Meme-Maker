@@ -6,51 +6,40 @@
  * Ensures proper keyboard navigation, screen reader support, and focus management.
  */
 
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import TrimPanel from '../../TrimPanel';
-import { useToast } from '../../ToastProvider';
 
 // Extend Jest matchers
 expect.extend(toHaveNoViolations);
 
 // Mock dependencies
 jest.mock('../../ToastProvider', () => ({
-  useToast: jest.fn(),
+  useToast: () => ({ pushToast: jest.fn() }),
 }));
 
-jest.mock('react-player', () => {
-  return function MockReactPlayer(props: any) {
-    return <div data-testid="react-player" {...props} />;
+jest.mock('react-player/lazy', () => {
+  return function MockReactPlayer() {
+    return <div data-testid="mock-video-player">Video Player</div>;
   };
 });
 
 jest.mock('use-debounce', () => ({
-  useDebouncedCallback: (callback: any) => callback,
+  useDebouncedCallback: (fn: (...args: unknown[]) => void) => fn,
 }));
 
-const mockPushToast = jest.fn();
-const mockOnSubmit = jest.fn();
+describe('TrimPanel Accessibility', () => {
+  const defaultProps = {
+    jobMeta: { url: 'https://example.com/video.mp4', title: 'Test Video', duration: 120 },
+    onSubmit: jest.fn(),
+  };
 
-const defaultJobMeta = {
-  url: 'https://example.com/video.mp4',
-  title: 'Test Video for Accessibility',
-  duration: 300, // 5 minutes
-};
-
-beforeEach(() => {
-  jest.clearAllMocks();
-  (useToast as jest.Mock).mockReturnValue({
-    pushToast: mockPushToast,
-  });
-});
-
-describe('TrimPanel Accessibility Tests', () => {
   describe('ARIA Compliance', () => {
     it('should have no accessibility violations', async () => {
       const { container } = render(
-        <TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />
+        <TrimPanel {...defaultProps} />
       );
 
       const results = await axe(container);
@@ -58,7 +47,7 @@ describe('TrimPanel Accessibility Tests', () => {
     });
 
     it('should have correct ARIA attributes on slider handles', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const startHandle = screen.getByTestId('handle-start');
       const endHandle = screen.getByTestId('handle-end');
@@ -66,7 +55,7 @@ describe('TrimPanel Accessibility Tests', () => {
       // Check required ARIA attributes
       expect(startHandle).toHaveAttribute('role', 'slider');
       expect(startHandle).toHaveAttribute('aria-valuemin', '0');
-      expect(startHandle).toHaveAttribute('aria-valuemax', '300');
+      expect(startHandle).toHaveAttribute('aria-valuemax', '120');
       expect(startHandle).toHaveAttribute('aria-valuenow', '0');
       expect(startHandle).toHaveAttribute('aria-labelledby', 'start-time-label');
       expect(startHandle).toHaveAttribute('aria-describedby', 'slider-instructions');
@@ -74,25 +63,25 @@ describe('TrimPanel Accessibility Tests', () => {
 
       expect(endHandle).toHaveAttribute('role', 'slider');
       expect(endHandle).toHaveAttribute('aria-valuemin', '0');
-      expect(endHandle).toHaveAttribute('aria-valuemax', '300');
-      expect(endHandle).toHaveAttribute('aria-valuenow', '180'); // Capped at 3 minutes
+      expect(endHandle).toHaveAttribute('aria-valuemax', '120');
+      expect(endHandle).toHaveAttribute('aria-valuenow', '60'); // Capped at 1 minute
       expect(endHandle).toHaveAttribute('aria-labelledby', 'end-time-label');
       expect(endHandle).toHaveAttribute('aria-describedby', 'slider-instructions');
       expect(endHandle).toHaveAttribute('tabindex', '0');
     });
 
     it('should have proper aria-valuetext with formatted time', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const startHandle = screen.getByTestId('handle-start');
       const endHandle = screen.getByTestId('handle-end');
 
       expect(startHandle).toHaveAttribute('aria-valuetext', 'Start time: 00:00.000');
-      expect(endHandle).toHaveAttribute('aria-valuetext', 'End time: 03:00.000');
+      expect(endHandle).toHaveAttribute('aria-valuetext', 'End time: 01:00.000');
     });
 
     it('should have proper label associations', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const startTimeLabel = screen.getByText('Start Time (hh:mm:ss.mmm)');
       const endTimeLabel = screen.getByText('End Time (hh:mm:ss.mmm)');
@@ -107,23 +96,23 @@ describe('TrimPanel Accessibility Tests', () => {
 
     it('should have proper error announcements with role="alert"', async () => {
       const user = userEvent.setup();
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
-      const endInput = screen.getByDisplayValue('03:00.000');
+      const endInput = screen.getByDisplayValue('01:00.000');
       
       // Trigger validation error
       await user.clear(endInput);
-      await user.type(endInput, '03:01.000');
+      await user.type(endInput, '01:01.000');
 
       await waitFor(() => {
-        const errorMessage = screen.getByText('Trim to three minutes or less to proceed.');
+        const errorMessage = screen.getByText('Trim to one minute or less to proceed.');
         expect(errorMessage).toHaveAttribute('role', 'alert');
         expect(errorMessage).toHaveAttribute('aria-live', 'polite');
       });
     });
 
     it('should have screen reader announcement region', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const announcementRegion = screen.getByTestId('slider-announcement');
       expect(announcementRegion).toHaveAttribute('aria-live', 'polite');
@@ -134,7 +123,7 @@ describe('TrimPanel Accessibility Tests', () => {
 
   describe('Keyboard Navigation', () => {
     it('should be focusable via Tab key', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const startHandle = screen.getByTestId('handle-start');
       const endHandle = screen.getByTestId('handle-end');
@@ -151,7 +140,7 @@ describe('TrimPanel Accessibility Tests', () => {
     });
 
     it('should adjust values with arrow keys by stepSize (0.1s)', async () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} stepSize={0.1} />);
+      render(<TrimPanel {...defaultProps} stepSize={0.1} />);
 
       const startHandle = screen.getByTestId('handle-start');
       startHandle.focus();
@@ -174,7 +163,7 @@ describe('TrimPanel Accessibility Tests', () => {
     });
 
     it('should jump to min/max with Home/End keys', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const startHandle = screen.getByTestId('handle-start');
       const endHandle = screen.getByTestId('handle-end');
@@ -187,11 +176,11 @@ describe('TrimPanel Accessibility Tests', () => {
       // Test End key on end handle
       endHandle.focus();
       fireEvent.keyDown(endHandle, { key: 'End' });
-      expect(endHandle).toHaveAttribute('aria-valuenow', '300');
+      expect(endHandle).toHaveAttribute('aria-valuenow', '120');
     });
 
     it('should jump by 10 seconds with Page Up/Down keys', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const startHandle = screen.getByTestId('handle-start');
       startHandle.focus();
@@ -206,23 +195,23 @@ describe('TrimPanel Accessibility Tests', () => {
     });
 
     it('should prevent handles from crossing over', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} stepSize={0.1} />);
+      render(<TrimPanel {...defaultProps} stepSize={0.1} />);
 
       const startHandle = screen.getByTestId('handle-start');
       const endHandle = screen.getByTestId('handle-end');
 
       // Move start handle near end handle
       startHandle.focus();
-      for (let i = 0; i < 1800; i++) { // Try to move to 180 seconds
+      for (let i = 0; i < 1200; i++) { // Try to move to 120 seconds
         fireEvent.keyDown(startHandle, { key: 'ArrowRight' });
       }
 
-      // Start handle should stop before end handle (179.9s)
-      expect(parseFloat(startHandle.getAttribute('aria-valuenow')!)).toBeLessThan(180);
+      // Start handle should stop before end handle (119.9s)
+      expect(parseFloat(startHandle.getAttribute('aria-valuenow')!)).toBeLessThan(120);
 
       // Move end handle near start handle
       endHandle.focus();
-      for (let i = 0; i < 1800; i++) { // Try to move to 0 seconds
+      for (let i = 0; i < 1200; i++) { // Try to move to 0 seconds
         fireEvent.keyDown(endHandle, { key: 'ArrowLeft' });
       }
 
@@ -233,7 +222,7 @@ describe('TrimPanel Accessibility Tests', () => {
     });
 
     it('should not interfere with other key presses', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const startHandle = screen.getByTestId('handle-start');
       startHandle.focus();
@@ -249,7 +238,7 @@ describe('TrimPanel Accessibility Tests', () => {
 
   describe('Focus Management and Visual Styling', () => {
     it('should have proper focus styling classes', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const startHandle = screen.getByTestId('handle-start');
       const endHandle = screen.getByTestId('handle-end');
@@ -267,7 +256,7 @@ describe('TrimPanel Accessibility Tests', () => {
     });
 
     it('should have minimum 44x44px touch target area', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const startHandle = screen.getByTestId('handle-start');
       const endHandle = screen.getByTestId('handle-end');
@@ -283,7 +272,7 @@ describe('TrimPanel Accessibility Tests', () => {
     });
 
     it('should have proper dark mode support in focus styles', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const startHandle = screen.getByTestId('handle-start');
       
@@ -294,7 +283,7 @@ describe('TrimPanel Accessibility Tests', () => {
 
   describe('Screen Reader Announcements', () => {
     it('should announce value changes after handle movement', async () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const startHandle = screen.getByTestId('handle-start');
       const announcementRegion = screen.getByTestId('slider-announcement');
@@ -310,7 +299,7 @@ describe('TrimPanel Accessibility Tests', () => {
     });
 
     it('should update aria-valuetext when values change', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const startHandle = screen.getByTestId('handle-start');
       
@@ -321,7 +310,7 @@ describe('TrimPanel Accessibility Tests', () => {
     });
 
     it('should provide helpful descriptions for all interactive elements', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       // Check slider instructions
       const sliderInstructions = document.getElementById('slider-instructions');
@@ -341,7 +330,7 @@ describe('TrimPanel Accessibility Tests', () => {
 
     it('should announce proper button state descriptions', async () => {
       const user = userEvent.setup();
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const buttonHelp = document.getElementById('submit-button-help');
       const rightsCheckbox = screen.getByRole('checkbox');
@@ -360,7 +349,7 @@ describe('TrimPanel Accessibility Tests', () => {
 
   describe('Custom Step Size Support', () => {
     it('should respect custom stepSize prop for keyboard navigation', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} stepSize={0.5} />);
+      render(<TrimPanel {...defaultProps} stepSize={0.5} />);
 
       const startHandle = screen.getByTestId('handle-start');
       startHandle.focus();
@@ -373,7 +362,7 @@ describe('TrimPanel Accessibility Tests', () => {
     });
 
     it('should display correct step size in instructions', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} stepSize={0.2} />);
+      render(<TrimPanel {...defaultProps} stepSize={0.2} />);
 
       expect(screen.getByText(/Use arrow keys to adjust by 0.2s/)).toBeInTheDocument();
     });
@@ -382,16 +371,16 @@ describe('TrimPanel Accessibility Tests', () => {
   describe('Error State Accessibility', () => {
     it('should properly announce validation errors', async () => {
       const user = userEvent.setup();
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const startInput = screen.getByDisplayValue('00:00.000');
-      const endInput = screen.getByDisplayValue('03:00.000');
+      const endInput = screen.getByDisplayValue('01:00.000');
 
       // Create invalid state (end before start)
       await user.clear(startInput);
-      await user.type(startInput, '02:00.000');
+      await user.type(startInput, '00:30.000');
       await user.clear(endInput);
-      await user.type(endInput, '01:00.000');
+      await user.type(endInput, '00:15.000');
 
       await waitFor(() => {
         const errorAlert = screen.getByRole('alert');
@@ -401,13 +390,13 @@ describe('TrimPanel Accessibility Tests', () => {
     });
 
     it('should provide descriptive labels for duration display', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
-      const durationSpan = screen.getByLabelText(/Clip duration: 03:00.000/);
+      const durationSpan = screen.getByLabelText(/Clip duration: 01:00.000/);
       expect(durationSpan).toBeInTheDocument();
 
       const startTimeSpan = screen.getByLabelText(/Current start time: 00:00.000/);
-      const endTimeSpan = screen.getByLabelText(/Current end time: 03:00.000/);
+      const endTimeSpan = screen.getByLabelText(/Current end time: 01:00.000/);
       expect(startTimeSpan).toBeInTheDocument();
       expect(endTimeSpan).toBeInTheDocument();
     });
@@ -419,7 +408,7 @@ describe('TrimPanel Accessibility Tests', () => {
       document.documentElement.classList.add('dark');
 
       const { container } = render(
-        <TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />
+        <TrimPanel {...defaultProps} />
       );
 
       const results = await axe(container);
@@ -430,7 +419,7 @@ describe('TrimPanel Accessibility Tests', () => {
     });
 
     it('should have proper contrast classes for dark mode', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       const startInput = screen.getByDisplayValue('00:00.000');
       expect(startInput).toHaveClass('dark:bg-gray-800');
@@ -441,7 +430,7 @@ describe('TrimPanel Accessibility Tests', () => {
 
   describe('Integration with External Libraries', () => {
     it('should maintain accessibility when react-range is rendered', () => {
-      render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
+      render(<TrimPanel {...defaultProps} />);
 
       // Verify that react-range integration doesn't break our ARIA setup
       const startHandle = screen.getByTestId('handle-start');

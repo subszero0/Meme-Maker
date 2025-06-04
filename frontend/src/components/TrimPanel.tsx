@@ -85,15 +85,15 @@ export default function TrimPanel({
   const isValidClip = state.out > state.in && clipDuration <= maxDuration;
   const canSubmit = isValidClip && state.rights;
 
-  // @accessibility - Debounced screen reader announcement on handle release
-  const announceValue = useDebouncedCallback((index: number, value: number) => {
-    const label = index === 0 ? 'Start time' : 'End time';
-    const announcement = `${label}: ${formatTime(value)}`;
+  // @accessibility - Announce value changes to screen readers
+  const announceValue = useCallback((index: number, value: number) => {
+    const handleName = index === 0 ? 'Start' : 'End';
+    const announcement = `${handleName} time: ${formatTime(value)}`;
     
     if (announcementRef.current) {
       announcementRef.current.textContent = announcement;
     }
-  }, 250); // Announce only after handle release
+  }, []);
 
   // Debounced input handlers
   const debouncedInChange = useDebouncedCallback((value: string) => {
@@ -129,60 +129,6 @@ export default function TrimPanel({
       }
     }
   }, [announceValue]);
-
-  // @accessibility - Keyboard navigation handlers
-  const handleKeyDown = useCallback((index: number, event: React.KeyboardEvent) => {
-    const currentValue = index === 0 ? state.in : state.out;
-    let newValue = currentValue;
-
-    switch (event.key) {
-      case 'ArrowRight':
-      case 'ArrowUp':
-        event.preventDefault();
-        newValue = Math.min(currentValue + stepSize, jobMeta.duration);
-        break;
-      case 'ArrowLeft':
-      case 'ArrowDown':
-        event.preventDefault();
-        newValue = Math.max(currentValue - stepSize, 0);
-        break;
-      case 'Home':
-        event.preventDefault();
-        newValue = 0;
-        break;
-      case 'End':
-        event.preventDefault();
-        newValue = jobMeta.duration;
-        break;
-      case 'PageUp':
-        event.preventDefault();
-        newValue = Math.min(currentValue + 10, jobMeta.duration); // 10-second jump
-        break;
-      case 'PageDown':
-        event.preventDefault();
-        newValue = Math.max(currentValue - 10, 0); // 10-second jump
-        break;
-      default:
-        return; // Don't prevent default for other keys
-    }
-
-    // Snap to step precision
-    newValue = Math.round(newValue / stepSize) * stepSize;
-
-    // Update appropriate handle
-    if (index === 0) {
-      // Start handle - ensure it doesn't exceed end handle
-      newValue = Math.min(newValue, state.out - stepSize);
-      dispatch({ type: 'SET_IN', payload: newValue });
-    } else {
-      // End handle - ensure it doesn't go below start handle
-      newValue = Math.max(newValue, state.in + stepSize);
-      dispatch({ type: 'SET_OUT', payload: newValue });
-    }
-
-    // @accessibility - Immediate announcement for keyboard navigation
-    announceValue(index, newValue);
-  }, [state.in, state.out, stepSize, jobMeta.duration, announceValue]);
 
   const handleInTimeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;

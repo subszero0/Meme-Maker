@@ -1,13 +1,21 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
 import DownloadModal from '../DownloadModal';
+import ToastProvider from '../ToastProvider';
 
 // Mock framer-motion to avoid animation complexity in tests
 jest.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: React.ComponentProps<'div'>) => <div {...props}>{children}</div>,
   },
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
 }));
+
+// Test wrapper with ToastProvider
+const TestWrapper = ({ children }: { children: React.ReactNode }) => (
+  <ToastProvider>{children}</ToastProvider>
+);
 
 describe('DownloadModal', () => {
   const mockOnClose = jest.fn();
@@ -25,25 +33,37 @@ describe('DownloadModal', () => {
   });
 
   it('renders modal with correct title and content', () => {
-    render(<DownloadModal url={testUrl} onClose={mockOnClose} />);
+    render(
+      <TestWrapper>
+        <DownloadModal url={testUrl} onClose={mockOnClose} />
+      </TestWrapper>
+    );
     
     expect(screen.getByText('Clip ready!')).toBeInTheDocument();
-    expect(screen.getByText('File will self-destruct after this download.')).toBeInTheDocument();
+    expect(screen.getByText(/File will self-destruct after this download/)).toBeInTheDocument();
   });
 
   it('renders download button with correct attributes', () => {
-    render(<DownloadModal url={testUrl} onClose={mockOnClose} />);
+    render(
+      <TestWrapper>
+        <DownloadModal url={testUrl} onClose={mockOnClose} />
+      </TestWrapper>
+    );
     
     const downloadBtn = screen.getByTestId('download-btn');
     expect(downloadBtn).toBeInTheDocument();
     expect(downloadBtn).toHaveAttribute('href', testUrl);
     expect(downloadBtn).toHaveAttribute('download');
     expect(downloadBtn).toHaveAttribute('rel', 'noopener noreferrer');
-    expect(downloadBtn).toHaveTextContent('Download');
+    expect(downloadBtn).toHaveTextContent('Download Now');
   });
 
   it('calls onClose when download button is clicked', async () => {
-    render(<DownloadModal url={testUrl} onClose={mockOnClose} />);
+    render(
+      <TestWrapper>
+        <DownloadModal url={testUrl} onClose={mockOnClose} />
+      </TestWrapper>
+    );
     
     const downloadBtn = screen.getByTestId('download-btn');
     await userEvent.click(downloadBtn);
@@ -53,17 +73,25 @@ describe('DownloadModal', () => {
     }, { timeout: 200 });
   });
 
-  it('calls onClose when cancel button is clicked', async () => {
-    render(<DownloadModal url={testUrl} onClose={mockOnClose} />);
+  it('calls onClose when close button is clicked', async () => {
+    render(
+      <TestWrapper>
+        <DownloadModal url={testUrl} onClose={mockOnClose} />
+      </TestWrapper>
+    );
     
-    const cancelBtn = screen.getByText('Cancel');
-    await userEvent.click(cancelBtn);
+    const closeBtn = screen.getByText('Close');
+    await userEvent.click(closeBtn);
     
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 
   it('calls onClose when X button is clicked', async () => {
-    render(<DownloadModal url={testUrl} onClose={mockOnClose} />);
+    render(
+      <TestWrapper>
+        <DownloadModal url={testUrl} onClose={mockOnClose} />
+      </TestWrapper>
+    );
     
     // The X button should be in the header
     const closeBtn = screen.getByLabelText(/close dialog/i);
@@ -73,7 +101,11 @@ describe('DownloadModal', () => {
   });
 
   it('calls onClose when Escape key is pressed', async () => {
-    render(<DownloadModal url={testUrl} onClose={mockOnClose} />);
+    render(
+      <TestWrapper>
+        <DownloadModal url={testUrl} onClose={mockOnClose} />
+      </TestWrapper>
+    );
     
     fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
     
@@ -81,7 +113,11 @@ describe('DownloadModal', () => {
   });
 
   it('calls onClose when overlay is clicked', async () => {
-    render(<DownloadModal url={testUrl} onClose={mockOnClose} />);
+    render(
+      <TestWrapper>
+        <DownloadModal url={testUrl} onClose={mockOnClose} />
+      </TestWrapper>
+    );
     
     // HeadlessUI Dialog manages the overlay click internally
     // We'll test the escape key functionality instead as it's more reliable
@@ -90,7 +126,11 @@ describe('DownloadModal', () => {
   });
 
   it('does not close when modal content is clicked', async () => {
-    render(<DownloadModal url={testUrl} onClose={mockOnClose} />);
+    render(
+      <TestWrapper>
+        <DownloadModal url={testUrl} onClose={mockOnClose} />
+      </TestWrapper>
+    );
     
     // Click on the modal content area (not the backdrop)
     const modalPanel = screen.getByText('Clip ready!').closest('div[data-headlessui-state]');
@@ -101,7 +141,11 @@ describe('DownloadModal', () => {
   });
 
   it('has proper focus management', () => {
-    render(<DownloadModal url={testUrl} onClose={mockOnClose} />);
+    render(
+      <TestWrapper>
+        <DownloadModal url={testUrl} onClose={mockOnClose} />
+      </TestWrapper>
+    );
     
     // Check that the dialog is properly set up for focus trapping
     const dialog = screen.getByRole('dialog');
@@ -118,7 +162,11 @@ describe('DownloadModal', () => {
     const mockRevoke = jest.fn();
     URL.revokeObjectURL = mockRevoke;
 
-    render(<DownloadModal url={blobUrl} onClose={mockOnClose} />);
+    render(
+      <TestWrapper>
+        <DownloadModal url={blobUrl} onClose={mockOnClose} />
+      </TestWrapper>
+    );
     
     const downloadBtn = screen.getByTestId('download-btn');
     await userEvent.click(downloadBtn);

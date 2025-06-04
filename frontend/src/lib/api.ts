@@ -26,21 +26,21 @@ export interface JobStatus {
 }
 
 export interface RateLimitError extends Error {
-  retryAfter: number;
-  limitType: 'global' | 'job_creation';
   isRateLimitError: true;
+  limitType: 'requests' | 'jobs';
+  retryAfter: number;
 }
 
-export class RateLimitError extends Error implements RateLimitError {
+export class RateLimitErrorClass extends Error implements RateLimitError {
+  isRateLimitError = true as const;
+  limitType: 'requests' | 'jobs';
   retryAfter: number;
-  limitType: 'global' | 'job_creation';
-  isRateLimitError: true = true;
 
-  constructor(message: string, retryAfter: number, limitType: 'global' | 'job_creation') {
+  constructor(message: string, limitType: 'requests' | 'jobs', retryAfter: number) {
     super(message);
     this.name = 'RateLimitError';
-    this.retryAfter = retryAfter;
     this.limitType = limitType;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -50,10 +50,10 @@ export class RateLimitError extends Error implements RateLimitError {
 async function handleApiError(response: Response): Promise<never> {
   if (response.status === 429) {
     const data = await response.json().catch(() => ({}));
-    throw new RateLimitError(
+    throw new RateLimitErrorClass(
       data.detail || 'Rate limit exceeded',
-      data.retry_after || 60,
-      data.limit_type || 'global'
+      data.limit_type || 'global',
+      data.retry_after || 60
     );
   }
   
@@ -112,7 +112,7 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
 /**
  * Check if an error is a rate limit error
  */
-export function isRateLimitError(error: any): error is RateLimitError {
+export function isRateLimitError(error: any): error is RateLimitErrorClass {
   return error && error.isRateLimitError === true;
 }
 
