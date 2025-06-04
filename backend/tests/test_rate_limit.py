@@ -70,10 +70,10 @@ class TestRateLimiting:
                 new_callable=lambda: AsyncMock(return_value=None),
             ),
             patch("app.api.jobs.redis") as mock_redis,
-            patch("app.api.jobs.q.enqueue") as mock_enqueue,
+            patch("app.api.jobs.q") as mock_queue,
         ):
             # Configure mocks
-            mock_enqueue.return_value.id = "test-job-id"
+            mock_queue.enqueue.return_value.id = "test-job-id"
 
             job_data = {
                 "url": "https://example.com/video",
@@ -140,10 +140,10 @@ class TestRateLimiting:
                 new_callable=lambda: AsyncMock(return_value=None),
             ),
             patch("app.api.jobs.redis") as mock_redis,
-            patch("app.api.jobs.q.enqueue") as mock_enqueue,
+            patch("app.api.jobs.q") as mock_queue,
         ):
             # Configure mocks
-            mock_enqueue.return_value.id = "test-job-id"
+            mock_queue.enqueue.return_value.id = "test-job-id"
 
             metadata_requests = 0
             job_requests = 0
