@@ -13,7 +13,7 @@
 
 // Helper function to take Percy snapshots only when available
 function takeSnapshot(name: string, options?: any) {
-  if (typeof cy.percySnapshot === 'function') {
+  if (typeof cy.percySnapshot === "function") {
     try {
       cy.percySnapshot(name, options);
     } catch (error) {

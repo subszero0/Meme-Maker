@@ -122,7 +122,7 @@ jobs:
           CYPRESS_BASE_URL: http://localhost:5000
           # Point to a mock API endpoint for E2E tests since backend won't be running
           NEXT_PUBLIC_API_URL: http://localhost:5000
-        run: npx cypress run --headless
+        run: npx cypress run --spec 'cypress/e2e/visual_regression.cy.ts' --headless
 
   final-review:
     needs: [test, frontend-test]
