@@ -43,18 +43,19 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/Cypress
-          key: cypress-cache-v3-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+          key: cypress-cache-v4-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
           restore-keys: |
-            cypress-cache-v3-${{ runner.os }}-
+            cypress-cache-v4-${{ runner.os }}-
 
       - name: Install frontend dependencies
         run: |
           cd frontend
           
-          # Set puppeteer to use system Chrome if available to avoid downloading
+          # Set environment variables for Cypress and other tools
           export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
           export PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
           export NODE_ENV=production
+          export CYPRESS_CACHE_FOLDER=~/.cache/Cypress
           
           # Install system Chrome for puppeteer (faster than downloading)
           sudo apt-get update -qq
@@ -71,15 +72,40 @@ jobs:
           }
         timeout-minutes: 8
 
+      - name: Ensure Cypress cache directory exists
+        run: |
+          mkdir -p ~/.cache/Cypress
+          chmod 755 ~/.cache/Cypress
+
       - name: Install Cypress binary
         run: |
           cd frontend
+          # Set Cypress environment variables
+          export CYPRESS_CACHE_FOLDER=~/.cache/Cypress
+          export CYPRESS_INSTALL_BINARY=1
+          
           # Always install Cypress binary to ensure it's available
           echo "Installing Cypress binary..."
-          npx cypress install --force
+          npx cypress install --force || {
+            echo "First install attempt failed, trying alternative method..."
+            # Remove any corrupted cache
+            rm -rf ~/.cache/Cypress
+            mkdir -p ~/.cache/Cypress
+            # Try installing without cache
+            CYPRESS_CACHE_FOLDER=~/.cache/Cypress npx cypress install --force
+          }
+          
           echo "Verifying Cypress installation..."
-          npx cypress verify
-        timeout-minutes: 5
+          npx cypress verify || {
+            echo "Verification failed, attempting one more install..."
+            rm -rf ~/.cache/Cypress
+            mkdir -p ~/.cache/Cypress
+            CYPRESS_CACHE_FOLDER=~/.cache/Cypress npx cypress install --force
+            npx cypress verify
+          }
+        timeout-minutes: 8
+        env:
+          CYPRESS_CACHE_FOLDER: ~/.cache/Cypress
 
       - name: Install backend dependencies
         run: |
@@ -136,18 +162,22 @@ jobs:
         if: steps.percy-check.outputs.percy_available == 'true'
         run: |
           cd frontend
+          export CYPRESS_CACHE_FOLDER=~/.cache/Cypress
           npx percy exec -- npx cypress run --spec 'cypress/e2e/visual_regression.cy.ts' --config baseUrl=http://localhost:3000
         env:
           PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
           CYPRESS_baseUrl: http://localhost:3000
+          CYPRESS_CACHE_FOLDER: ~/.cache/Cypress
 
       - name: Run Cypress tests without Percy
         if: steps.percy-check.outputs.percy_available == 'false'
         run: |
           cd frontend
+          export CYPRESS_CACHE_FOLDER=~/.cache/Cypress
           npx cypress run --spec 'cypress/e2e/visual_regression.cy.ts' --config baseUrl=http://localhost:3000
         env:
           CYPRESS_baseUrl: http://localhost:3000
+          CYPRESS_CACHE_FOLDER: ~/.cache/Cypress
 
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4

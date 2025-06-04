@@ -51,7 +51,7 @@ describe("Visual Regression Tests", () => {
     cy.get("h1").should("contain", "Clip Downloader");
 
     // Wait for any animations and hydration to settle
-    cy.wait(1000);
+    cy.wait(1500);
 
     // Capture baseline snapshot
     cy.percySnapshot("URL Input – Empty State", {
@@ -75,7 +75,7 @@ describe("Visual Regression Tests", () => {
 
     // Wait for app to be ready
     cy.get('[data-testid="url-input"]').should("be.visible");
-    cy.wait(1000);
+    cy.wait(1500);
 
     // Enter URL and submit
     cy.get('[data-testid="url-input"]')
@@ -86,7 +86,7 @@ describe("Visual Regression Tests", () => {
 
     // Wait for loading state to be visible
     cy.get('[data-testid="start-button"]').should("be.disabled");
-    cy.wait(500); // Allow loading animation to start
+    cy.wait(800); // Allow loading animation to start
 
     cy.percySnapshot("URL Input – Loading State", {
       widths: [375, 768, 1280],
@@ -98,13 +98,13 @@ describe("Visual Regression Tests", () => {
 
     // Wait for app to be ready
     cy.get('[data-testid="url-input"]').should("be.visible");
-    cy.wait(1000);
+    cy.wait(1500);
 
     // Enter URL and proceed to trim panel
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
     cy.get('[data-testid="start-button"]').click();
-    cy.wait("@metadata");
+    cy.wait("@metadata", { timeout: 10000 });
 
     // Wait for trim panel to load and stabilize
     cy.get('[data-testid="start-time"]').should("be.visible");
@@ -112,7 +112,7 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="video-player"]').should("be.visible");
 
     // Wait for any video player initialization and hydration
-    cy.wait(1500);
+    cy.wait(2000);
 
     cy.percySnapshot("Trim Panel – Default State", {
       widths: [375, 768, 1280],
@@ -126,11 +126,11 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
     cy.get('[data-testid="start-button"]').click();
-    cy.wait("@metadata");
+    cy.wait("@metadata", { timeout: 10000 });
 
     // Wait for panel to stabilize
     cy.get('[data-testid="start-time"]').should("be.visible");
-    cy.wait(500);
+    cy.wait(1000);
 
     // Set custom trim times
     cy.get('[data-testid="start-time"]').clear().type("00:10.500");
@@ -141,7 +141,7 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="rights-checkbox"]').check();
 
     // Wait for UI to update
-    cy.wait(300);
+    cy.wait(500);
 
     cy.percySnapshot("Trim Panel – Custom Selection", {
       widths: [375, 768, 1280],
@@ -164,7 +164,7 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
     cy.get('[data-testid="start-button"]').click();
-    cy.wait("@metadata");
+    cy.wait("@metadata", { timeout: 10000 });
 
     // Set trim parameters and submit
     cy.get('[data-testid="start-time"]').clear().type("00:05.000");
@@ -172,12 +172,12 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="rights-checkbox"]').check();
 
     cy.get('[data-testid="clip-btn"]').click();
-    cy.wait("@createJob");
-    cy.wait("@jobWorking");
+    cy.wait("@createJob", { timeout: 10000 });
+    cy.wait("@jobWorking", { timeout: 10000 });
 
     // Wait for processing UI to stabilize
     cy.contains("Processing your clip...").should("be.visible");
-    cy.wait(500);
+    cy.wait(800);
 
     cy.percySnapshot("Processing State – Progress Bar", {
       widths: [375, 768, 1280],
@@ -191,7 +191,7 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
     cy.get('[data-testid="start-button"]').click();
-    cy.wait("@metadata");
+    cy.wait("@metadata", { timeout: 10000 });
 
     // Set trim and submit
     cy.get('[data-testid="start-time"]').clear().type("00:08.000");
@@ -199,13 +199,13 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="rights-checkbox"]').check();
 
     cy.get('[data-testid="clip-btn"]').click();
-    cy.wait("@createJob");
-    cy.wait("@jobStatus");
+    cy.wait("@createJob", { timeout: 10000 });
+    cy.wait("@jobStatus", { timeout: 10000 });
 
     // Wait for download modal to appear and stabilize
     cy.get('[data-testid="download-btn"]').should("be.visible");
     cy.contains("Clip ready!").should("be.visible");
-    cy.wait(300);
+    cy.wait(500);
 
     cy.percySnapshot("Download Modal – Success State", {
       widths: [375, 768, 1280],
@@ -219,7 +219,7 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
     cy.get('[data-testid="start-button"]').click();
-    cy.wait("@metadata");
+    cy.wait("@metadata", { timeout: 10000 });
 
     // Set clip longer than 3 minutes to trigger validation
     cy.get('[data-testid="start-time"]').clear().type("00:00.000");
@@ -230,7 +230,7 @@ describe("Visual Regression Tests", () => {
       "be.visible",
     );
 
-    cy.wait(300);
+    cy.wait(500);
 
     cy.percySnapshot("Validation Error – Clip Too Long", {
       widths: [375, 768, 1280],
@@ -262,19 +262,19 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
     cy.get('[data-testid="start-button"]').click();
-    cy.wait("@metadata");
+    cy.wait("@metadata", { timeout: 10000 });
 
     cy.get('[data-testid="start-time"]').clear().type("00:05.000");
     cy.get('[data-testid="end-time"]').clear().type("00:15.000");
     cy.get('[data-testid="rights-checkbox"]').check();
 
     cy.get('[data-testid="clip-btn"]').click();
-    cy.wait("@queueFullError");
+    cy.wait("@queueFullError", { timeout: 10000 });
 
     // Wait for queue full banner to appear
     cy.contains("Busy right now. Try again in a minute.").should("be.visible");
 
-    cy.wait(300);
+    cy.wait(500);
 
     cy.percySnapshot("Queue Full Error State", {
       widths: [375, 768, 1280],
@@ -298,12 +298,12 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
     cy.get('[data-testid="start-button"]').click();
-    cy.wait("@rateLimitError");
+    cy.wait("@rateLimitError", { timeout: 10000 });
 
     // Wait for rate limit notification to appear
     cy.contains("Rate limit exceeded").should("be.visible");
 
-    cy.wait(300);
+    cy.wait(500);
 
     cy.percySnapshot("Rate Limit Notification", {
       widths: [375, 768, 1280],
@@ -318,7 +318,7 @@ describe("Visual Regression Tests", () => {
 
     // Mobile empty state
     cy.get('[data-testid="url-input"]').should("be.visible");
-    cy.wait(300);
+    cy.wait(500);
 
     cy.percySnapshot("Mobile – URL Input Empty", {
       widths: [375],
@@ -328,10 +328,10 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
     cy.get('[data-testid="start-button"]').click();
-    cy.wait("@metadata");
+    cy.wait("@metadata", { timeout: 10000 });
 
     cy.get('[data-testid="start-time"]').should("be.visible");
-    cy.wait(500);
+    cy.wait(800);
 
     cy.percySnapshot("Mobile – Trim Panel", {
       widths: [375],
@@ -347,7 +347,7 @@ describe("Visual Regression Tests", () => {
     });
 
     // Wait for dark mode to apply
-    cy.wait(300);
+    cy.wait(500);
 
     cy.get('[data-testid="url-input"]').should("be.visible");
 
@@ -359,10 +359,10 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
     cy.get('[data-testid="start-button"]').click();
-    cy.wait("@metadata");
+    cy.wait("@metadata", { timeout: 10000 });
 
     cy.get('[data-testid="start-time"]').should("be.visible");
-    cy.wait(500);
+    cy.wait(800);
 
     cy.percySnapshot("Dark Mode – Trim Panel", {
       widths: [375, 768, 1280],

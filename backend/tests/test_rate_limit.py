@@ -1,15 +1,16 @@
 """Tests for rate limiting functionality"""
 
-import pytest
 import asyncio
+import pytest
+import time
+from unittest.mock import AsyncMock, patch
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch
-import time
 
-from app.main import app
-from app.ratelimit import init_rate_limit, get_client_ip, rate_limit_exception_handler
 from app.config import settings
+from app.main import app
+from app.ratelimit import get_client_ip, init_rate_limit, rate_limit_exception_handler
 
 
 @pytest.fixture
@@ -184,8 +185,9 @@ class TestRateLimiting:
 
     def test_get_client_ip_function(self):
         """Test IP extraction from various headers"""
-        from fastapi import Request
         from unittest.mock import Mock
+
+        from fastapi import Request
 
         # Test X-Forwarded-For header
         request = Mock(spec=Request)
@@ -228,8 +230,9 @@ class TestRateLimiting:
     @pytest.mark.asyncio
     async def test_rate_limit_exception_handler(self):
         """Test the rate limit exception handler"""
-        from fastapi import HTTPException, Request
         from unittest.mock import Mock
+
+        from fastapi import HTTPException, Request
 
         request = Mock(spec=Request)
         request.url.path = "/api/v1/metadata"
@@ -320,8 +323,9 @@ class TestRateLimitConfiguration:
 
     def test_rate_limit_key_functions(self):
         """Test rate limit key generation functions"""
-        from app.ratelimit import rate_limit_key_func, job_rate_limit_key_func
         from unittest.mock import Mock
+
+        from app.ratelimit import job_rate_limit_key_func, rate_limit_key_func
 
         request = Mock()
         request.headers = {}
