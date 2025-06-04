@@ -82,8 +82,8 @@ jobs:
       
       - name: Install dependencies
         run: |
-          chmod +x scripts/install-npm-deps.sh
-          ./scripts/install-npm-deps.sh 180 frontend
+          chmod +x ../scripts/install-npm-deps.sh
+          ../scripts/install-npm-deps.sh 180 .
         timeout-minutes: 5
       
       - name: Install Cypress binary
