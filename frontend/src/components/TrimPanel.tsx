@@ -90,6 +90,15 @@ export default function TrimPanel({
   const isValidClip = state.out > state.in && clipDuration <= maxDuration;
   const canSubmit = isValidClip && state.rights;
 
+  // Format duration in human-readable format
+  const formatDuration = (seconds: number): string => {
+    if (isNaN(seconds) || seconds < 0) return '0 seconds'
+    if (seconds < 60) return `${seconds} seconds`
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins} minutes`
+  };
+
   // @accessibility - Announce value changes to screen readers
   const announceValue = useCallback((index: number, value: number) => {
     const handleName = index === 0 ? "Start" : "End";
@@ -296,7 +305,7 @@ export default function TrimPanel({
             }
             aria-label={`Clip duration: ${formatTime(clipDuration)}${clipDuration > maxDuration ? " - exceeds maximum allowed duration" : ""}`}
           >
-            Duration: <span data-testid="clip-duration">{formatTime(clipDuration)}</span>
+            Duration: <span data-testid="clip-duration">{formatDuration(clipDuration)}</span>
           </span>
           <span aria-label={`Current end time: ${formatTime(state.out)}`}>
             {formatTime(state.out)}
