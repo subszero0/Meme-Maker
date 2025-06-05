@@ -265,12 +265,15 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       cy.visit("/");
 
       // Tab through key elements using keyboard commands
-      cy.get('[data-testid="url-input"]').focus();
+      cy.get('[data-testid="url-input"]').as('urlInput');
+      cy.get('@urlInput').focus();
       cy.focused().should("have.attr", "data-testid", "url-input");
 
       // Enter URL to enable the analyze button
-      cy.get('[data-testid="url-input"]').type(TEST_YOUTUBE_URL);
+      cy.get('@urlInput').type(TEST_YOUTUBE_URL);
 
+      // Wait for button to be enabled before trying to focus
+      cy.get('[data-testid="analyze-button"]').should("not.be.disabled");
       cy.get('[data-testid="analyze-button"]').focus();
       cy.focused().should("have.attr", "data-testid", "analyze-button");
 
