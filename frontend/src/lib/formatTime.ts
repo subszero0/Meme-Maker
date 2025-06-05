@@ -34,18 +34,18 @@ export function formatTimeForAPI(seconds: number): string {
  * @returns Time in seconds or null if invalid format
  */
 export function parseTime(timeString: string): number | null {
-  // Pattern for hh:mm:ss.mmm or hh:mm:ss or mm:ss.mmm or mm:ss
-  const pattern = /^(?:(\d{1,2}):)?(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?$/;
+  // Pattern for hh:mm:ss.mmm or hh:mm:ss format
+  const pattern = /^(\d{1,2}):(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?$/;
   const match = timeString.match(pattern);
 
   if (!match) return null;
 
-  const hours = match[1] ? parseInt(match[1], 10) : 0;
+  const hours = parseInt(match[1], 10);
   const minutes = parseInt(match[2], 10);
   const seconds = parseInt(match[3], 10);
   const milliseconds = match[4] ? parseInt(match[4].padEnd(3, '0'), 10) : 0;
 
-  if (minutes >= 60 || seconds >= 60 || milliseconds >= 1000) return null;
+  if (hours >= 24 || minutes >= 60 || seconds >= 60 || milliseconds >= 1000) return null;
 
   return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
 }
