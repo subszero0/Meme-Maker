@@ -188,10 +188,12 @@ jobs:
             sleep 2
           done
           
-          # Start backend with Redis retry logic
-          cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          # Start backend with Redis retry logic (use absolute path)
+          cd backend
+          python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           BACKEND_PID=$!
           echo "Backend PID: $BACKEND_PID"
+          cd ..
           
           # Wait for backend to be ready
           sleep 10
@@ -205,7 +207,7 @@ jobs:
           done
           
           # Build and start frontend server for audits and smoke tests
-          cd ../frontend
+          cd frontend
           
           echo "🏗️ Building frontend..."
           npm run build
@@ -214,6 +216,7 @@ jobs:
           npx serve out -l 3000 --no-clipboard &
           FRONTEND_PID=$!
           echo "Frontend PID: $FRONTEND_PID"
+          cd ..
           
           # Save PIDs for cleanup later
           echo $BACKEND_PID > /tmp/backend.pid
@@ -229,8 +232,6 @@ jobs:
             echo "   Waiting for frontend server... ($i/30)"
             sleep 2
           done
-          
-          cd ..
       
       - name: Run Final Review Audit
         run: |
@@ -258,10 +259,12 @@ jobs:
           echo "🔒 Checking Security Headers..."
           curl -I http://localhost:3000 > ../reports/security-headers.log 2>&1 || echo "❌ Security headers check failed"
           
+          # Go back to root directory
           cd ..
           
           # 4. Performance API Check
           echo "⚡ Testing API Performance..."
+          mkdir -p reports
           curl -o reports/api-health.json -w '{"time_total":%{time_total}}' http://localhost:8000/health > reports/api-performance.log 2>&1 || echo "❌ API performance check failed"
           
           echo "✅ Audit checks completed"
