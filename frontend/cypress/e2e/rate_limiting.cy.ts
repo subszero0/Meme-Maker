@@ -22,7 +22,7 @@ describe("Rate Limiting", () => {
     cy.get('[data-testid="url-input"]').type(
       "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     );
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
 
     // Should show rate limit notification
     cy.get('[data-testid="rate-limit-notification"]').should("be.visible");
@@ -42,7 +42,7 @@ describe("Rate Limiting", () => {
     );
 
     // Button should be disabled
-    cy.get('[data-testid="start-button"]').should("be.disabled");
+    cy.get('[data-testid="analyze-button"]').should("be.disabled");
   });
 
   it("should show job creation rate limit notification", () => {
@@ -76,7 +76,7 @@ describe("Rate Limiting", () => {
     cy.get('[data-testid="url-input"]').type(
       "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     );
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
 
     // Wait for trim panel to appear
     cy.get('[data-testid="start-time"]').should("be.visible");
@@ -127,20 +127,20 @@ describe("Rate Limiting", () => {
     cy.get('[data-testid="url-input"]').type(
       "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     );
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
 
     // Should show rate limit notification
     cy.get('[data-testid="rate-limit-notification"]').should("be.visible");
 
     // Button should be disabled initially
-    cy.get('[data-testid="start-button"]').should("be.disabled");
+    cy.get('[data-testid="analyze-button"]').should("be.disabled");
 
     // Wait for countdown to expire (3 seconds to be safe)
     cy.wait(3000);
 
     // Notification should disappear and button should be enabled
     cy.get('[data-testid="rate-limit-notification"]').should("not.exist");
-    cy.get('[data-testid="start-button"]').should("not.be.disabled");
+    cy.get('[data-testid="analyze-button"]').should("not.be.disabled");
   });
 
   it("should allow dismissing the rate limit notification", () => {
@@ -162,7 +162,7 @@ describe("Rate Limiting", () => {
     cy.get('[data-testid="url-input"]').type(
       "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     );
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
 
     // Should show rate limit notification
     cy.get('[data-testid="rate-limit-notification"]').should("be.visible");

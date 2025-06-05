@@ -50,7 +50,7 @@ describe("Mobile Touch Targets", () => {
       // Wait for validation
       cy.wait(500);
 
-      verifyTouchTarget('[data-cy="start-button"]', "Start button");
+      verifyTouchTarget('[data-cy="analyze-button"]', "Start button");
     });
 
     it("should have proper focus states for Start button", () => {
@@ -58,7 +58,7 @@ describe("Mobile Touch Targets", () => {
         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       );
 
-      cy.get('[data-cy="start-button"]')
+      cy.get('[data-cy="analyze-button"]')
         .focus()
         .should("have.class", "focus-visible:ring-2");
     });
@@ -80,7 +80,7 @@ describe("Mobile Touch Targets", () => {
       cy.get('[data-cy="url-input"]').type(
         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       );
-      cy.get('[data-cy="start-button"]').click();
+      cy.get('[data-cy="analyze-button"]').click();
 
       cy.wait("@getMetadata");
     });
@@ -153,7 +153,7 @@ describe("Mobile Touch Targets", () => {
       cy.get('[data-cy="url-input"]').type(
         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       );
-      cy.get('[data-cy="start-button"]').click();
+      cy.get('[data-cy="analyze-button"]').click();
       cy.get('[data-cy="rights-checkbox"]').check();
       cy.get('[data-cy="clip-button"]').click();
 
@@ -203,7 +203,7 @@ describe("Mobile Touch Targets", () => {
       cy.get('[data-cy="url-input"]').type(
         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       );
-      cy.get('[data-cy="start-button"]').click();
+      cy.get('[data-cy="analyze-button"]').click();
 
       // Wait for rate limit notification
       cy.get('[data-cy="rate-limit-notification"]').should("be.visible");
@@ -239,7 +239,7 @@ describe("Mobile Touch Targets", () => {
       cy.get('[data-cy="url-input"]').type(
         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       );
-      cy.get('[data-cy="start-button"]').click();
+      cy.get('[data-cy="analyze-button"]').click();
       cy.get('[data-cy="rights-checkbox"]').check();
       cy.get('[data-cy="clip-button"]').click();
 
@@ -269,7 +269,7 @@ describe("Mobile Touch Targets", () => {
       cy.get('[data-cy="url-input"]').type(
         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       );
-      cy.get('[data-cy="start-button"]').click();
+      cy.get('[data-cy="analyze-button"]').click();
 
       // Toast should appear automatically from clipboard copy
       cy.get('[data-cy="toast"]').then(($el) => {
@@ -294,7 +294,7 @@ describe("Mobile Touch Targets", () => {
       cy.get('[data-cy="url-input"]')
         .type("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         .then(() => {
-          cy.get('[data-cy="start-button"]')
+          cy.get('[data-cy="analyze-button"]')
             .focus()
             .should("have.class", "focus-visible:ring-2");
         });
@@ -320,7 +320,7 @@ describe("Mobile Touch Targets", () => {
 
       // Touch targets should still be adequate at high zoom
       verifyTouchTarget(
-        '[data-cy="start-button"]',
+        '[data-cy="analyze-button"]',
         "Start button at 200% zoom",
       );
     });
@@ -344,7 +344,7 @@ describe("Mobile Touch Targets", () => {
         );
 
         verifyTouchTarget(
-          '[data-cy="start-button"]',
+          '[data-cy="analyze-button"]',
           `Start button on ${device.name}`,
         );
       });

@@ -52,7 +52,7 @@ describe("Clip Downloader E2E Flow", () => {
       .realType("https://youtu.be/dQw4w9WgXcQ");
 
     // 3. Click the Start button
-    cy.get('[data-testid="start-button"]')
+    cy.get('[data-testid="analyze-button"]')
       .should("be.visible")
       .should("not.be.disabled")
       .click();
@@ -108,7 +108,7 @@ describe("Clip Downloader E2E Flow", () => {
 
     cy.get('[data-testid="url-input"]').realType("https://youtu.be/invalid");
 
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
 
     cy.wait("@fetchMetadataError");
 
@@ -123,7 +123,7 @@ describe("Clip Downloader E2E Flow", () => {
       "https://youtu.be/dQw4w9WgXcQ",
     );
 
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
 
     cy.wait("@fetchMetadata");
 

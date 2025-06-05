@@ -116,10 +116,10 @@ describe("Visual Regression Tests", () => {
       .should("be.visible")
       .type("https://youtu.be/dQw4w9WgXcQ");
 
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
 
     // Wait for loading state to be visible
-    cy.get('[data-testid="start-button"]').should("be.disabled");
+    cy.get('[data-testid="analyze-button"]').should("be.disabled");
     cy.wait(800); // Allow loading animation to start
 
     takeSnapshot("URL Input – Loading State", {
@@ -137,7 +137,7 @@ describe("Visual Regression Tests", () => {
     // Enter URL and proceed to trim panel
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
     cy.wait("@metadata", { timeout: 10000 });
 
     // Wait for trim panel to load and stabilize
@@ -159,7 +159,7 @@ describe("Visual Regression Tests", () => {
     // Navigate to trim panel
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
     cy.wait("@metadata", { timeout: 10000 });
 
     // Wait for panel to stabilize
@@ -197,7 +197,7 @@ describe("Visual Regression Tests", () => {
     // Navigate through flow to processing
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
     cy.wait("@metadata", { timeout: 10000 });
 
     // Set trim parameters and submit
@@ -224,7 +224,7 @@ describe("Visual Regression Tests", () => {
     // Complete full flow to download modal
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
     cy.wait("@metadata", { timeout: 10000 });
 
     // Set trim and submit
@@ -252,7 +252,7 @@ describe("Visual Regression Tests", () => {
 
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
     cy.wait("@metadata", { timeout: 10000 });
 
     // Set clip longer than 3 minutes to trigger validation
@@ -295,7 +295,7 @@ describe("Visual Regression Tests", () => {
     // Navigate to trim and trigger queue full
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
     cy.wait("@metadata", { timeout: 10000 });
 
     cy.get('[data-testid="start-time"]').clear().type("00:05.000");
@@ -331,7 +331,7 @@ describe("Visual Regression Tests", () => {
 
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
     cy.wait("@rateLimitError", { timeout: 10000 });
 
     // Wait for rate limit notification to appear
@@ -361,7 +361,7 @@ describe("Visual Regression Tests", () => {
     // Navigate to trim panel on mobile
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
     cy.wait("@metadata", { timeout: 10000 });
 
     cy.get('[data-testid="start-time"]').should("be.visible");
@@ -392,7 +392,7 @@ describe("Visual Regression Tests", () => {
     // Navigate to trim panel in dark mode
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
-    cy.get('[data-testid="start-button"]').click();
+    cy.get('[data-testid="analyze-button"]').click();
     cy.wait("@metadata", { timeout: 10000 });
 
     cy.get('[data-testid="start-time"]').should("be.visible");
