@@ -34,19 +34,22 @@ export default function TrimPageContent() {
   const [copyFeedback, setCopyFeedback] = useState('')
   const [showTermsError, setShowTermsError] = useState(false)
 
-  // Parse time to seconds
+  // Parse time to seconds - using proper validation
   const parseTime = (timeStr: string): number => {
     if (!timeStr || timeStr.trim() === '') return 0
     
-    const parts = timeStr.split(':').map(Number)
+    // Pattern for hh:mm:ss format
+    const pattern = /^(\d{1,2}):(\d{1,2}):(\d{1,2})$/
+    const match = timeStr.match(pattern)
     
-    // Handle incomplete inputs gracefully
-    const hours = parts[0] || 0
-    const minutes = parts[1] || 0
-    const seconds = parts[2] || 0
+    if (!match) return 0
     
-    // Return NaN if any part is actually NaN (invalid number)
-    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return 0
+    const hours = parseInt(match[1], 10)
+    const minutes = parseInt(match[2], 10)
+    const seconds = parseInt(match[3], 10)
+    
+    // Validate ranges
+    if (hours >= 24 || minutes >= 60 || seconds >= 60) return 0
     
     return hours * 3600 + minutes * 60 + seconds
   }
