@@ -36,15 +36,28 @@ export default function TrimPageContent() {
 
   // Parse time to seconds
   const parseTime = (timeStr: string): number => {
+    if (!timeStr || timeStr.trim() === '') return 0
+    
     const parts = timeStr.split(':').map(Number)
-    return parts[0] * 3600 + parts[1] * 60 + parts[2]
+    
+    // Handle incomplete inputs gracefully
+    const hours = parts[0] || 0
+    const minutes = parts[1] || 0
+    const seconds = parts[2] || 0
+    
+    // Return NaN if any part is actually NaN (invalid number)
+    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return 0
+    
+    return hours * 3600 + minutes * 60 + seconds
   }
 
-  // Calculate clip duration
-  const clipDuration = parseTime(endTime) - parseTime(startTime)
+  // Calculate clip duration safely
+  const startSeconds = parseTime(startTime)
+  const endSeconds = parseTime(endTime)
+  const clipDuration = endSeconds - startSeconds
 
   // Check if duration is valid (not over 30 minutes = 1800 seconds)
-  const isDurationValid = clipDuration > 0 && clipDuration <= 1800
+  const isDurationValid = !isNaN(clipDuration) && clipDuration > 0 && clipDuration <= 1800
 
   // Load video metadata when URL is provided
   useEffect(() => {
@@ -111,6 +124,10 @@ export default function TrimPageContent() {
     setJobStatus({ status: 'processing' })
     setShowTermsError(false)
 
+    // Calculate times at call time
+    const currentStartSeconds = parseTime(startTime)
+    const currentEndSeconds = parseTime(endTime)
+
     try {
       // Make actual API call for testing purposes
       const response = await fetch('/api/v1/jobs', {
@@ -120,8 +137,8 @@ export default function TrimPageContent() {
         },
         body: JSON.stringify({
           url: url,
-          start_time: parseTime(startTime),
-          end_time: parseTime(endTime)
+          start_time: currentStartSeconds,
+          end_time: currentEndSeconds
         })
       })
 
@@ -172,6 +189,7 @@ export default function TrimPageContent() {
   }
 
   const formatDuration = (seconds: number): string => {
+    if (isNaN(seconds) || seconds < 0) return '0 seconds'
     if (seconds < 60) return `${seconds} seconds`
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -226,7 +244,7 @@ export default function TrimPageContent() {
                   aria-label="Video timeline slider"
                   aria-valuemin={0}
                   aria-valuemax={metadata.duration}
-                  aria-valuenow={parseTime(startTime)}
+                  aria-valuenow={startSeconds}
                 >
                   <div 
                     className="absolute left-0 top-0 bg-blue-500 rounded cursor-grab"
@@ -272,12 +290,14 @@ export default function TrimPageContent() {
                     value={startTime}
                     onChange={(e) => {
                       setStartTime(e.target.value)
-                      // Update URL with new start time
-                      if (url) {
+                      // Update URL with new start time only if input is complete
+                      if (url && e.target.value.match(/^\d{2}:\d{2}:\d{2}$/)) {
                         const newUrl = new URL(window.location.href)
                         const startSeconds = parseTime(e.target.value)
-                        newUrl.searchParams.set('start', startSeconds.toString())
-                        router.replace(newUrl.pathname + newUrl.search, { scroll: false })
+                        if (!isNaN(startSeconds) && startSeconds >= 0) {
+                          newUrl.searchParams.set('start', startSeconds.toString())
+                          router.replace(newUrl.pathname + newUrl.search, { scroll: false })
+                        }
                       }
                     }}
                     placeholder="00:00:00"
@@ -295,12 +315,14 @@ export default function TrimPageContent() {
                     value={endTime}
                     onChange={(e) => {
                       setEndTime(e.target.value)
-                      // Update URL with new end time
-                      if (url) {
+                      // Update URL with new end time only if input is complete
+                      if (url && e.target.value.match(/^\d{2}:\d{2}:\d{2}$/)) {
                         const newUrl = new URL(window.location.href)
                         const endSeconds = parseTime(e.target.value)
-                        newUrl.searchParams.set('end', endSeconds.toString())
-                        router.replace(newUrl.pathname + newUrl.search, { scroll: false })
+                        if (!isNaN(endSeconds) && endSeconds >= 0) {
+                          newUrl.searchParams.set('end', endSeconds.toString())
+                          router.replace(newUrl.pathname + newUrl.search, { scroll: false })
+                        }
                       }
                     }}
                     placeholder="00:00:05"
