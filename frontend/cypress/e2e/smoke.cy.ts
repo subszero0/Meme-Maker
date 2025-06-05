@@ -17,9 +17,9 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
   describe("✅ Happy Path - Complete Video Clip Flow", () => {
     it("should successfully clip a YouTube video from start to finish", () => {
       // Step 1: Paste URL and get metadata
-      cy.get('[data-testid="url-input"]')
-        .type(TEST_YOUTUBE_URL)
-        .should("have.value", TEST_YOUTUBE_URL);
+      cy.get('[data-testid="url-input"]').as('urlInput');
+      cy.get('@urlInput').type(TEST_YOUTUBE_URL);
+      cy.get('@urlInput').should("have.value", TEST_YOUTUBE_URL);
 
       cy.get('[data-testid="analyze-button"]').click();
 
