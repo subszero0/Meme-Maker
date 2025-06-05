@@ -366,7 +366,7 @@ export default function TrimPageContent() {
                     I confirm that I have the right to download this content and agree to the terms of service.
                   </span>
                 </label>
-                {showTermsError && !termsAccepted && (
+                {!termsAccepted && isDurationValid && (
                   <p className="text-red-600 text-sm mt-2" data-testid="terms-error">
                     You must accept the terms to continue.
                   </p>

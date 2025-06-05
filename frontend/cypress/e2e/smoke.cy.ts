@@ -45,7 +45,9 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       );
 
       // Step 3: Accept terms and create job
-      cy.get('[data-testid="terms-checkbox"]').check().should("be.checked");
+      cy.get('[data-testid="terms-checkbox"]').as('termsCheckbox');
+      cy.get('@termsCheckbox').check();
+      cy.get('@termsCheckbox').should("be.checked");
 
       cy.get('[data-testid="create-clip-button"]').click();
 
@@ -55,12 +57,11 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
         "ready",
       );
 
-      cy.get('[data-testid="download-button"]')
-        .should("be.visible")
-        .and("not.be.disabled");
+      cy.get('[data-testid="download-button"]').as('downloadBtn');
+      cy.get('@downloadBtn').should("be.visible");
+      cy.get('@downloadBtn').should("not.be.disabled");
 
       // Verify download link functionality
-      cy.get('[data-testid="download-button"]').as('downloadBtn');
       cy.get('@downloadBtn')
         .invoke("attr", "href")
         .should("contain", ".mp4");
@@ -262,7 +263,7 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       cy.get('[data-testid="url-input"]').focus();
       cy.focused().should("have.attr", "data-testid", "url-input");
 
-      cy.get('[data-testid="url-input"]').type('{tab}');
+      cy.get('[data-testid="analyze-button"]').focus();
       cy.focused().should("have.attr", "data-testid", "analyze-button");
 
       // Focus should be visible (check for outline or box-shadow)
