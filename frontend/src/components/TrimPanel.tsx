@@ -184,7 +184,7 @@ export default function TrimPanel({
   );
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto p-6">
+    <div className="space-y-6 max-w-4xl mx-auto p-6" data-testid="video-metadata">
       {/* @accessibility - Hidden live region for screen reader announcements */}
       <div
         ref={announcementRef}
@@ -209,7 +209,7 @@ export default function TrimPanel({
 
       {/* Video Info */}
       <div className="text-center">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate" data-testid="video-title">
           {jobMeta.title}
         </h3>
         <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -229,7 +229,7 @@ export default function TrimPanel({
           </label>
           <input
             id="in-time"
-            data-testid="start-time"
+            data-testid="start-time-input"
             data-cy="start-time-input"
             type="text"
             value={inTimeInput}
@@ -252,7 +252,7 @@ export default function TrimPanel({
           </label>
           <input
             id="out-time"
-            data-testid="end-time"
+            data-testid="end-time-input"
             data-cy="end-time-input"
             type="text"
             value={outTimeInput}
@@ -296,7 +296,7 @@ export default function TrimPanel({
             }
             aria-label={`Clip duration: ${formatTime(clipDuration)}${clipDuration > maxDuration ? " - exceeds maximum allowed duration" : ""}`}
           >
-            Duration: {formatTime(clipDuration)}
+            Duration: <span data-testid="clip-duration">{formatTime(clipDuration)}</span>
           </span>
           <span aria-label={`Current end time: ${formatTime(state.out)}`}>
             {formatTime(state.out)}
@@ -327,7 +327,7 @@ export default function TrimPanel({
       <div className="flex items-start space-x-3">
         <input
           id="rights-checkbox"
-          data-testid="rights-checkbox"
+          data-testid="terms-checkbox"
           data-cy="rights-checkbox"
           type="checkbox"
           checked={state.rights}
@@ -364,7 +364,7 @@ export default function TrimPanel({
       <button
         onClick={handleSubmit}
         disabled={!canSubmit || disabled}
-        data-testid="clip-btn"
+        data-testid="create-clip-button"
         data-cy="clip-button"
         className={`w-full min-h-[44px] py-3 px-4 rounded-md font-semibold text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
           canSubmit && !disabled
