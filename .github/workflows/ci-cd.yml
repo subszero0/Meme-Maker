@@ -239,17 +239,29 @@ jobs:
           # We've started them in the previous step, so just run the audit parts
           echo "🚀 Running audit checks with pre-started servers..."
           
+          # Ensure reports directory exists
+          mkdir -p reports/lighthouse
+          
           # Run a simplified audit that doesn't start/stop servers
           cd frontend
           
           # 1. Lighthouse Performance Audit
           echo "🚀 Running Lighthouse Performance Audit..."
-          npx lhci autorun \
-            --upload.target=filesystem \
-            --upload.outputDir=../reports/lighthouse \
-            --collect.url=http://localhost:3000 \
-            --collect.settings.chromeFlags="--no-sandbox --headless --disable-gpu" \
-            || echo "❌ Lighthouse audit failed"
+          echo "Using external servers: frontend=http://localhost:3000, backend=http://localhost:8000"
+          
+          # Use lhci collect since we already have servers running
+          npx lhci collect \
+            --url="http://localhost:3000" \
+            --numberOfRuns=1 \
+            --settings.chromeFlags="--no-sandbox --headless --disable-gpu --disable-dev-shm-usage" \
+            --settings.preset="desktop" \
+            || echo "❌ Lighthouse collect failed"
+          
+          # Upload the results to filesystem
+          npx lhci upload \
+            --target=filesystem \
+            --outputDir=../reports/lighthouse \
+            || echo "❌ Lighthouse upload failed"
           
           # 2. Bundle Size Audit
           echo "📦 Running Bundle Size Audit..."
@@ -268,6 +280,14 @@ jobs:
           curl -o reports/api-health.json -w '{"time_total":%{time_total}}' http://localhost:8000/health > reports/api-performance.log 2>&1 || echo "❌ API performance check failed"
           
           echo "✅ Audit checks completed"
+          
+          # Debug: List what was created in reports directory
+          echo "📁 Reports directory contents:"
+          ls -la reports/ || echo "No reports directory found"
+          if [ -d "reports/lighthouse" ]; then
+            echo "📊 Lighthouse reports:"
+            ls -la reports/lighthouse/ || echo "Lighthouse directory is empty"
+          fi
       
       - name: Upload audit reports
         uses: actions/upload-artifact@v4
@@ -280,10 +300,31 @@ jobs:
       - name: Lighthouse gate
         run: |
           # Check if audit passed based on reports directory
-          if [ -d "reports/lighthouse" ] && [ "$(ls -A reports/lighthouse)" ]; then
-            echo "✅ Final review audit passed - ready for deployment"
+          echo "🔍 Checking Lighthouse audit results..."
+          
+          # Debug: Show current working directory and reports structure
+          pwd
+          echo "📁 Full reports directory structure:"
+          find reports/ -type f 2>/dev/null || echo "No reports directory found"
+          
+          if [ -d "reports/lighthouse" ]; then
+            echo "✅ Lighthouse reports directory exists"
+            
+            # Check if there are any files in the lighthouse directory
+            LIGHTHOUSE_FILES=$(find reports/lighthouse -type f 2>/dev/null | wc -l)
+            echo "📊 Found $LIGHTHOUSE_FILES files in lighthouse reports"
+            
+            if [ "$LIGHTHOUSE_FILES" -gt 0 ]; then
+              echo "✅ Final review audit passed - ready for deployment"
+              echo "📋 Lighthouse report files:"
+              ls -la reports/lighthouse/
+            else
+              echo "❌ Final review audit failed - no lighthouse report files generated"
+              echo "📊 Check the uploaded artifacts for detailed reports"
+              exit 1
+            fi
           else
-            echo "❌ Final review audit failed"
+            echo "❌ Final review audit failed - reports/lighthouse directory not found"
             echo "📊 Check the uploaded artifacts for detailed reports"
             exit 1
           fi
