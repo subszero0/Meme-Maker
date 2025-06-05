@@ -60,12 +60,13 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
         .and("not.be.disabled");
 
       // Verify download link functionality
-      cy.get('[data-testid="download-button"]')
+      cy.get('[data-testid="download-button"]').as('downloadBtn');
+      cy.get('@downloadBtn')
         .invoke("attr", "href")
         .should("contain", ".mp4");
 
       // Test the download (verify it's a valid presigned URL)
-      cy.get('[data-testid="download-button"]')
+      cy.get('@downloadBtn')
         .invoke("attr", "href")
         .then((downloadUrl) => {
           cy.request("HEAD", downloadUrl as string).then((response) => {
@@ -113,7 +114,7 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
 
       cy.get('[data-testid="end-time-input"]').should(
         "not.have.value",
-        "00:00:00",
+        "00:00:05",
       );
     });
   });
@@ -261,7 +262,7 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       cy.get('[data-testid="url-input"]').focus();
       cy.focused().should("have.attr", "data-testid", "url-input");
 
-      cy.get('[data-testid="url-input"]').type('{Tab}');
+      cy.get('[data-testid="url-input"]').type('{tab}');
       cy.focused().should("have.attr", "data-testid", "analyze-button");
 
       // Focus should be visible (check for outline or box-shadow)

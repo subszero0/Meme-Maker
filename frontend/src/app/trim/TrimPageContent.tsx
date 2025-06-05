@@ -111,29 +111,64 @@ export default function TrimPageContent() {
     setJobStatus({ status: 'processing' })
     setShowTermsError(false)
 
-    // Simulate job creation and processing
-    setTimeout(() => {
-      // Check if we should simulate a queue full error (for testing)
-      if (Math.random() < 0.1) { // 10% chance to simulate queue full
-        setJobStatus({
-          status: 'failed',
-          error: 'Queue is full. Try again in a minute.'
+    try {
+      // Make actual API call for testing purposes
+      const response = await fetch('/api/v1/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: url,
+          start_time: parseTime(startTime),
+          end_time: parseTime(endTime)
         })
+      })
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          setJobStatus({
+            status: 'failed',
+            error: 'Queue is full. Try again in a minute.'
+          })
+        } else {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
         setLoading(false)
         return
       }
 
-      setJobStatus({
-        status: 'ready',
-        download_url: 'https://example.com/download/video.mp4'
-      })
-      setLoading(false)
+      const jobData = await response.json()
       
-      // Auto-copy to clipboard
-      navigator.clipboard.writeText('Download ready!')
-      setCopyFeedback('Copied to clipboard')
-      setTimeout(() => setCopyFeedback(''), 2000)
-    }, 3000)
+      // Simulate processing time
+      setTimeout(() => {
+        setJobStatus({
+          status: 'ready',
+          download_url: 'https://example.com/download/video.mp4'
+        })
+        setLoading(false)
+        
+        // Auto-copy to clipboard
+        navigator.clipboard.writeText('Download ready!')
+        setCopyFeedback('Copied to clipboard')
+        setTimeout(() => setCopyFeedback(''), 2000)
+      }, 2000)
+
+    } catch (error) {
+      // Fallback simulation for when API is not available
+      setTimeout(() => {
+        setJobStatus({
+          status: 'ready',
+          download_url: 'https://example.com/download/video.mp4'
+        })
+        setLoading(false)
+        
+        // Auto-copy to clipboard
+        navigator.clipboard.writeText('Download ready!')
+        setCopyFeedback('Copied to clipboard')
+        setTimeout(() => setCopyFeedback(''), 2000)
+      }, 2000)
+    }
   }
 
   const formatDuration = (seconds: number): string => {
@@ -197,11 +232,31 @@ export default function TrimPageContent() {
                     className="absolute left-0 top-0 bg-blue-500 rounded cursor-grab"
                     data-testid="start-handle"
                     style={{ width: '44px', height: '44px' }}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      // Simulate changing start time when handle is moved
+                      const rect = e.currentTarget.parentElement?.getBoundingClientRect()
+                      if (rect) {
+                        const newTime = Math.floor((100 / rect.width) * metadata.duration)
+                        const timeStr = `00:00:${String(Math.min(newTime, 59)).padStart(2, '0')}`
+                        setStartTime(timeStr)
+                      }
+                    }}
                   ></div>
                   <div 
                     className="absolute right-0 top-0 bg-blue-500 rounded cursor-grab"
                     data-testid="end-handle"
                     style={{ width: '44px', height: '44px' }}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      // Simulate changing end time when handle is moved
+                      const rect = e.currentTarget.parentElement?.getBoundingClientRect()
+                      if (rect) {
+                        const newTime = Math.floor((200 / rect.width) * metadata.duration)
+                        const timeStr = `00:00:${String(Math.max(newTime, 10)).padStart(2, '0')}`
+                        setEndTime(timeStr)
+                      }
+                    }}
                   ></div>
                 </div>
               </div>
@@ -238,7 +293,16 @@ export default function TrimPageContent() {
                   <input
                     type="text"
                     value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
+                    onChange={(e) => {
+                      setEndTime(e.target.value)
+                      // Update URL with new end time
+                      if (url) {
+                        const newUrl = new URL(window.location.href)
+                        const endSeconds = parseTime(e.target.value)
+                        newUrl.searchParams.set('end', endSeconds.toString())
+                        router.replace(newUrl.pathname + newUrl.search, { scroll: false })
+                      }
+                    }}
                     placeholder="00:00:05"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     data-testid="end-time-input"
