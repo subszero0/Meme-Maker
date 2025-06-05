@@ -147,8 +147,8 @@ export default function URLInputPanel({
         <button
           type="submit"
           disabled={!url.trim() || hasError || loading || disabled}
-          data-testid="start-button"
-          data-cy="start-button"
+          data-testid="analyze-button"
+          data-cy="analyze-button"
           className="
             w-full min-h-[44px] py-3 px-4 border border-transparent rounded-md shadow-sm
             text-sm font-medium text-white bg-primary-800 hover:bg-primary-900

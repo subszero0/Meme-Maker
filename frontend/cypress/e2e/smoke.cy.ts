@@ -261,7 +261,7 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       cy.get('[data-testid="url-input"]').focus();
       cy.focused().should("have.attr", "data-testid", "url-input");
 
-      cy.focused().type("{tab}");
+      cy.get('[data-testid="url-input"]').type('{Tab}');
       cy.focused().should("have.attr", "data-testid", "analyze-button");
 
       // Focus should be visible (check for outline or box-shadow)

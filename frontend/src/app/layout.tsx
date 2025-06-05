@@ -24,14 +24,14 @@ const AppShell: FC<PropsWithChildren> = ({ children }) => {
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
       >
         {/* Fixed Header */}
         <header className="fixed top-0 left-0 right-0 z-50 bg-primary-700 text-white shadow-lg">
           <div className="container mx-auto px-4 py-3">
-            <div className="flex items-center justify-center">
+            <nav className="flex items-center justify-center" data-testid="main-nav">
               <span className="text-xl font-semibold">Clip Downloader</span>
-            </div>
+            </nav>
           </div>
           <h1 className="sr-only">Clip Downloader</h1>
         </header>
