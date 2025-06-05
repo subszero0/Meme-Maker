@@ -14,14 +14,14 @@ describe("URLInputPanel", () => {
     render(<URLInputPanel onSubmit={mockOnSubmit} />);
 
     expect(screen.getByTestId("url-input")).toBeInTheDocument();
-    expect(screen.getByTestId("start-button")).toBeInTheDocument();
+    expect(screen.getByTestId("analyze-button")).toBeInTheDocument();
     expect(screen.getByLabelText("Video URL")).toBeInTheDocument();
   });
 
   it("shows error when input is empty and form is submitted", async () => {
     render(<URLInputPanel onSubmit={mockOnSubmit} />);
 
-    const startButton = screen.getByTestId("start-button");
+    const startButton = screen.getByTestId("analyze-button");
     fireEvent.click(startButton);
 
     await waitFor(() => {
@@ -87,7 +87,7 @@ describe("URLInputPanel", () => {
       expect(screen.queryByTestId("url-error")).not.toBeInTheDocument();
     });
 
-    const startButton = screen.getByTestId("start-button");
+    const startButton = screen.getByTestId("analyze-button");
     fireEvent.click(startButton);
 
     expect(mockOnSubmit).toHaveBeenCalledWith(validUrl);
@@ -101,7 +101,7 @@ describe("URLInputPanel", () => {
     await user.type(input, "invalid-url");
 
     await waitFor(() => {
-      expect(screen.getByTestId("start-button")).toBeDisabled();
+      expect(screen.getByTestId("analyze-button")).toBeDisabled();
     });
   });
 
@@ -129,7 +129,7 @@ describe("URLInputPanel", () => {
       expect(screen.queryByTestId("url-error")).not.toBeInTheDocument();
     });
 
-    const startButton = screen.getByTestId("start-button");
+    const startButton = screen.getByTestId("analyze-button");
     fireEvent.click(startButton);
 
     expect(mockOnSubmit).toHaveBeenCalledWith(
