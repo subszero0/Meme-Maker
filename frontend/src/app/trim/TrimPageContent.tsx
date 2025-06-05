@@ -1,6 +1,6 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 
 interface VideoMetadata {
@@ -22,6 +22,7 @@ interface JobStatus {
 
 export default function TrimPageContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const url = searchParams.get('url')
   const [startTime, setStartTime] = useState('00:00:00')
   const [endTime, setEndTime] = useState('00:00:05')
@@ -31,6 +32,7 @@ export default function TrimPageContent() {
   const [error, setError] = useState('')
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null)
   const [copyFeedback, setCopyFeedback] = useState('')
+  const [showTermsError, setShowTermsError] = useState(false)
 
   // Parse time to seconds
   const parseTime = (timeStr: string): number => {
@@ -98,10 +100,16 @@ export default function TrimPageContent() {
   }, [url, searchParams])
 
   const handleCreateClip = async () => {
-    if (!termsAccepted || !isDurationValid || !url) return
+    if (!termsAccepted) {
+      setShowTermsError(true)
+      return
+    }
+    
+    if (!isDurationValid || !url) return
 
     setLoading(true)
     setJobStatus({ status: 'processing' })
+    setShowTermsError(false)
 
     // Simulate job creation and processing
     setTimeout(() => {
@@ -186,14 +194,14 @@ export default function TrimPageContent() {
                   aria-valuenow={parseTime(startTime)}
                 >
                   <div 
-                    className="absolute left-0 top-0 w-4 h-8 bg-blue-500 rounded cursor-grab"
+                    className="absolute left-0 top-0 bg-blue-500 rounded cursor-grab"
                     data-testid="start-handle"
-                    style={{ minWidth: '44px', minHeight: '44px' }}
+                    style={{ width: '44px', height: '44px' }}
                   ></div>
                   <div 
-                    className="absolute right-0 top-0 w-4 h-8 bg-blue-500 rounded cursor-grab"
+                    className="absolute right-0 top-0 bg-blue-500 rounded cursor-grab"
                     data-testid="end-handle"
-                    style={{ minWidth: '44px', minHeight: '44px' }}
+                    style={{ width: '44px', height: '44px' }}
                   ></div>
                 </div>
               </div>
@@ -207,7 +215,16 @@ export default function TrimPageContent() {
                   <input
                     type="text"
                     value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
+                    onChange={(e) => {
+                      setStartTime(e.target.value)
+                      // Update URL with new start time
+                      if (url) {
+                        const newUrl = new URL(window.location.href)
+                        const startSeconds = parseTime(e.target.value)
+                        newUrl.searchParams.set('start', startSeconds.toString())
+                        router.replace(newUrl.pathname + newUrl.search, { scroll: false })
+                      }
+                    }}
                     placeholder="00:00:00"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     data-testid="start-time-input"
@@ -251,7 +268,10 @@ export default function TrimPageContent() {
                   <input
                     type="checkbox"
                     checked={termsAccepted}
-                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    onChange={(e) => {
+                      setTermsAccepted(e.target.checked)
+                      setShowTermsError(false)
+                    }}
                     className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     data-testid="terms-checkbox"
                     aria-describedby="terms-text"
@@ -260,7 +280,7 @@ export default function TrimPageContent() {
                     I confirm that I have the right to download this content and agree to the terms of service.
                   </span>
                 </label>
-                {!termsAccepted && (
+                {showTermsError && !termsAccepted && (
                   <p className="text-red-600 text-sm mt-2" data-testid="terms-error">
                     You must accept the terms to continue.
                   </p>
