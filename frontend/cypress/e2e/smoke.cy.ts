@@ -34,12 +34,17 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       );
 
       // Step 2: Set trim points (5 seconds clip)
-      cy.get('[data-testid="start-time-input"]').clear().type("00:00:05");
+      cy.get('[data-testid="start-time-input"]').as('startInput');
+      cy.get('@startInput').clear();
+      cy.get('@startInput').type("00:00:05");
 
-      cy.get('[data-testid="end-time-input"]').clear().type("00:00:10");
+      cy.get('[data-testid="end-time-input"]').as('endInput');
+      cy.get('@endInput').clear();
+      cy.get('@endInput').type("00:00:10");
 
       // Verify duration is calculated correctly
-      cy.get('[data-testid="clip-duration"]').should(
+      cy.get('[data-testid="clip-duration"]').as('clipDuration');
+      cy.get('@clipDuration').should(
         "contain.text",
         "5 seconds",
       );
@@ -262,6 +267,9 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       // Tab through key elements using keyboard commands
       cy.get('[data-testid="url-input"]').focus();
       cy.focused().should("have.attr", "data-testid", "url-input");
+
+      // Enter URL to enable the analyze button
+      cy.get('[data-testid="url-input"]').type(TEST_YOUTUBE_URL);
 
       cy.get('[data-testid="analyze-button"]').focus();
       cy.focused().should("have.attr", "data-testid", "analyze-button");
