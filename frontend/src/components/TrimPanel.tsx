@@ -109,20 +109,20 @@ export default function TrimPanel({
     }
   }, []);
 
-  // Debounced input handlers
-  const debouncedInChange = useDebouncedCallback((value: string) => {
+  // Input handlers - removed debounce for immediate state updates
+  const handleInChange = useCallback((value: string) => {
     const parsed = parseTime(value);
     if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
       dispatch({ type: "SET_IN", payload: parsed });
     }
-  }, 150);
+  }, [jobMeta.duration]);
 
-  const debouncedOutChange = useDebouncedCallback((value: string) => {
+  const handleOutChange = useCallback((value: string) => {
     const parsed = parseTime(value);
     if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
       dispatch({ type: "SET_OUT", payload: parsed });
     }
-  }, 150);
+  }, [jobMeta.duration]);
 
   const handleSliderChange = useCallback(
     (values: number[]) => {
@@ -156,18 +156,18 @@ export default function TrimPanel({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
       setInTimeInput(value);
-      debouncedInChange(value);
+      handleInChange(value);
     },
-    [debouncedInChange],
+    [handleInChange],
   );
 
   const handleOutTimeChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
       setOutTimeInput(value);
-      debouncedOutChange(value);
+      handleOutChange(value);
     },
-    [debouncedOutChange],
+    [handleOutChange],
   );
 
   const submitTrim = useDebouncedCallback(async () => {
