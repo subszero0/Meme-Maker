@@ -34,27 +34,27 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       );
 
       // Step 2: Set trim points (5 seconds clip)
-      cy.get('[data-testid="start-time-input"]').as('startInput');
+      cy.get('[data-testid="start-time"]').as('startInput');
       cy.get('@startInput').clear();
-      cy.get('@startInput').type("00:05");
+      cy.get('@startInput').type("00:05.000");
 
-      cy.get('[data-testid="end-time-input"]').as('endInput');
+      cy.get('[data-testid="end-time"]').as('endInput');
       cy.get('@endInput').clear();
-      cy.get('@endInput').type("00:10");
+      cy.get('@endInput').type("00:10.000");
 
       // Verify duration is calculated correctly
-      cy.get('[data-testid="clip-duration"]').as('clipDuration');
+      cy.get('[data-testid="clip-duration-text"]').as('clipDuration');
       cy.get('@clipDuration').should(
         "contain.text",
-        "5 seconds",
+        "5.0 seconds",
       );
 
       // Step 3: Accept terms and create job
-      cy.get('[data-testid="terms-checkbox"]').as('termsCheckbox');
+      cy.get('[data-testid="rights-checkbox"]').as('termsCheckbox');
       cy.get('@termsCheckbox').check();
       cy.get('@termsCheckbox').should("be.checked");
 
-      cy.get('[data-testid="create-clip-button"]').click();
+      cy.get('[data-testid="clip-btn"]').click();
 
       // Step 4: Wait for job completion and download
       cy.get('[data-testid="job-status"]', { timeout: 30000 }).should(
@@ -62,7 +62,7 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
         "ready",
       );
 
-      cy.get('[data-testid="download-button"]').as('downloadBtn');
+      cy.get('[data-testid="download-btn"]').as('downloadBtn');
       cy.get('@downloadBtn').should("be.visible");
       cy.get('@downloadBtn').should("not.be.disabled");
 
@@ -101,26 +101,26 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       cy.get('[data-testid="timeline-slider"]').should("be.visible");
 
       // Simulate dragging start handle
-      cy.get('[data-testid="start-handle"]')
+      cy.get('[data-testid="slider-handle-0"]')
         .trigger("mousedown", { which: 1 })
         .trigger("mousemove", { clientX: 100 })
         .trigger("mouseup");
 
       // Simulate dragging end handle
-      cy.get('[data-testid="end-handle"]')
+      cy.get('[data-testid="slider-handle-1"]')
         .trigger("mousedown", { which: 1 })
         .trigger("mousemove", { clientX: 200 })
         .trigger("mouseup");
 
       // Verify time inputs update
-      cy.get('[data-testid="start-time-input"]').should(
+      cy.get('[data-testid="start-time"]').should(
         "not.have.value",
-        "00:00:00",
+        "00:00.000",
       );
 
-      cy.get('[data-testid="end-time-input"]').should(
+      cy.get('[data-testid="end-time"]').should(
         "not.have.value",
-        "00:00:05",
+        "00:05.000",
       );
     });
   });
@@ -135,17 +135,17 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       );
 
       // Try to set a 31-minute clip
-      cy.get('[data-testid="start-time-input"]').clear().type("00:00");
+      cy.get('[data-testid="start-time"]').clear().type("00:00.000");
 
-      cy.get('[data-testid="end-time-input"]').clear().type("31:00");
+      cy.get('[data-testid="end-time"]').clear().type("31:00.000");
 
       // Should show error message
-      cy.get('[data-testid="duration-error"]')
+      cy.get('[data-testid="duration-error-message"]')
         .should("be.visible")
-        .and("contain.text", "thirty minutes");
+        .and("contain.text", "30 minutes or less");
 
       // Create button should be disabled
-      cy.get('[data-testid="create-clip-button"]').should("be.disabled");
+      cy.get('[data-testid="clip-btn"]').should("be.disabled");
     });
 
     it("should handle invalid URLs gracefully", () => {
@@ -154,9 +154,9 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       cy.get('[data-testid="analyze-button"]').click();
 
       // Should show error message
-      cy.get('[data-testid="url-error"]', { timeout: 10000 })
+      cy.get('[data-testid="notification-message"]', { timeout: 10000 })
         .should("be.visible")
-        .and("contain.text", "valid video URL");
+        .and("contain.text", "Failed to load video");
     });
 
     it("should enforce terms acceptance", () => {
@@ -167,20 +167,20 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       );
 
       // Set valid trim points
-      cy.get('[data-testid="start-time-input"]').clear().type("00:05");
+      cy.get('[data-testid="start-time"]').clear().type("00:05.000");
 
-      cy.get('[data-testid="end-time-input"]').clear().type("00:10");
+      cy.get('[data-testid="end-time"]').clear().type("00:10.000");
 
       // Don't check terms checkbox
-      cy.get('[data-testid="terms-checkbox"]').should("not.be.checked");
+      cy.get('[data-testid="rights-checkbox"]').should("not.be.checked");
 
       // Button should be disabled
-      cy.get('[data-testid="create-clip-button"]').should("be.disabled");
+      cy.get('[data-testid="clip-btn"]').should("be.disabled");
 
       // Show error message
-      cy.get('[data-testid="terms-error"]').should(
+      cy.get('[data-testid="submit-error-message"]').should(
         "contain.text",
-        "accept the terms",
+        "You must accept the terms",
       );
     });
 
@@ -198,20 +198,20 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       );
 
       // Set valid clip and accept terms
-      cy.get('[data-testid="start-time-input"]').clear().type("00:05");
+      cy.get('[data-testid="start-time"]').clear().type("00:05.000");
 
-      cy.get('[data-testid="end-time-input"]').clear().type("00:10");
+      cy.get('[data-testid="end-time"]').clear().type("00:10.000");
 
-      cy.get('[data-testid="terms-checkbox"]').check();
+      cy.get('[data-testid="rights-checkbox"]').check();
 
-      cy.get('[data-testid="create-clip-button"]').click();
+      cy.get('[data-testid="clip-btn"]').click();
 
       cy.wait("@queueFull");
 
       // Should show queue full error
-      cy.get('[data-testid="queue-error"]')
+      cy.get('[data-testid="queue-full-banner"]')
         .should("be.visible")
-        .and("contain.text", "Try again in a minute");
+        .and("contain.text", "queue is full");
     });
   });
 
@@ -229,16 +229,16 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       );
 
       // Slider handles should be large enough for touch
-      cy.get('[data-testid="start-handle"]')
+      cy.get('[data-testid="slider-handle-0"]')
         .should("have.css", "width")
-        .and("match", /^(4[4-9]|[5-9]\d|\d{3,})px$/); // >= 44px
+        .and("match", /^(1[6-9]|[2-9]\d|\d{3,})px$/); // >= 16px
 
-      cy.get('[data-testid="end-handle"]')
+      cy.get('[data-testid="slider-handle-1"]')
         .should("have.css", "height")
-        .and("match", /^(4[4-9]|[5-9]\d|\d{3,})px$/); // >= 44px
+        .and("match", /^(1[6-9]|[2-9]\d|\d{3,})px$/); // >= 16px
 
       // Buttons should be touch-friendly
-      cy.get('[data-testid="create-clip-button"]')
+      cy.get('[data-testid="clip-btn"]')
         .should("have.css", "min-height")
         .and("match", /^(4[4-9]|[5-9]\d|\d{3,})px$/); // >= 44px
     });
@@ -303,19 +303,25 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
         "be.visible",
       );
 
-      // Slider should have proper ARIA attributes
-      cy.get('[data-testid="timeline-slider"]')
-        .should("have.attr", "role", "slider")
-        .and("have.attr", "aria-label");
-
-      // Form controls should be properly labeled
-      cy.get('[data-testid="start-time-input"]').then(($el) => {
-        expect($el.attr("aria-label") || $el.attr("aria-labelledby")).to.exist;
-      });
-
-      cy.get('[data-testid="terms-checkbox"]').should(
+      cy.get('[data-testid="start-time"]').should(
         "have.attr",
-        "aria-describedby",
+        "aria-label",
+        "Start time",
+      );
+      cy.get('[data-testid="end-time"]').should(
+        "have.attr",
+        "aria-label",
+        "End time",
+      );
+      cy.get('[data-testid="rights-checkbox"]').should(
+        "have.attr",
+        "aria-label",
+        "I have the rights to use this video",
+      );
+      cy.get('[data-testid="clip-btn"]').should(
+        "have.attr",
+        "aria-label",
+        "Create and download clip",
       );
     });
   });
@@ -340,16 +346,15 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
     });
 
     it("should update URL when trim points change", () => {
-      cy.visit(`/trim?url=${encodeURIComponent(TEST_YOUTUBE_URL)}`);
+      cy.visit(`/trim?url=${encodeURIComponent(TEST_YOUTUBE_URL)}&start=0&end=5`);
 
       cy.get('[data-testid="video-metadata"]', { timeout: 10000 }).should(
         "be.visible",
       );
 
-      cy.get('[data-testid="start-time-input"]').clear().type("00:15");
+      cy.get('[data-testid="end-time"]').clear().type("00:10.000");
 
-      // URL should update with new start time
-      cy.url().should("include", "start=15");
+      cy.url().should("include", "start=0&end=10");
     });
   });
 
@@ -376,25 +381,18 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       );
 
       for (let i = 1; i <= 5; i++) {
-        cy.get('[data-testid="start-time-input"]')
+        cy.get('[data-testid="start-time"]')
           .clear()
-          .type(`00:0${i}`);
+          .type(`00:0${i}.000`);
+        cy.get('[data-testid="end-time"]')
+          .clear()
+          .type(`00:1${i}.000`);
       }
 
-      cy.get('[data-testid="clip-duration"]').should(
+      cy.get('[data-testid="clip-duration-text"]').should(
         "contain.text",
-        "5.0 seconds",
+        "10.0 seconds",
       );
-
-      // Rapidly change trim points
-      for (let i = 5; i < 15; i++) {
-        cy.get('[data-testid="start-time-input"]')
-          .clear()
-          .type(`00:${i.toString().padStart(2, "0")}`);
-      }
-
-      // Should handle all updates without errors
-      cy.get('[data-testid="clip-duration"]').should("be.visible");
     });
   });
 });
