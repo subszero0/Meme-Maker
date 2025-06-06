@@ -84,6 +84,15 @@ export default function TrimPanel({
     const parsedInInput = parseTime(inTimeInput);
     const parsedOutInput = parseTime(outTimeInput);
     
+    console.log('useEffect triggered:', { 
+      parsedInInput, 
+      parsedOutInput, 
+      stateIn: state.in, 
+      stateOut: state.out,
+      willUpdateIn: parsedInInput !== state.in,
+      willUpdateOut: parsedOutInput !== state.out
+    });
+    
     // Only update if the current input doesn't parse to the same value
     if (parsedInInput !== state.in) {
       setInTimeInput(formatTime(state.in));
@@ -91,7 +100,7 @@ export default function TrimPanel({
     if (parsedOutInput !== state.out) {
       setOutTimeInput(formatTime(state.out));
     }
-  }, [state.in, state.out, inTimeInput, outTimeInput]);
+  }, [state.in, state.out]);
 
   // Format duration in human-readable format
   const formatDuration = (seconds: number): string => {
@@ -112,7 +121,8 @@ export default function TrimPanel({
     clipDuration,
     formattedDuration: formatDuration(clipDuration),
     inTimeInput,
-    outTimeInput
+    outTimeInput,
+    videoDuration: jobMeta.duration
   });
 
   // Validation
