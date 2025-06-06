@@ -85,6 +85,8 @@ export default function TrimPanel({
 
   const clipDuration = state.out - state.in;
   const maxDuration = 180; // 3 minutes in seconds
+  
+  console.log('TrimPanel state:', { in: state.in, out: state.out, clipDuration });
 
   // Validation
   const isValidClip = state.out > state.in && clipDuration <= maxDuration;
@@ -92,6 +94,7 @@ export default function TrimPanel({
 
   // Format duration in human-readable format
   const formatDuration = (seconds: number): string => {
+    console.log('formatDuration called with:', seconds);
     if (isNaN(seconds) || seconds < 0) return '0 seconds'
     if (seconds < 60) return `${seconds} seconds`
     const mins = Math.floor(seconds / 60)
@@ -112,6 +115,7 @@ export default function TrimPanel({
   // Input handlers - removed debounce for immediate state updates
   const handleInChange = useCallback((value: string) => {
     const parsed = parseTime(value);
+    console.log('handleInChange:', { value, parsed, duration: jobMeta.duration });
     if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
       dispatch({ type: "SET_IN", payload: parsed });
     }
@@ -119,6 +123,7 @@ export default function TrimPanel({
 
   const handleOutChange = useCallback((value: string) => {
     const parsed = parseTime(value);
+    console.log('handleOutChange:', { value, parsed, duration: jobMeta.duration });
     if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
       dispatch({ type: "SET_OUT", payload: parsed });
     }

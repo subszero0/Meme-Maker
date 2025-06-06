@@ -34,9 +34,11 @@ export function formatTimeForAPI(seconds: number): string {
  * @returns Time in seconds or null if invalid format
  */
 export function parseTime(timeString: string): number | null {
+  if (!timeString || timeString.trim() === '') return null;
+  
   // Pattern for hh:mm:ss.mmm or hh:mm:ss format
   const pattern = /^(\d{1,2}):(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?$/;
-  const match = timeString.match(pattern);
+  const match = timeString.trim().match(pattern);
 
   if (!match) return null;
 

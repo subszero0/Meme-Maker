@@ -97,6 +97,8 @@ export default function URLInputPanel({
   };
 
   const hasError = !!error && !isDebouncing;
+  
+  console.log('URLInputPanel state:', { url, error, isDebouncing, hasError, platform });
 
   return (
     <div className="mx-auto max-w-md">
