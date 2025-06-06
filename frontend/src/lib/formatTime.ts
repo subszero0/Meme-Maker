@@ -29,13 +29,12 @@ export function formatTimeForAPI(seconds: number): string {
 }
 
 /**
- * Parses a time string in hh:mm:ss.mmm, hh:mm:ss, or mm:ss format to seconds
+ * Parses a time string in hh:mm:ss.mmm or mm:ss.mmm format to seconds
  * @param timeString - Time string to parse
  * @returns Time in seconds or null if invalid format
  */
 export function parseTime(timeString: string): number | null {
-  // Pattern for hh:mm:ss.mmm or hh:mm:ss or mm:ss.mmm or mm:ss
-  const pattern = /^(?:(\d{1,2}):)?(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?$/;
+  const pattern = /^(?:(\d{1,2}):)?(\d{1,2}):(\d{1,2})\.(\d{3})$/;
   const match = timeString.match(pattern);
 
   if (!match) return null;
@@ -43,7 +42,7 @@ export function parseTime(timeString: string): number | null {
   const hours = match[1] ? parseInt(match[1], 10) : 0;
   const minutes = parseInt(match[2], 10);
   const seconds = parseInt(match[3], 10);
-  const milliseconds = match[4] ? parseInt(match[4].padEnd(3, '0'), 10) : 0;
+  const milliseconds = parseInt(match[4], 10);
 
   if (minutes >= 60 || seconds >= 60 || milliseconds >= 1000) return null;
 
