@@ -77,11 +77,21 @@ export default function TrimPanel({
     out: state.out,
   });
 
-  // Update time inputs when state changes
+  // Update time inputs when state changes (only when not user-initiated)
   useEffect(() => {
-    setInTimeInput(formatTime(state.in));
-    setOutTimeInput(formatTime(state.out));
-  }, [state.in, state.out]);
+    // Only update if the formatted time doesn't match what user typed
+    // This prevents overwriting user input with auto-formatting
+    const formattedIn = formatTime(state.in);
+    const formattedOut = formatTime(state.out);
+    
+    // Only update if the current input doesn't parse to the same value
+    if (parseTime(inTimeInput) !== state.in) {
+      setInTimeInput(formattedIn);
+    }
+    if (parseTime(outTimeInput) !== state.out) {
+      setOutTimeInput(formattedOut);
+    }
+  }, [state.in, state.out, inTimeInput, outTimeInput]);
 
   const clipDuration = state.out - state.in;
   const maxDuration = 180; // 3 minutes in seconds
@@ -99,8 +109,6 @@ export default function TrimPanel({
     return secs > 0 ? `${mins}m ${secs}s` : `${mins} minutes`
   };
 
-  console.log('TrimPanel clipDuration calculation:', { in: state.in, out: state.out, clipDuration, formatted: formatDuration(clipDuration) });
-
   // @accessibility - Announce value changes to screen readers
   const announceValue = useCallback((index: number, value: number) => {
     const handleName = index === 0 ? "Start" : "End";
@@ -113,7 +121,6 @@ export default function TrimPanel({
 
   // Input handlers - removed debounce for immediate state updates
   const handleInChange = useCallback((value: string) => {
-    console.log('TrimPanel handleInChange:', { value, parseResult: parseTime(value) });
     const parsed = parseTime(value);
     if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
       dispatch({ type: "SET_IN", payload: parsed });
@@ -121,7 +128,6 @@ export default function TrimPanel({
   }, [jobMeta.duration]);
 
   const handleOutChange = useCallback((value: string) => {
-    console.log('TrimPanel handleOutChange:', { value, parseResult: parseTime(value) });
     const parsed = parseTime(value);
     if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
       dispatch({ type: "SET_OUT", payload: parsed });
