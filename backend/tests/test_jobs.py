@@ -463,8 +463,8 @@ def test_create_job_without_accepted_terms(client_with_fake_redis):
     """Test that job creation fails when accepted_terms is False"""
     job_data = {
         "url": "https://www.youtube.com/watch?v=test",
-        "start": "00:00:10",
-        "end": "00:00:30",
+        "start": "00:10",
+        "end": "00:30",
         "accepted_terms": False,
     }
 
@@ -478,8 +478,8 @@ def test_create_job_missing_accepted_terms(client_with_fake_redis):
     """Test that job creation fails when accepted_terms field is missing"""
     job_data = {
         "url": "https://www.youtube.com/watch?v=test",
-        "start": "00:00:10",
-        "end": "00:00:30",
+        "start": "00:10",
+        "end": "00:30",
         # missing accepted_terms field
     }
 
@@ -498,8 +498,8 @@ def test_create_job_with_accepted_terms_true(client_with_fake_redis):
     """Test that job creation succeeds when accepted_terms is True"""
     job_data = {
         "url": "https://www.youtube.com/watch?v=test",
-        "start": "00:00:10",
-        "end": "00:00:30",
+        "start": "00:10",
+        "end": "00:30",
         "accepted_terms": True,
     }
 
