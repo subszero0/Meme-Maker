@@ -245,31 +245,35 @@ export default function TrimPageContent() {
                     className="absolute left-0 top-0 bg-blue-500 rounded cursor-grab"
                     data-testid="start-handle"
                     style={{ width: '44px', height: '44px' }}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      // Simulate changing start time when handle is moved
-                      const rect = e.currentTarget.parentElement?.getBoundingClientRect()
-                      if (rect) {
-                        const newTime = Math.floor((100 / rect.width) * metadata.duration)
-                        const timeStr = `00:00:${String(Math.min(newTime, 59)).padStart(2, '0')}`
-                        setStartTime(timeStr)
-                      }
-                    }}
+                                          onMouseDown={(e) => {
+                        e.preventDefault()
+                        // Simulate changing start time when handle is moved
+                        const rect = e.currentTarget.parentElement?.getBoundingClientRect()
+                        if (rect) {
+                          const newTime = Math.floor((100 / rect.width) * metadata.duration)
+                          const minutes = Math.floor(newTime / 60)
+                          const seconds = newTime % 60
+                          const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+                          setStartTime(timeStr)
+                        }
+                      }}
                   ></div>
                   <div 
                     className="absolute right-0 top-0 bg-blue-500 rounded cursor-grab"
                     data-testid="end-handle"
                     style={{ width: '44px', height: '44px' }}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      // Simulate changing end time when handle is moved
-                      const rect = e.currentTarget.parentElement?.getBoundingClientRect()
-                      if (rect) {
-                        const newTime = Math.floor((200 / rect.width) * metadata.duration)
-                        const timeStr = `00:00:${String(Math.max(newTime, 10)).padStart(2, '0')}`
-                        setEndTime(timeStr)
-                      }
-                    }}
+                                          onMouseDown={(e) => {
+                        e.preventDefault()
+                        // Simulate changing end time when handle is moved
+                        const rect = e.currentTarget.parentElement?.getBoundingClientRect()
+                        if (rect) {
+                          const newTime = Math.floor((200 / rect.width) * metadata.duration)
+                          const minutes = Math.floor(newTime / 60)
+                          const seconds = newTime % 60
+                          const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+                          setEndTime(timeStr)
+                        }
+                      }}
                   ></div>
                 </div>
               </div>
@@ -286,7 +290,7 @@ export default function TrimPageContent() {
                     onChange={(e) => {
                       setStartTime(e.target.value)
                       // Update URL with new start time only if input is complete
-                      if (url && e.target.value.match(/^\d{2}:\d{2}:\d{2}$/)) {
+                      if (url && e.target.value.match(/^\d{1,2}:\d{2}$/)) {
                         const newUrl = new URL(window.location.href)
                         const startSeconds = parseTime(e.target.value)
                         if (!isNaN(startSeconds) && startSeconds >= 0) {
@@ -295,7 +299,7 @@ export default function TrimPageContent() {
                         }
                       }
                     }}
-                    placeholder="00:00:00"
+                    placeholder="00:00"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     data-testid="start-time-input"
                     aria-label="Start time for video clip"
@@ -311,7 +315,7 @@ export default function TrimPageContent() {
                     onChange={(e) => {
                       setEndTime(e.target.value)
                       // Update URL with new end time only if input is complete
-                      if (url && e.target.value.match(/^\d{2}:\d{2}:\d{2}$/)) {
+                      if (url && e.target.value.match(/^\d{1,2}:\d{2}$/)) {
                         const newUrl = new URL(window.location.href)
                         const endSeconds = parseTime(e.target.value)
                         if (!isNaN(endSeconds) && endSeconds >= 0) {
@@ -320,7 +324,7 @@ export default function TrimPageContent() {
                         }
                       }
                     }}
-                    placeholder="00:00:05"
+                    placeholder="00:05"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     data-testid="end-time-input"
                   />

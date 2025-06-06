@@ -322,10 +322,10 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       // Should pre-populate trim points from URL params
       cy.get('[data-testid="start-time-input"]').should(
         "have.value",
-        "00:00:05",
+        "00:05",
       );
 
-      cy.get('[data-testid="end-time-input"]').should("have.value", "00:00:10");
+      cy.get('[data-testid="end-time-input"]').should("have.value", "00:10");
     });
 
     it("should update URL when trim points change", () => {
@@ -335,7 +335,7 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
         "be.visible",
       );
 
-      cy.get('[data-testid="start-time-input"]').clear().type("00:00:15");
+      cy.get('[data-testid="start-time-input"]').clear().type("00:15");
 
       // URL should update with new start time
       cy.url().should("include", "start=15");
@@ -368,7 +368,7 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       for (let i = 5; i < 15; i++) {
         cy.get('[data-testid="start-time-input"]')
           .clear()
-          .type(`00:00:${i.toString().padStart(2, "0")}`);
+          .type(`00:${i.toString().padStart(2, "0")}`);
       }
 
       // Should handle all updates without errors
