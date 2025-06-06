@@ -79,11 +79,11 @@ def test_create_job_valid(client_with_fake_redis):
 
 
 def test_create_job_with_string_timestamps(client_with_fake_redis):
-    """Test creating a valid job with hh:mm:ss string format returns 202"""
+    """Test creating a valid job with mm:ss string format returns 202"""
     job_data = {
         "url": "https://www.youtube.com/watch?v=test",
-        "start": "00:00:10",
-        "end": "00:01:10",
+        "start": "00:10",
+        "end": "01:10",
         "accepted_terms": True,
     }
 
@@ -100,16 +100,16 @@ def test_create_job_with_string_timestamps(client_with_fake_redis):
         # Verify job was enqueued with converted seconds
         mock_enqueue.assert_called_once()
         args = mock_enqueue.call_args[0]
-        assert args[3] == 10.0  # 00:00:10 -> 10 seconds
-        assert args[4] == 70.0  # 00:01:10 -> 70 seconds
+        assert args[3] == 10.0  # 00:10 -> 10 seconds
+        assert args[4] == 70.0  # 01:10 -> 70 seconds
 
 
 def test_create_job_with_fractional_seconds(client_with_fake_redis):
-    """Test creating a job with fractional seconds in hh:mm:ss.mmm format"""
+    """Test creating a job with fractional seconds in mm:ss.mmm format"""
     job_data = {
         "url": "https://www.youtube.com/watch?v=test",
-        "start": "00:00:10.5",
-        "end": "00:01:10.25",
+        "start": "00:10.5",
+        "end": "01:10.25",
         "accepted_terms": True,
     }
 
@@ -123,8 +123,8 @@ def test_create_job_with_fractional_seconds(client_with_fake_redis):
         # Verify job was enqueued with converted fractional seconds
         mock_enqueue.assert_called_once()
         args = mock_enqueue.call_args[0]
-        assert args[3] == 10.5  # 00:00:10.5 -> 10.5 seconds
-        assert args[4] == 70.25  # 00:01:10.25 -> 70.25 seconds
+        assert args[3] == 10.5  # 00:10.5 -> 10.5 seconds
+        assert args[4] == 70.25  # 01:10.25 -> 70.25 seconds
 
 
 def test_create_job_with_integer_seconds(client_with_fake_redis):
@@ -154,7 +154,7 @@ def test_create_job_invalid_string_format(client_with_fake_redis):
     """Test that invalid time string formats are rejected with 422"""
     job_data = {
         "url": "https://www.youtube.com/watch?v=test",
-        "start": "10:30",  # Missing seconds part
+        "start": "10",  # Missing minutes part
         "end": "70.0",
         "accepted_terms": True,
     }
@@ -162,15 +162,15 @@ def test_create_job_invalid_string_format(client_with_fake_redis):
     response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
 
     assert response.status_code == 422
-    assert "Time must be in hh:mm:ss format or numeric seconds" in str(response.json())
+    assert "Time must be in mm:ss format or numeric seconds" in str(response.json())
 
 
 def test_create_job_invalid_time_values(client_with_fake_redis):
     """Test that invalid time values in string format are rejected"""
     job_data = {
         "url": "https://www.youtube.com/watch?v=test",
-        "start": "00:00:abc",  # Invalid seconds value
-        "end": "00:01:30",
+        "start": "00:abc",  # Invalid seconds value
+        "end": "01:30",
         "accepted_terms": True,
     }
 

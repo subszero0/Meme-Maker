@@ -74,7 +74,7 @@ frontend/
 1. Paste video URL (YouTube, Instagram, Facebook, Threads, Reddit)
 2. Video metadata fetched and preview shown
 3. Dual-handle slider for precise trimming
-4. Live timecode display (hh:mm:ss.mmm format)
+4. Live timecode display (mm:ss.mmm format)
 5. Rights confirmation required
 6. Download button with validation
 

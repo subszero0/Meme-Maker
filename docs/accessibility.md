@@ -76,7 +76,7 @@ tabindex="0"
 #### **Input Labels**
 ```html
 <label for="start-time" id="start-time-label">
-  Start Time (hh:mm:ss.mmm)
+  Start Time (mm:ss.mmm)
 </label>
 <input 
   id="start-time" 
@@ -84,7 +84,7 @@ tabindex="0"
   aria-labelledby="start-time-label"
 />
 <div id="start-time-help" class="sr-only">
-  Enter start time in hours, minutes, seconds, and milliseconds format
+  Enter start time in minutes, seconds, and milliseconds format
 </div>
 ```
 

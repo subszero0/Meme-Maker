@@ -32,7 +32,7 @@
 * Back-end validates the link and fetches metadata (title, duration, resolutions).
 
 ### 3.2 Trim  
-* Dual-handle timeline slider **and** exact `hh:mm:ss.mmm` input boxes.  
+* Dual-handle timeline slider **and** exact `mm:ss.mmm` input boxes.  
 * Live muted preview updates while scrubbing.  
 * Clip-length validator blocks selections over 3 min.
 

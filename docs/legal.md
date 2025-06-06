@@ -49,10 +49,10 @@ Meme Maker includes comprehensive legal compliance features to ensure proper use
 
 ### Frontend Interface Updates
 - **API Interface**: Updated `JobRequest` to use:
-  - `start: string` (hh:mm:ss format) instead of `in: number`
-  - `end: string` (hh:mm:ss format) instead of `out: number`
+  - `start: string` (mm:ss format) instead of `in: number`
+- `end: string` (mm:ss format) instead of `out: number`
   - `accepted_terms: boolean` instead of `rights: boolean`
-- **Transformation**: `formatTimeForAPI()` converts seconds to hh:mm:ss format
+- **Transformation**: `formatTimeForAPI()` converts seconds to mm:ss format
 
 ## User Flow
 
@@ -102,5 +102,5 @@ Meme Maker includes comprehensive legal compliance features to ensure proper use
 
 ### API Compatibility
 - Backend expects exact field names: `start`, `end`, `accepted_terms`
-- Time format must be `hh:mm:ss` (no milliseconds)
+- Time format must be `mm:ss` (no milliseconds)
 - Any API changes require corresponding frontend updates 

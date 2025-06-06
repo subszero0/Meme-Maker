@@ -40,7 +40,7 @@ This checklist provides a comprehensive audit framework for the Meme Maker video
 
 #### Control Clarity & Labeling
 - [ ] **Time input labels**: Verify "Start Time" and "End Time" labels are clear (@frontend)
-- [ ] **Time format guidance**: Confirm "(hh:mm:ss.mmm)" format hint is visible (@frontend)
+- [ ] **Time format guidance**: Confirm "(mm:ss.mmm)" format hint is visible (@frontend)
 - [ ] **Duration display**: Verify total duration shows in consistent format (@frontend)
 - [ ] **Clip duration feedback**: Ensure current selection duration is prominently displayed (@frontend)
 - [ ] **Handle identification**: Confirm start/end handles are visually distinguishable (@design)
@@ -71,7 +71,7 @@ This checklist provides a comprehensive audit framework for the Meme Maker video
 
 #### Control Clarity & Labeling
 - [ ] **Video title display**: Verify video title is truncated appropriately on narrow screens (@frontend)
-- [ ] **Duration format**: Confirm duration displays in consistent MM:SS or HH:MM:SS format (@frontend)
+- [ ] **Duration format**: Confirm duration displays in consistent MM:SS format (@frontend)
 - [ ] **Player controls**: Verify ReactPlayer controls are accessible and functional (@frontend)
 - [ ] **Muted indicator**: Ensure video starts muted with clear indicator (@frontend)
 
@@ -731,8 +731,8 @@ For QA testing and automation, all interactive elements include consistent `data
 #### **TrimPanel Components**
 - `[data-cy="handle-start"]` - Start time slider handle (44×44px touch target)
 - `[data-cy="handle-end"]` - End time slider handle (44×44px touch target)
-- `[data-cy="start-time-input"]` - Start time text input (hh:mm:ss.mmm)
-- `[data-cy="end-time-input"]` - End time text input (hh:mm:ss.mmm)
+- `[data-cy="start-time-input"]` - Start time text input (mm:ss.mmm)
+- `[data-cy="end-time-input"]` - End time text input (mm:ss.mmm)
 - `[data-cy="rights-checkbox"]` - Rights acceptance checkbox
 - `[data-cy="clip-button"]` - Submit button for job creation
 
@@ -1452,8 +1452,8 @@ For QA testing and automation, all interactive elements include consistent `data
 #### **TrimPanel Components**
 - `[data-cy="handle-start"]` - Start time slider handle (44×44px touch target)
 - `[data-cy="handle-end"]` - End time slider handle (44×44px touch target)
-- `[data-cy="start-time-input"]` - Start time text input (hh:mm:ss.mmm)
-- `[data-cy="end-time-input"]` - End time text input (hh:mm:ss.mmm)
+- `[data-cy="start-time-input"]` - Start time text input (mm:ss.mmm)
+- `[data-cy="end-time-input"]` - End time text input (mm:ss.mmm)
 - `[data-cy="rights-checkbox"]` - Rights acceptance checkbox
 - `[data-cy="clip-button"]` - Submit button for job creation
 

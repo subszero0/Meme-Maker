@@ -234,7 +234,7 @@ export default function TrimPanel({
             id="start-time-label"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
-            Start Time (hh:mm:ss.mmm)
+            Start Time (mm:ss.mmm)
           </label>
           <input
             id="in-time"
@@ -248,7 +248,7 @@ export default function TrimPanel({
             aria-describedby="start-time-help"
           />
           <div id="start-time-help" className="sr-only">
-            Enter start time in hours, minutes, seconds, and milliseconds format
+            Enter start time in minutes, seconds, and milliseconds format
           </div>
         </div>
         <div>
@@ -257,7 +257,7 @@ export default function TrimPanel({
             id="end-time-label"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
-            End Time (hh:mm:ss.mmm)
+            End Time (mm:ss.mmm)
           </label>
           <input
             id="out-time"
@@ -271,7 +271,7 @@ export default function TrimPanel({
             aria-describedby="end-time-help"
           />
           <div id="end-time-help" className="sr-only">
-            Enter end time in hours, minutes, seconds, and milliseconds format
+            Enter end time in minutes, seconds, and milliseconds format
           </div>
         </div>
       </div>

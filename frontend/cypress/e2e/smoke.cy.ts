@@ -36,11 +36,11 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       // Step 2: Set trim points (5 seconds clip)
       cy.get('[data-testid="start-time-input"]').as('startInput');
       cy.get('@startInput').clear();
-      cy.get('@startInput').type("00:00:05");
+      cy.get('@startInput').type("00:05");
 
       cy.get('[data-testid="end-time-input"]').as('endInput');
       cy.get('@endInput').clear();
-      cy.get('@endInput').type("00:00:10");
+      cy.get('@endInput').type("00:10");
 
       // Verify duration is calculated correctly
       cy.get('[data-testid="clip-duration"]').as('clipDuration');
@@ -135,9 +135,9 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       );
 
       // Try to set a 31-minute clip
-      cy.get('[data-testid="start-time-input"]').clear().type("00:00:00");
+      cy.get('[data-testid="start-time-input"]').clear().type("00:00");
 
-      cy.get('[data-testid="end-time-input"]').clear().type("00:31:00");
+      cy.get('[data-testid="end-time-input"]').clear().type("00:31");
 
       // Should show error message
       cy.get('[data-testid="duration-error"]')
@@ -167,9 +167,9 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       );
 
       // Set valid trim points
-      cy.get('[data-testid="start-time-input"]').clear().type("00:00:05");
+      cy.get('[data-testid="start-time-input"]').clear().type("00:05");
 
-      cy.get('[data-testid="end-time-input"]').clear().type("00:00:10");
+      cy.get('[data-testid="end-time-input"]').clear().type("00:10");
 
       // Don't check terms checkbox
       cy.get('[data-testid="terms-checkbox"]').should("not.be.checked");
@@ -198,9 +198,9 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       );
 
       // Set valid clip and accept terms
-      cy.get('[data-testid="start-time-input"]').clear().type("00:00:05");
+      cy.get('[data-testid="start-time-input"]').clear().type("00:05");
 
-      cy.get('[data-testid="end-time-input"]').clear().type("00:00:10");
+      cy.get('[data-testid="end-time-input"]').clear().type("00:10");
 
       cy.get('[data-testid="terms-checkbox"]').check();
 

@@ -100,10 +100,10 @@ describe.skip("TrimPanel Accessibility", () => {
     it("should have proper label associations", () => {
       render(<TrimPanel {...defaultProps} />);
 
-      const startTimeLabel = screen.getByText("Start Time (hh:mm:ss.mmm)");
-      const endTimeLabel = screen.getByText("End Time (hh:mm:ss.mmm)");
-      const startInput = screen.getByLabelText("Start Time (hh:mm:ss.mmm)");
-      const endInput = screen.getByLabelText("End Time (hh:mm:ss.mmm)");
+      const startTimeLabel = screen.getByText("Start Time (mm:ss.mmm)");
+      const endTimeLabel = screen.getByText("End Time (mm:ss.mmm)");
+      const startInput = screen.getByLabelText("Start Time (mm:ss.mmm)");
+      const endInput = screen.getByLabelText("End Time (mm:ss.mmm)");
 
       expect(startTimeLabel).toHaveAttribute("id", "start-time-label");
       expect(endTimeLabel).toHaveAttribute("id", "end-time-label");

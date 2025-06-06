@@ -36,22 +36,16 @@ export default function TrimPageContent() {
 
   // Parse time to seconds - using proper validation
   const parseTime = (timeStr: string): number => {
-    if (!timeStr || timeStr.trim() === '') return 0
-    
-    // Pattern for hh:mm:ss format
-    const pattern = /^(\d{1,2}):(\d{1,2}):(\d{1,2})$/
-    const match = timeStr.match(pattern)
-    
+    // Pattern for mm:ss format only (no hours)
+    const match = timeStr.match(/^(\d{1,2}):(\d{1,2})$/)
     if (!match) return 0
     
-    const hours = parseInt(match[1], 10)
-    const minutes = parseInt(match[2], 10)
-    const seconds = parseInt(match[3], 10)
+    const minutes = parseInt(match[1], 10)
+    const seconds = parseInt(match[2], 10)
     
-    // Validate ranges
-    if (hours >= 24 || minutes >= 60 || seconds >= 60) return 0
+    if (minutes >= 60 || seconds >= 60) return 0
     
-    return hours * 3600 + minutes * 60 + seconds
+    return minutes * 60 + seconds
   }
 
   // Calculate clip duration safely
@@ -74,18 +68,16 @@ export default function TrimPageContent() {
       
       if (startParam) {
         const startSeconds = parseInt(startParam, 10)
-        const hours = Math.floor(startSeconds / 3600)
-        const minutes = Math.floor((startSeconds % 3600) / 60)
+        const minutes = Math.floor(startSeconds / 60)
         const seconds = startSeconds % 60
-        setStartTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+        setStartTime(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
       }
       
       if (endParam) {
         const endSeconds = parseInt(endParam, 10)
-        const hours = Math.floor(endSeconds / 3600)
-        const minutes = Math.floor((endSeconds % 3600) / 60)
+        const minutes = Math.floor(endSeconds / 60)
         const seconds = endSeconds % 60
-        setEndTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+        setEndTime(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
       }
       
       // Simulate API call for metadata

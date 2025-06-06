@@ -49,29 +49,29 @@ class JobCreate(BaseModel):
 
     url: HttpUrl
     start: Union[str, float, int] = Field(
-        ..., description="Start time in hh:mm:ss format or seconds"
+        ..., description="Start time in mm:ss format or seconds"
     )
     end: Union[str, float, int] = Field(
-        ..., description="End time in hh:mm:ss format or seconds"
+        ..., description="End time in mm:ss format or seconds"
     )
     accepted_terms: bool = Field(..., description="User agreement to Terms of Use")
 
     @field_validator("start", "end", mode="before")
     @classmethod
     def _to_seconds(cls, v):
-        """Convert start/end to seconds - accepts hh:mm:ss strings or numeric seconds"""
+        """Convert start/end to seconds - accepts mm:ss strings or numeric seconds"""
         # already numeric → ok
         if isinstance(v, (int, float)):
             return float(v)
-        # else parse "hh:mm:ss(.mmm)"
+        # else parse "mm:ss(.mmm)"
         parts = str(v).split(":")
-        if len(parts) != 3:
-            raise ValueError("Time must be in hh:mm:ss format or numeric seconds")
+        if len(parts) != 2:
+            raise ValueError("Time must be in mm:ss format or numeric seconds")
         try:
-            h, m, s = map(float, parts)
-            return h * 3600 + m * 60 + s
+            m, s = map(float, parts)
+            return m * 60 + s
         except ValueError:
-            raise ValueError("Invalid time format - use hh:mm:ss or numeric seconds")
+            raise ValueError("Invalid time format - use mm:ss or numeric seconds")
 
     @field_validator("end")
     @classmethod

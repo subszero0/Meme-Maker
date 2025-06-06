@@ -8,8 +8,8 @@ export interface VideoMetadata {
 
 export interface JobRequest {
   url: string;
-  start: string; // Time in hh:mm:ss format
-  end: string; // Time in hh:mm:ss format
+  start: string; // Time in mm:ss format
+  end: string; // Time in mm:ss format
   accepted_terms: boolean;
 }
 
@@ -142,3 +142,5 @@ export function formatRetryTime(seconds: number): string {
 
   return `${minutes}m ${remainingSeconds}s`;
 }
+
+
