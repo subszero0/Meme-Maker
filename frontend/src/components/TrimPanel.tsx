@@ -99,6 +99,8 @@ export default function TrimPanel({
     return secs > 0 ? `${mins}m ${secs}s` : `${mins} minutes`
   };
 
+  console.log('TrimPanel clipDuration calculation:', { in: state.in, out: state.out, clipDuration, formatted: formatDuration(clipDuration) });
+
   // @accessibility - Announce value changes to screen readers
   const announceValue = useCallback((index: number, value: number) => {
     const handleName = index === 0 ? "Start" : "End";
@@ -111,6 +113,7 @@ export default function TrimPanel({
 
   // Input handlers - removed debounce for immediate state updates
   const handleInChange = useCallback((value: string) => {
+    console.log('TrimPanel handleInChange:', { value, parseResult: parseTime(value) });
     const parsed = parseTime(value);
     if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
       dispatch({ type: "SET_IN", payload: parsed });
@@ -118,6 +121,7 @@ export default function TrimPanel({
   }, [jobMeta.duration]);
 
   const handleOutChange = useCallback((value: string) => {
+    console.log('TrimPanel handleOutChange:', { value, parseResult: parseTime(value) });
     const parsed = parseTime(value);
     if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
       dispatch({ type: "SET_OUT", payload: parsed });
