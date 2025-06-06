@@ -84,14 +84,7 @@ export default function TrimPanel({
     const parsedInInput = parseTime(inTimeInput);
     const parsedOutInput = parseTime(outTimeInput);
     
-    console.log('useEffect triggered:', { 
-      parsedInInput, 
-      parsedOutInput, 
-      stateIn: state.in, 
-      stateOut: state.out,
-      willUpdateIn: parsedInInput !== state.in,
-      willUpdateOut: parsedOutInput !== state.out
-    });
+
     
     // Only update if the current input doesn't parse to the same value
     if (parsedInInput !== state.in) {
@@ -114,16 +107,7 @@ export default function TrimPanel({
   const clipDuration = state.out - state.in;
   const maxDuration = 180; // 3 minutes in seconds
 
-  // Debug logging for duration calculation
-  console.log('TrimPanel state & duration:', {
-    stateIn: state.in,
-    stateOut: state.out,
-    clipDuration,
-    formattedDuration: formatDuration(clipDuration),
-    inTimeInput,
-    outTimeInput,
-    videoDuration: jobMeta.duration
-  });
+
 
   // Validation
   const isValidClip = state.out > state.in && clipDuration <= maxDuration;
@@ -141,7 +125,6 @@ export default function TrimPanel({
 
   // Input handlers - removed debounce for immediate state updates
   const handleInChange = useCallback((value: string) => {
-    console.log('TrimPanel handleInChange:', { value, parsed: parseTime(value), duration: jobMeta.duration });
     const parsed = parseTime(value);
     if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
       dispatch({ type: "SET_IN", payload: parsed });
@@ -149,7 +132,6 @@ export default function TrimPanel({
   }, [jobMeta.duration]);
 
   const handleOutChange = useCallback((value: string) => {
-    console.log('TrimPanel handleOutChange:', { value, parsed: parseTime(value), duration: jobMeta.duration });
     const parsed = parseTime(value);
     if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
       dispatch({ type: "SET_OUT", payload: parsed });
