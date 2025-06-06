@@ -14,8 +14,8 @@ from typing import Optional
 # Configuration
 API_BASE_URL = "http://localhost:8000/api/v1"
 TEST_VIDEO_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # Very well-known, globally accessible video
-START_TIME = "00:00:01"
-END_TIME = "00:00:06"
+START_TIME = "00:01"
+END_TIME = "00:06"
 EXPECTED_DURATION = 5.0  # seconds
 POLL_INTERVAL = 5  # seconds
 TIMEOUT = 120  # seconds
