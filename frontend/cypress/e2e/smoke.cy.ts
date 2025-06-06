@@ -15,6 +15,37 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
   });
 
   describe("✅ Happy Path - Complete Video Clip Flow", () => {
+    it("DEBUG: Simple duration test", () => {
+      // Navigate directly to test the duration calculation
+      cy.visit("/");
+      
+      // Step 1: Paste URL and get metadata
+      cy.get('[data-testid="url-input"]').type(TEST_YOUTUBE_URL);
+      cy.get('[data-testid="analyze-button"]').click();
+
+      // Wait for metadata to load
+      cy.get('[data-testid="video-metadata"]', { timeout: 10000 }).should("be.visible");
+
+      // Check initial duration display
+      cy.get('[data-testid="clip-duration"]').then(($el) => {
+        cy.log('Initial duration:', $el.text());
+      });
+
+      // Set a simple value and check immediately
+      cy.get('[data-testid="start-time-input"]').clear().type("00:00");
+      cy.get('[data-testid="start-time-input"]').should('have.value', '00:00');
+      
+      cy.get('[data-testid="end-time-input"]').clear().type("00:05");
+      cy.get('[data-testid="end-time-input"]').should('have.value', '00:05');
+
+      // Check duration after typing
+      cy.get('[data-testid="clip-duration"]').then(($el) => {
+        cy.log('Duration after typing 00:00 to 00:05:', $el.text());
+      });
+
+      cy.get('[data-testid="clip-duration"]').should("contain.text", "5 seconds");
+    });
+
     it("should successfully clip a YouTube video from start to finish", () => {
       // Step 1: Paste URL and get metadata
       cy.get('[data-testid="url-input"]').as('urlInput');
@@ -37,13 +68,28 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       cy.get('[data-testid="start-time-input"]').as('startInput');
       cy.get('@startInput').clear();
       cy.get('@startInput').type("00:05");
+      
+      // Debug: Check what value is actually in the input
+      cy.get('@startInput').should('have.value', '00:05');
 
       cy.get('[data-testid="end-time-input"]').as('endInput');
       cy.get('@endInput').clear();
       cy.get('@endInput').type("00:10");
+      
+      // Debug: Check what value is actually in the input
+      cy.get('@endInput').should('have.value', '00:10');
+
+      // Wait a moment for state to update
+      cy.wait(500);
 
       // Verify duration is calculated correctly
       cy.get('[data-testid="clip-duration"]').as('clipDuration');
+      
+      // Debug: Log what we actually see
+      cy.get('@clipDuration').then(($el) => {
+        cy.log('Actual duration text:', $el.text());
+      });
+      
       cy.get('@clipDuration').should(
         "contain.text",
         "5 seconds",
