@@ -24,8 +24,8 @@ export default function TrimPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const url = searchParams.get('url')
-  const [startTime, setStartTime] = useState('00:00:00')
-  const [endTime, setEndTime] = useState('00:00:05')
+  const [startTime, setStartTime] = useState('00:00')
+  const [endTime, setEndTime] = useState('00:05')
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [metadata, setMetadata] = useState<VideoMetadata | null>(null)
   const [loading, setLoading] = useState(false)
@@ -43,7 +43,7 @@ export default function TrimPageContent() {
     const minutes = parseInt(match[1], 10)
     const seconds = parseInt(match[2], 10)
     
-    if (minutes >= 60 || seconds >= 60) return 0
+    if (seconds >= 60) return 0 // seconds should be < 60, but minutes can be > 60 for long videos
     
     return minutes * 60 + seconds
   }

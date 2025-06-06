@@ -137,7 +137,7 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       // Try to set a 31-minute clip
       cy.get('[data-testid="start-time-input"]').clear().type("00:00");
 
-      cy.get('[data-testid="end-time-input"]').clear().type("00:31");
+      cy.get('[data-testid="end-time-input"]').clear().type("31:00");
 
       // Should show error message
       cy.get('[data-testid="duration-error"]')
