@@ -211,14 +211,39 @@ class TestRateLimiting:
     @pytest.mark.asyncio
     async def test_init_rate_limit(self, mock_redis):
         """Test rate limiting initialization"""
-        # Test successful initialization
-        with patch("app.ratelimit.FastAPILimiter.init") as mock_init:
+        # Test initialization when rate limiting is enabled
+        with (
+            patch("app.ratelimit.settings.debug", False),
+            patch("app.ratelimit.settings.rate_limit", "on"),
+            patch("app.ratelimit.FastAPILimiter.init") as mock_init,
+        ):
             mock_init.return_value = AsyncMock()
             await init_rate_limit()
             mock_init.assert_called_once()
 
+        # Test initialization when disabled (debug mode)
+        with (
+            patch("app.ratelimit.settings.debug", True),
+            patch("app.ratelimit.FastAPILimiter.init") as mock_init,
+        ):
+            await init_rate_limit()
+            mock_init.assert_not_called()
+
+        # Test initialization when disabled (rate_limit=off)
+        with (
+            patch("app.ratelimit.settings.debug", False),
+            patch("app.ratelimit.settings.rate_limit", "off"),
+            patch("app.ratelimit.FastAPILimiter.init") as mock_init,
+        ):
+            await init_rate_limit()
+            mock_init.assert_not_called()
+
         # Test failed initialization
-        with patch("app.ratelimit.FastAPILimiter.init") as mock_init:
+        with (
+            patch("app.ratelimit.settings.debug", False),
+            patch("app.ratelimit.settings.rate_limit", "on"),
+            patch("app.ratelimit.FastAPILimiter.init") as mock_init,
+        ):
             mock_init.side_effect = Exception("Redis connection failed")
             with pytest.raises(Exception):
                 await init_rate_limit()

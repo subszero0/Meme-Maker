@@ -77,41 +77,27 @@ export default function TrimPanel({
     out: state.out,
   });
 
-  // Update time inputs when state changes (only when not user-initiated)
+  // Update time inputs when state changes
   useEffect(() => {
-    // Only update input values when they don't parse to the same numeric value
-    // This prevents automatic reformatting from overwriting user input
-    const parsedInInput = parseTime(inTimeInput);
-    const parsedOutInput = parseTime(outTimeInput);
-    
-
-    
-    // Only update if the current input doesn't parse to the same value
-    if (parsedInInput !== state.in) {
-      setInTimeInput(formatTime(state.in));
-    }
-    if (parsedOutInput !== state.out) {
-      setOutTimeInput(formatTime(state.out));
-    }
+    setInTimeInput(formatTime(state.in));
+    setOutTimeInput(formatTime(state.out));
   }, [state.in, state.out]);
-
-  // Format duration in human-readable format
-  const formatDuration = (seconds: number): string => {
-    if (isNaN(seconds) || seconds < 0) return '0 seconds'
-    if (seconds < 60) return `${Math.floor(seconds)} seconds`
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return secs > 0 ? `${mins}m ${secs}s` : `${mins} minutes`
-  };
 
   const clipDuration = state.out - state.in;
   const maxDuration = 180; // 3 minutes in seconds
 
-
-
   // Validation
   const isValidClip = state.out > state.in && clipDuration <= maxDuration;
   const canSubmit = isValidClip && state.rights;
+
+  // Format duration in human-readable format
+  const formatDuration = (seconds: number): string => {
+    if (isNaN(seconds) || seconds < 0) return '0 seconds'
+    if (seconds < 60) return `${seconds} seconds`
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins} minutes`
+  };
 
   // @accessibility - Announce value changes to screen readers
   const announceValue = useCallback((index: number, value: number) => {
@@ -248,7 +234,7 @@ export default function TrimPanel({
             id="start-time-label"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
-            Start Time (mm:ss.mmm)
+            Start Time (hh:mm:ss.mmm)
           </label>
           <input
             id="in-time"
@@ -258,11 +244,11 @@ export default function TrimPanel({
             value={inTimeInput}
             onChange={handleInTimeChange}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-mono"
-            placeholder="00:00.000"
+            placeholder="00:00:00.000"
             aria-describedby="start-time-help"
           />
           <div id="start-time-help" className="sr-only">
-            Enter start time in minutes, seconds, and milliseconds format
+            Enter start time in hours, minutes, seconds, and milliseconds format
           </div>
         </div>
         <div>
@@ -271,7 +257,7 @@ export default function TrimPanel({
             id="end-time-label"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
-            End Time (mm:ss.mmm)
+            End Time (hh:mm:ss.mmm)
           </label>
           <input
             id="out-time"
@@ -281,11 +267,11 @@ export default function TrimPanel({
             value={outTimeInput}
             onChange={handleOutTimeChange}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-mono"
-            placeholder="00:00.000"
+            placeholder="00:00:00.000"
             aria-describedby="end-time-help"
           />
           <div id="end-time-help" className="sr-only">
-            Enter end time in minutes, seconds, and milliseconds format
+            Enter end time in hours, minutes, seconds, and milliseconds format
           </div>
         </div>
       </div>
@@ -333,7 +319,7 @@ export default function TrimPanel({
           type="error"
           message="Trim to three minutes or less to proceed."
           position="inline"
-          data-testid="duration-error"
+          data-cy="duration-error"
         />
       )}
 
@@ -342,7 +328,7 @@ export default function TrimPanel({
           type="error"
           message="End time must be after start time."
           position="inline"
-          data-testid="range-error"
+          data-cy="range-error"
         />
       )}
 
@@ -383,40 +369,29 @@ export default function TrimPanel({
         </div>
       </div>
 
-      {!state.rights && (
-        <Notification
-          type="error"
-          message="Please accept the terms to proceed."
-          position="inline"
-          data-testid="terms-error"
-        />
-      )}
-
       {/* Submit Button */}
-      <div className="pt-2">
-        <button
-          onClick={handleSubmit}
-          disabled={!canSubmit || disabled}
-          data-testid="create-clip-button"
-          data-cy="clip-button"
-          className={`w-full min-h-[44px] py-3 px-4 rounded-md font-semibold text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-            canSubmit && !disabled
-              ? "bg-primary-800 hover:bg-primary-900 focus-visible:ring-primary-500 dark:focus-visible:ring-offset-gray-900"
-              : "bg-gray-400 dark:bg-gray-600 cursor-not-allowed"
-          }`}
-          aria-describedby="submit-button-help"
-        >
-          Clip & Download
-        </button>
-        <div id="submit-button-help" className="sr-only">
-          {!isValidClip && !state.rights
-            ? "Button disabled: Please set valid clip times and accept terms"
-            : !isValidClip
-              ? "Button disabled: Please set valid clip times within 3 minutes"
-              : !state.rights
-                ? "Button disabled: Please accept the terms of use"
-                : "Create and download your video clip"}
-        </div>
+      <button
+        onClick={handleSubmit}
+        disabled={!canSubmit || disabled}
+        data-testid="create-clip-button"
+        data-cy="clip-button"
+        className={`w-full min-h-[44px] py-3 px-4 rounded-md font-semibold text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+          canSubmit && !disabled
+            ? "bg-primary-800 hover:bg-primary-900 focus-visible:ring-primary-500 dark:focus-visible:ring-offset-gray-900"
+            : "bg-gray-400 dark:bg-gray-600 cursor-not-allowed"
+        }`}
+        aria-describedby="submit-button-help"
+      >
+        Clip & Download
+      </button>
+      <div id="submit-button-help" className="sr-only">
+        {!isValidClip && !state.rights
+          ? "Button disabled: Please set valid clip times and accept terms"
+          : !isValidClip
+            ? "Button disabled: Please set valid clip times within 3 minutes"
+            : !state.rights
+              ? "Button disabled: Please accept the terms of use"
+              : "Create and download your video clip"}
       </div>
     </div>
   );

@@ -24,8 +24,8 @@ export default function TrimPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const url = searchParams.get('url')
-  const [startTime, setStartTime] = useState('00:00')
-  const [endTime, setEndTime] = useState('00:05')
+  const [startTime, setStartTime] = useState('00:00:00')
+  const [endTime, setEndTime] = useState('00:00:05')
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [metadata, setMetadata] = useState<VideoMetadata | null>(null)
   const [loading, setLoading] = useState(false)
@@ -34,18 +34,21 @@ export default function TrimPageContent() {
   const [copyFeedback, setCopyFeedback] = useState('')
   const [showTermsError, setShowTermsError] = useState(false)
 
-  // Parse time to seconds - using proper validation
+  // Parse time to seconds
   const parseTime = (timeStr: string): number => {
-    // Pattern for mm:ss format only (no hours)
-    const match = timeStr.match(/^(\d{1,2}):(\d{1,2})$/)
-    if (!match) return 0
+    if (!timeStr || timeStr.trim() === '') return 0
     
-    const minutes = parseInt(match[1], 10)
-    const seconds = parseInt(match[2], 10)
+    const parts = timeStr.split(':').map(Number)
     
-    if (seconds >= 60) return 0 // seconds should be < 60, but minutes can be > 60 for long videos
+    // Handle incomplete inputs gracefully
+    const hours = parts[0] || 0
+    const minutes = parts[1] || 0
+    const seconds = parts[2] || 0
     
-    return minutes * 60 + seconds
+    // Return NaN if any part is actually NaN (invalid number)
+    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return 0
+    
+    return hours * 3600 + minutes * 60 + seconds
   }
 
   // Calculate clip duration safely
@@ -68,16 +71,18 @@ export default function TrimPageContent() {
       
       if (startParam) {
         const startSeconds = parseInt(startParam, 10)
-        const minutes = Math.floor(startSeconds / 60)
+        const hours = Math.floor(startSeconds / 3600)
+        const minutes = Math.floor((startSeconds % 3600) / 60)
         const seconds = startSeconds % 60
-        setStartTime(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+        setStartTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
       }
       
       if (endParam) {
         const endSeconds = parseInt(endParam, 10)
-        const minutes = Math.floor(endSeconds / 60)
+        const hours = Math.floor(endSeconds / 3600)
+        const minutes = Math.floor((endSeconds % 3600) / 60)
         const seconds = endSeconds % 60
-        setEndTime(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+        setEndTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
       }
       
       // Simulate API call for metadata
@@ -245,35 +250,31 @@ export default function TrimPageContent() {
                     className="absolute left-0 top-0 bg-blue-500 rounded cursor-grab"
                     data-testid="start-handle"
                     style={{ width: '44px', height: '44px' }}
-                                          onMouseDown={(e) => {
-                        e.preventDefault()
-                        // Simulate changing start time when handle is moved
-                        const rect = e.currentTarget.parentElement?.getBoundingClientRect()
-                        if (rect) {
-                          const newTime = Math.floor((100 / rect.width) * metadata.duration)
-                          const minutes = Math.floor(newTime / 60)
-                          const seconds = newTime % 60
-                          const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-                          setStartTime(timeStr)
-                        }
-                      }}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      // Simulate changing start time when handle is moved
+                      const rect = e.currentTarget.parentElement?.getBoundingClientRect()
+                      if (rect) {
+                        const newTime = Math.floor((100 / rect.width) * metadata.duration)
+                        const timeStr = `00:00:${String(Math.min(newTime, 59)).padStart(2, '0')}`
+                        setStartTime(timeStr)
+                      }
+                    }}
                   ></div>
                   <div 
                     className="absolute right-0 top-0 bg-blue-500 rounded cursor-grab"
                     data-testid="end-handle"
                     style={{ width: '44px', height: '44px' }}
-                                          onMouseDown={(e) => {
-                        e.preventDefault()
-                        // Simulate changing end time when handle is moved
-                        const rect = e.currentTarget.parentElement?.getBoundingClientRect()
-                        if (rect) {
-                          const newTime = Math.floor((200 / rect.width) * metadata.duration)
-                          const minutes = Math.floor(newTime / 60)
-                          const seconds = newTime % 60
-                          const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-                          setEndTime(timeStr)
-                        }
-                      }}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      // Simulate changing end time when handle is moved
+                      const rect = e.currentTarget.parentElement?.getBoundingClientRect()
+                      if (rect) {
+                        const newTime = Math.floor((200 / rect.width) * metadata.duration)
+                        const timeStr = `00:00:${String(Math.max(newTime, 10)).padStart(2, '0')}`
+                        setEndTime(timeStr)
+                      }
+                    }}
                   ></div>
                 </div>
               </div>
@@ -290,7 +291,7 @@ export default function TrimPageContent() {
                     onChange={(e) => {
                       setStartTime(e.target.value)
                       // Update URL with new start time only if input is complete
-                      if (url && e.target.value.match(/^\d{1,2}:\d{2}$/)) {
+                      if (url && e.target.value.match(/^\d{2}:\d{2}:\d{2}$/)) {
                         const newUrl = new URL(window.location.href)
                         const startSeconds = parseTime(e.target.value)
                         if (!isNaN(startSeconds) && startSeconds >= 0) {
@@ -299,7 +300,7 @@ export default function TrimPageContent() {
                         }
                       }
                     }}
-                    placeholder="00:00"
+                    placeholder="00:00:00"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     data-testid="start-time-input"
                     aria-label="Start time for video clip"
@@ -315,7 +316,7 @@ export default function TrimPageContent() {
                     onChange={(e) => {
                       setEndTime(e.target.value)
                       // Update URL with new end time only if input is complete
-                      if (url && e.target.value.match(/^\d{1,2}:\d{2}$/)) {
+                      if (url && e.target.value.match(/^\d{2}:\d{2}:\d{2}$/)) {
                         const newUrl = new URL(window.location.href)
                         const endSeconds = parseTime(e.target.value)
                         if (!isNaN(endSeconds) && endSeconds >= 0) {
@@ -324,7 +325,7 @@ export default function TrimPageContent() {
                         }
                       }
                     }}
-                    placeholder="00:05"
+                    placeholder="00:00:05"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     data-testid="end-time-input"
                   />
