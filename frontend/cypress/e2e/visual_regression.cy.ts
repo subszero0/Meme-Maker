@@ -32,7 +32,7 @@ describe("Visual Regression Tests", () => {
     cy.viewport(1280, 720);
 
     // Mock API responses for consistent visual state
-    cy.intercept("POST", "/api/v1/metadata", {
+    cy.intercept("POST", "**/api/v1/metadata", {
       statusCode: 200,
       body: {
         url: "https://youtu.be/dQw4w9WgXcQ",
@@ -42,13 +42,13 @@ describe("Visual Regression Tests", () => {
       },
     }).as("metadata");
 
-    cy.intercept("POST", "/api/v1/jobs", {
+    cy.intercept("POST", "**/api/v1/jobs", {
       statusCode: 201,
       body: { jobId: "visual-test-job-id" },
     }).as("createJob");
 
     // Mock job completion for download state
-    cy.intercept("GET", "/api/v1/jobs/visual-test-job-id", {
+    cy.intercept("GET", "**/api/v1/jobs/visual-test-job-id", {
       statusCode: 200,
       body: {
         status: "done",
@@ -95,7 +95,7 @@ describe("Visual Regression Tests", () => {
 
   it("should capture URL Input Screen - Loading State", () => {
     // Mock a delayed metadata response to capture loading state
-    cy.intercept("POST", "/api/v1/metadata", {
+    cy.intercept("POST", "**/api/v1/metadata", {
       statusCode: 200,
       body: {
         url: "https://youtu.be/dQw4w9WgXcQ",
@@ -184,7 +184,7 @@ describe("Visual Regression Tests", () => {
 
   it("should capture Processing State", () => {
     // Mock working status for processing visualization
-    cy.intercept("GET", "/api/v1/jobs/visual-test-job-id", {
+    cy.intercept("GET", "**/api/v1/jobs/visual-test-job-id", {
       statusCode: 200,
       body: {
         status: "working",
@@ -269,26 +269,49 @@ describe("Visual Regression Tests", () => {
     takeSnapshot("Validation Error – Clip Too Long", {
       widths: [375, 768, 1280],
     });
+
+    // Test validation error for long clips
+    cy.intercept("POST", "**/api/v1/metadata", {
+      statusCode: 200,
+      body: {
+        url: "https://youtu.be/longvideo",
+        title: "Test Video Title",
+        duration: 90 * 60, // 90 minutes
+      },
+    }).as("metadataLong");
+
+    cy.visit("/");
+    cy.get('[data-testid="url-input"]').type("https://youtu.be/longvideo");
+    cy.get('[data-testid="analyze-button"]').click();
+    cy.wait("@metadataLong");
+
+    cy.contains("Video must be 30 minutes or shorter").should("be.visible");
+    takeSnapshot("Error State – Long Video", { widths: [375, 768, 1280] });
+
+    // Test for invalid URL
+    cy.intercept("POST", "**/api/v1/metadata", {
+      statusCode: 400,
+      body: { detail: "Invalid video URL" },
+    }).as("metadataInvalid");
+
+    cy.visit("/");
+    cy.get('[data-testid="url-input"]').type("invalid-url");
+    cy.get('[data-testid="analyze-button"]').click();
+    cy.wait("@metadataInvalid");
+    cy.contains("Failed to load video").should("be.visible");
+    takeSnapshot("Error State – Invalid URL", { widths: [375, 768, 1280] });
   });
 
   it("should capture Queue Full Error State", () => {
-    // Mock queue full error
-    cy.intercept("POST", "/api/v1/jobs", {
-      statusCode: 429,
-      body: {
-        error: "Queue is full",
-        code: "QUEUE_FULL",
-      },
-    }).as("queueFullError");
-
-    // Mock job status that returns queue full
-    cy.intercept("GET", "/api/v1/jobs/visual-test-job-id", {
+    // Mock job status indicating the queue is full
+    cy.intercept("GET", "**/api/v1/jobs/visual-test-job-id", {
       statusCode: 200,
       body: {
         status: "error",
-        error_code: "QUEUE_FULL",
+        errorCode: "QUEUE_FULL",
+        errorMessage: "The processing queue is currently full. Please try again later.",
       },
-    }).as("queueFullStatus");
+    }).as("jobQueueFull");
 
     cy.visit("/");
 
@@ -303,36 +326,30 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="rights-checkbox"]').check();
 
     cy.get('[data-testid="clip-btn"]').click();
-    cy.wait("@queueFullError", { timeout: 10000 });
+    cy.wait("@createJob");
+    cy.wait("@jobQueueFull");
 
-    // Wait for queue full banner to appear
-    cy.contains("Busy right now. Try again in a minute.").should("be.visible");
-
-    cy.wait(500);
-
-    takeSnapshot("Queue Full Error State", {
-      widths: [375, 768, 1280],
-    });
+    cy.contains("Queue is full").should("be.visible");
+    takeSnapshot("Error State – Queue Full", { widths: [375, 768, 1280] });
   });
 
   it("should capture Rate Limit Notification", () => {
-    // Mock rate limit error
-    cy.intercept("POST", "/api/v1/metadata", {
+    // Mock a rate limit response from the metadata endpoint
+    cy.intercept("POST", "**/api/v1/metadata", {
       statusCode: 429,
       body: {
-        error:
-          "Rate limit exceeded. Please wait 60 seconds before trying again.",
-        code: "RATE_LIMIT_EXCEEDED",
+        detail: "Rate limit exceeded. Please try again in 60 seconds.",
         retry_after: 60,
+        limit_type: "global",
       },
-    }).as("rateLimitError");
+    }).as("rateLimit");
 
     cy.visit("/");
 
     cy.get('[data-testid="url-input"]').type("https://youtu.be/dQw4w9WgXcQ");
 
     cy.get('[data-testid="analyze-button"]').click();
-    cy.wait("@rateLimitError", { timeout: 10000 });
+    cy.wait("@rateLimit", { timeout: 10000 });
 
     // Wait for rate limit notification to appear
     cy.contains("Rate limit exceeded").should("be.visible");

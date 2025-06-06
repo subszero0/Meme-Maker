@@ -236,9 +236,13 @@ export default function Home() {
                 {state.metadata.title}
               </p>
               <ProgressBar progress={pollerResult.progress} />
-              <p className="text-xs text-text-muted dark:text-text-muted mt-2">
+              <p
+                className="text-xs text-text-muted dark:text-text-muted mt-2"
+                data-testid="job-status"
+              >
                 {pollerResult.status === "queued" && "Waiting in queue..."}
                 {pollerResult.status === "working" && "Trimming video..."}
+                {pollerResult.status === "done" && "ready"}
               </p>
             </div>
             <div className="text-center">
