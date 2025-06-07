@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime
-from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import fakeredis
@@ -9,7 +8,6 @@ from fastapi.testclient import TestClient
 from rq import Queue
 
 from app.main import app
-from app.models import JobStatus
 
 
 @pytest.fixture
@@ -411,7 +409,6 @@ def test_get_job_not_found(client_with_fake_redis):
 def test_rate_limiting_enabled():
     """Test that rate limiting dependency is properly configured"""
     from app.api.jobs import router
-    from app.ratelimit import clip_limiter
 
     # Check that the POST endpoint has rate limiting dependency
     post_endpoint = None

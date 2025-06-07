@@ -1,11 +1,8 @@
 """Tests for rate limiting functionality"""
 
-import asyncio
-import time
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.config import settings
@@ -69,7 +66,7 @@ class TestRateLimiting:
                 "fastapi_limiter.depends.RateLimiter.__call__",
                 new_callable=lambda: AsyncMock(return_value=None),
             ),
-            patch("app.api.jobs.redis") as mock_redis,
+            patch("app.api.jobs.redis"),
             patch("app.api.jobs.q") as mock_queue,
         ):
             # Configure mocks
@@ -139,7 +136,7 @@ class TestRateLimiting:
                 "fastapi_limiter.depends.RateLimiter.__call__",
                 new_callable=lambda: AsyncMock(return_value=None),
             ),
-            patch("app.api.jobs.redis") as mock_redis,
+            patch("app.api.jobs.redis"),
             patch("app.api.jobs.q") as mock_queue,
         ):
             # Configure mocks

@@ -163,9 +163,10 @@ class TestE2EUserFlow:
             print(f"❌ Metadata request failed: {response.status_code}")
             print(f"   Response: {response.text}")
 
-        assert (
-            response.status_code == 200
-        ), f"Metadata request failed with {response.status_code}: {response.text}"
+        assert response.status_code == 200, (
+            f"Metadata request failed with {response.status_code}: "
+            f"{response.text}"
+        )
         return response.json()
 
     def _create_job(
@@ -180,9 +181,10 @@ class TestE2EUserFlow:
             print(f"❌ Job creation failed: {response.status_code}")
             print(f"   Response: {response.text}")
 
-        assert (
-            response.status_code == 202
-        ), f"Job creation failed with {response.status_code}: {response.text}"
+        assert response.status_code == 202, (
+            f"Job creation failed with {response.status_code}: "
+            f"{response.text}"
+        )
         return response.json()
 
     def _poll_until_complete(
@@ -201,9 +203,10 @@ class TestE2EUserFlow:
                 print(f"❌ Job polling failed: {response.status_code}")
                 print(f"   Response: {response.text}")
 
-            assert (
-                response.status_code == 200
-            ), f"Job polling failed with {response.status_code}: {response.text}"
+            assert response.status_code == 200, (
+                f"Job polling failed with {response.status_code}: "
+                f"{response.text}"
+            )
 
             status = response.json()
             current_status = status["status"]

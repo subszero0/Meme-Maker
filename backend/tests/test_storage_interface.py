@@ -1,6 +1,6 @@
-from unittest.mock import Mock, patch
 
 import pytest
+from unittest.mock import patch
 
 from app.utils import get_storage, reset_storage
 from app.utils.minio_storage import MinIOStorage

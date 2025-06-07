@@ -1,5 +1,4 @@
 import os
-from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI
@@ -129,7 +128,7 @@ class TestSecurityHeaders:
         assert response.status_code == 200
 
         # Should have basic CORS setup (either credentials or origin)
-        has_cors = (
+        _has_cors = (
             "access-control-allow-credentials" in response.headers
             or "access-control-allow-origin" in response.headers
         )

@@ -6,8 +6,6 @@ without importing the full FastAPI app to avoid aioredis import issues.
 """
 
 import uuid
-from datetime import datetime
-from unittest.mock import MagicMock, patch
 
 import pytest
 

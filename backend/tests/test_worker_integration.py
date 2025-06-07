@@ -1,8 +1,5 @@
-import logging
 import os
 import sys
-import tempfile
-import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -15,7 +12,6 @@ if worker_path not in sys.path:
 
 # Mock Redis before importing from app
 with patch("redis.Redis"):
-    from app import redis, settings
     from app.models import JobStatus
 
 

@@ -223,7 +223,7 @@ async def get_job(job_id: str) -> JobResponse:
                 response.link = get_storage().generate_presigned_url(
                     object_key, expiration=3600
                 )
-            except Exception as e:
+            except Exception:
                 # If presigned URL generation fails, mark job as error
                 redis.hset(
                     f"job:{job_id}",

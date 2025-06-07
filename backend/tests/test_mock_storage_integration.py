@@ -8,8 +8,6 @@ import os
 import tempfile
 from unittest.mock import patch
 
-import pytest
-
 
 def test_mock_storage_factory_integration():
     """Test that we can properly mock the storage factory."""
