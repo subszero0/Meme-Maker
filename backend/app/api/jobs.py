@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, Optional, Union, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from rq import Queue
@@ -101,7 +101,7 @@ async def create_job(job_data: JobCreate) -> JobResponse:
     # Store job in Redis hash
     job_dict = job.model_dump()
     # Convert all values to Redis-compatible types
-    redis_data: Dict[str, str] = {}
+    redis_data: Dict[str, Union[str, bytes, float, int]] = {}
     for key, value in job_dict.items():
         if isinstance(value, Decimal):
             redis_data[key] = str(value)
@@ -163,7 +163,7 @@ async def get_job(job_id: str) -> JobResponse:
             detail="Service temporarily unavailable",
         )
 
-    # Type assertion to help MyPy understand this is a sync Redis client
+    # Get Redis data with explicit type handling for CI compatibility
     job_data_raw: Dict[Any, Any] = cast(Dict[Any, Any], redis.hgetall(f"job:{job_id}"))
 
     # Ensure we have the data and it's not empty
@@ -172,18 +172,15 @@ async def get_job(job_id: str) -> JobResponse:
             status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
         )
 
-    # Type the job_data properly - Redis returns dict directly for sync client
-    job_data = job_data_raw
-
     # Parse job data from Redis
     try:
         # Handle both bytes and string responses from Redis
-        if job_data and isinstance(next(iter(job_data.keys())), bytes):
+        if job_data_raw and isinstance(next(iter(job_data_raw.keys())), bytes):
             # Redis returns bytes, need to decode
-            decoded_data = {k.decode(): v.decode() for k, v in job_data.items()}
+            decoded_data = {k.decode(): v.decode() for k, v in job_data_raw.items()}
         else:
             # Redis returns strings (when decode_responses=True was used)
-            decoded_data = {str(k): str(v) for k, v in job_data.items()}
+            decoded_data = {str(k): str(v) for k, v in job_data_raw.items()}
 
         # Convert back to proper types for Job model
         parsed_data: Dict[str, Any] = {}
