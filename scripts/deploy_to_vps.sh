@@ -3,7 +3,19 @@ set -e
 
 echo "🚀 Deploying Meme Maker to VPS..."
 
-ssh $DEPLOY_SSH <<'EOSSH'
+# Debug SSH setup
+echo "SSH_HOST: $SSH_HOST"
+echo "SSH connection test..."
+
+# Test SSH connection first
+if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -T $SSH_HOST 'echo "SSH connection successful"'; then
+  echo "✅ SSH connection test passed"
+else
+  echo "❌ SSH connection test failed"
+  exit 1
+fi
+
+ssh -o StrictHostKeyChecking=no -T $SSH_HOST <<'EOSSH'
   cd ~/Meme-Maker
   
   echo "📥 Pulling latest code..."

@@ -394,15 +394,17 @@ jobs:
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "$DEPLOY_SSH" > ~/.ssh/id_rsa
+          echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H memeit.pro >> ~/.ssh/known_hosts || true
+          ssh-keyscan -H memeit.pro >> ~/.ssh/known_hosts 2>/dev/null || true
+          echo "SSH key fingerprint:"
+          ssh-keygen -lf ~/.ssh/id_rsa || echo "Could not read SSH key fingerprint"
         env:
-          DEPLOY_SSH: ${{ secrets.DEPLOY_SSH }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Deploy to VPS
         run: chmod +x scripts/deploy_to_vps.sh && ./scripts/deploy_to_vps.sh
         env:
-          DEPLOY_SSH: memeit@memeit.pro
+          SSH_HOST: memeit@memeit.pro
 
   health_check:
     needs: deploy
