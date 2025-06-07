@@ -302,8 +302,11 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       // Enter URL to enable the analyze button
       cy.get('@urlInput').type(TEST_YOUTUBE_URL);
 
-      // Wait for button to be enabled before trying to focus
-      cy.get('[data-testid="analyze-button"]').should("not.be.disabled");
+      // Wait for debouncing to complete (300ms + buffer) and button to be enabled
+      cy.wait(500);
+      cy.get('[data-testid="analyze-button"]').should("not.be.disabled", { timeout: 15000 });
+      
+      // Now focus the button
       cy.get('[data-testid="analyze-button"]').focus();
       cy.focused().should("have.attr", "data-testid", "analyze-button");
 
