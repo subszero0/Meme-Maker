@@ -101,7 +101,7 @@ async def create_job(job_data: JobCreate) -> JobResponse:
     # Store job in Redis hash
     job_dict = job.model_dump()
     # Convert all values to Redis-compatible types
-    redis_data: Dict[str, Union[str, bytes, float, int]] = {}
+    redis_data: Dict[Union[str, bytes], Union[str, bytes, float, int]] = {}
     for key, value in job_dict.items():
         if isinstance(value, Decimal):
             redis_data[key] = str(value)
@@ -164,7 +164,7 @@ async def get_job(job_id: str) -> JobResponse:
         )
 
     # Get Redis data with explicit type handling for CI compatibility
-    job_data_raw: Dict[Any, Any] = cast(Dict[Any, Any], redis.hgetall(f"job:{job_id}"))
+    job_data_raw = cast(Dict[Any, Any], redis.hgetall(f"job:{job_id}"))
 
     # Ensure we have the data and it's not empty
     if not job_data_raw:
