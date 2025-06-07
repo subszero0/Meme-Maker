@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Dict, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from rq import Queue
@@ -164,7 +164,7 @@ async def get_job(job_id: str) -> JobResponse:
         )
 
     # Get Redis data with explicit type handling for CI compatibility
-    job_data_raw = cast(Dict[Any, Any], redis.hgetall(f"job:{job_id}"))
+    job_data_raw: Dict[Any, Any] = redis.hgetall(f"job:{job_id}")  # type: ignore
 
     # Ensure we have the data and it's not empty
     if not job_data_raw:
