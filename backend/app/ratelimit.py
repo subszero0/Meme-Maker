@@ -74,23 +74,36 @@ def create_job_limiter() -> Optional[RateLimiter]:
     if settings.debug or settings.rate_limit.lower() == "off":
         return None
 
-    # Calculate requests per minute from hourly limit (round up)
-    requests_per_minute = math.ceil(settings.max_jobs_per_hour / 60)
+    try:
+        # Calculate requests per minute from hourly limit (round up)
+        requests_per_minute = math.ceil(settings.max_jobs_per_hour / 60)
 
-    return RateLimiter(times=requests_per_minute, seconds=60)  # 1 minute window
+        # Create RateLimiter compatible with fastapi-limiter 0.1.6
+        return RateLimiter(times=requests_per_minute, seconds=60)
+    except Exception as e:
+        print(f"Warning: Failed to create job limiter: {e}")
+        return None
 
 
 # Global rate limiter: 10 requests per minute for all API routes
-global_limiter = RateLimiter(
-    times=settings.global_rate_limit_requests,  # 10 requests
-    seconds=settings.global_rate_limit_window,  # 60 seconds (1 minute)
-)
+try:
+    global_limiter = RateLimiter(
+        times=settings.global_rate_limit_requests,  # 10 requests
+        seconds=settings.global_rate_limit_window,  # 60 seconds (1 minute)
+    )
+except Exception as e:
+    print(f"Warning: Failed to create global limiter: {e}")
+    global_limiter = None
 
 # Create job creation limiter with configurable limits
 job_creation_limiter = create_job_limiter()
 
 # Legacy limiter for backward compatibility (can be removed later)
-clip_limiter = RateLimiter(times=40, seconds=60 * 60 * 24)  # 24 hours
+try:
+    clip_limiter = RateLimiter(times=40, seconds=60 * 60 * 24)  # 24 hours
+except Exception as e:
+    print(f"Warning: Failed to create clip limiter: {e}")
+    clip_limiter = None
 
 
 async def rate_limit_exception_handler(request: Request, exc: HTTPException) -> dict:

@@ -37,7 +37,13 @@ ssh -o StrictHostKeyChecking=no -T $SSH_HOST <<'EOSSH'
   echo "📥 Pulling latest code..."
   # Stash any local changes to avoid merge conflicts
   git stash push -m "Auto-stash during deployment $(date)" || echo "Nothing to stash"
-  git pull origin main
+  
+  # Force reset to ensure we get the latest version
+  echo "🔄 Ensuring clean state..."
+  git fetch origin main
+  git reset --hard origin/main
+  
+  echo "✅ Repository updated to latest version"
   
   echo "🔧 Copying Caddyfile to /etc/caddy/..."
   sudo cp Caddyfile /etc/caddy/Caddyfile
