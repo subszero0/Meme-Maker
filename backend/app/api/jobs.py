@@ -49,7 +49,7 @@ async def create_job(job_data: JobCreate) -> JobResponse:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Service temporarily unavailable",
         )
-    
+
     # Validate terms acceptance
     if not job_data.accepted_terms:
         raise HTTPException(
@@ -119,7 +119,7 @@ async def create_job(job_data: JobCreate) -> JobResponse:
     try:
         if q is None:
             raise Exception("Job queue not available")
-            
+
         q.enqueue(
             "clip_processor.process_clip",
             job_id,
@@ -161,7 +161,7 @@ async def get_job(job_id: str) -> JobResponse:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Service temporarily unavailable",
         )
-    
+
     # Look up job in Redis
     job_data = redis.hgetall(f"job:{job_id}")
 

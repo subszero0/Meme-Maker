@@ -1,7 +1,7 @@
+import logging
 import os
 import sys
 import tempfile
-import logging
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -134,7 +134,7 @@ class TestWorkerPipelineLogic:
             try:
                 # Use the mock subprocess that returns the predefined keyframe data
                 result = mock_subprocess([], capture_output=True, text=True, check=True)
-                
+
                 keyframes = []
                 for line in result.stdout.strip().split("\n"):
                     if line:
