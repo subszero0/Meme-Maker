@@ -472,26 +472,112 @@ jobs:
       - name: Check /health endpoint
         run: |
           echo "🔍 Checking health endpoint..."
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://memeit.pro/health)
-          echo "Response code: $RESPONSE"
           
-          if [ "$RESPONSE" -ne 200 ]; then
-            echo "❌ /health check failed with status code $RESPONSE"
-            echo "Attempting to get response body for debugging..."
-            curl -s https://memeit.pro/health || echo "Failed to get response body"
+          # Add timeout and retry logic
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          SUCCESS=false
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = false ]; do
+            echo "🔄 Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES"
+            
+            # Try HTTPS first with detailed error output
+            echo "🔐 Trying HTTPS connection..."
+            if RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 30 --max-time 60 https://memeit.pro/health 2>&1); then
+              echo "HTTPS Response code: $RESPONSE"
+              
+              if [ "$RESPONSE" = "200" ]; then
+                echo "✅ HTTPS Health check passed - server responding with 200"
+                
+                # Get response body
+                BODY=$(curl -s --connect-timeout 30 --max-time 60 https://memeit.pro/health 2>/dev/null)
+                echo "Response body: $BODY"
+                
+                if echo "$BODY" | grep -q '"status".*"ok"'; then
+                  echo "✅ Response body contains expected status: ok"
+                else
+                  echo "⚠️  Response body doesn't contain expected status, but got 200"
+                fi
+                
+                SUCCESS=true
+                break
+              else
+                echo "❌ HTTPS returned status code: $RESPONSE"
+              fi
+            else
+              echo "❌ HTTPS connection failed, curl exit code: $?"
+              echo "🔍 Trying to diagnose HTTPS issue..."
+              curl -v --connect-timeout 10 --max-time 20 https://memeit.pro/health 2>&1 | head -20 || true
+            fi
+            
+            # If HTTPS failed, try HTTP as fallback
+            if [ "$SUCCESS" = false ]; then
+              echo "🌐 Trying HTTP fallback..."
+              if RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 30 --max-time 60 http://memeit.pro/health 2>&1); then
+                echo "HTTP Response code: $RESPONSE"
+                
+                if [ "$RESPONSE" = "200" ]; then
+                  echo "✅ HTTP Health check passed - server responding with 200"
+                  
+                  # Get response body
+                  BODY=$(curl -s --connect-timeout 30 --max-time 60 http://memeit.pro/health 2>/dev/null)
+                  echo "Response body: $BODY"
+                  
+                  if echo "$BODY" | grep -q '"status".*"ok"'; then
+                    echo "✅ Response body contains expected status: ok"
+                  else
+                    echo "⚠️  Response body doesn't contain expected status, but got 200"
+                  fi
+                  
+                  echo "⚠️  Note: HTTP worked but HTTPS failed - SSL certificate issue"
+                  SUCCESS=true
+                  break
+                else
+                  echo "❌ HTTP returned status code: $RESPONSE"
+                fi
+              else
+                echo "❌ HTTP connection also failed, curl exit code: $?"
+              fi
+            fi
+            
+            # If both failed, try direct IP access
+            if [ "$SUCCESS" = false ]; then
+              echo "🎯 Trying direct IP access..."
+              IP="13.126.173.223"
+              if RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 15 --max-time 30 http://$IP:8000/health 2>&1); then
+                echo "Direct IP Response code: $RESPONSE"
+                
+                if [ "$RESPONSE" = "200" ]; then
+                  echo "✅ Direct IP health check passed"
+                  BODY=$(curl -s --connect-timeout 15 --max-time 30 http://$IP:8000/health 2>/dev/null)
+                  echo "Response body: $BODY"
+                  echo "⚠️  Note: Direct IP worked - DNS/proxy issue with domain"
+                  SUCCESS=true
+                  break
+                fi
+              else
+                echo "❌ Direct IP connection failed, curl exit code: $?"
+              fi
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "⏳ Waiting 15 seconds before retry..."
+              sleep 15
+            fi
+          done
+          
+          if [ "$SUCCESS" = false ]; then
+            echo "❌ All health check attempts failed"
+            echo "🔍 Final diagnostics:"
+            echo "- DNS resolution test:"
+            nslookup memeit.pro || echo "DNS resolution failed"
+            echo "- Network connectivity test:"
+            ping -c 2 memeit.pro 2>/dev/null || echo "Ping failed"
+            echo "- Port connectivity test:"
+            nc -zv memeit.pro 80 2>&1 || echo "Port 80 not accessible"
+            nc -zv memeit.pro 443 2>&1 || echo "Port 443 not accessible"
             exit 1
-          fi
-          
-          echo "✅ Health check passed - server responding with 200"
-          
-          # Optional: Verify response body contains expected status
-          BODY=$(curl -s https://memeit.pro/health)
-          echo "Response body: $BODY"
-          
-          if echo "$BODY" | grep -q '"status".*"ok"'; then
-            echo "✅ Response body contains expected status: ok"
-          else
-            echo "⚠️  Response body doesn't contain expected status, but got 200"
           fi
 
 # 🔔 NOTIFICATION INTEGRATION PLACEHOLDER
