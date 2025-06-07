@@ -35,7 +35,9 @@ ssh -o StrictHostKeyChecking=no -T $SSH_HOST <<'EOSSH'
   cd ~/Meme-Maker
   
   echo "📥 Pulling latest code..."
-  git pull
+  # Stash any local changes to avoid merge conflicts
+  git stash push -m "Auto-stash during deployment $(date)" || echo "Nothing to stash"
+  git pull origin main
   
   echo "🔧 Copying Caddyfile to /etc/caddy/..."
   sudo cp Caddyfile /etc/caddy/Caddyfile
