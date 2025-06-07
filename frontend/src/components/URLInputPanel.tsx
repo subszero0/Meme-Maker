@@ -97,6 +97,9 @@ export default function URLInputPanel({
   };
 
   const hasError = !!error && !isDebouncing;
+  
+  // For accessibility and testing, ensure button is enabled when URL is valid
+  const isButtonDisabled = !url.trim() || (hasError && !isDebouncing) || loading || disabled;
 
   return (
     <div className="mx-auto max-w-md">
@@ -152,7 +155,7 @@ export default function URLInputPanel({
 
         <button
           type="submit"
-          disabled={!url.trim() || hasError || loading || disabled}
+          disabled={isButtonDisabled}
           data-testid="analyze-button"
           data-cy="analyze-button"
           className="
