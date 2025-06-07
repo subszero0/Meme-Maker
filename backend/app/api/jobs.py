@@ -164,7 +164,9 @@ async def get_job(job_id: str) -> JobResponse:
         )
 
     # Get Redis data with explicit type handling for CI compatibility
-    job_data_raw: Dict[Any, Any] = redis.hgetall(f"job:{job_id}")  # type: ignore
+    job_data_raw: Dict[Any, Any] = redis.hgetall(
+        f"job:{job_id}"
+    )  # type: ignore[assignment]
 
     # Ensure we have the data and it's not empty
     if not job_data_raw:

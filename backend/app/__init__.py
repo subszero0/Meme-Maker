@@ -1,7 +1,10 @@
 import logging
 import os
 import time
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from typing import Any
 
 from redis import Redis
 from rq import Queue
@@ -13,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def connect_to_redis(
     retries: int = 5, delay: int = 2, required: bool = True
-) -> Optional[Redis]:
+) -> "Optional[Redis[Any]]":  # type: ignore[type-arg]
     """Connect to Redis with retry logic"""
     # Check if we're in a test environment
     if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING"):
