@@ -77,7 +77,14 @@ class JobCreate(BaseModel):
     @classmethod
     def validate_clip_duration(cls, end_seconds: float, info: ValidationInfo) -> float:
         """Validate that clip duration doesn't exceed maximum allowed"""
+        if not isinstance(info.data, dict):
+            raise ValueError("Validation info data is not available")
+        
         start_seconds = info.data.get("start", 0)
+        if not isinstance(start_seconds, (int, float)):
+            raise ValueError("start time must be numeric")
+        
+        start_seconds = float(start_seconds)
 
         # Check that end > start
         if end_seconds <= start_seconds:
@@ -97,12 +104,12 @@ class JobCreate(BaseModel):
     @property
     def start_seconds(self) -> float:
         """Get start time in seconds"""
-        return self.start
+        return float(self.start)
 
     @property
     def end_seconds(self) -> float:
         """Get end time in seconds"""
-        return self.end
+        return float(self.end)
 
 
 class JobResponse(BaseModel):

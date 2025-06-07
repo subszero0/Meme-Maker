@@ -48,16 +48,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Handle preflight OPTIONS requests
         if request.method == "OPTIONS":
-            response = Response()
-            self._add_cors_headers(response, request, settings)
-            response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
-            response.headers[
+            options_response = Response()
+            self._add_cors_headers(options_response, request, settings)
+            options_response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
+            options_response.headers[
                 "Access-Control-Allow-Headers"
             ] = "Content-Type, Authorization"
-            response.headers["Access-Control-Max-Age"] = "86400"  # 24 hours
-            return response
+            options_response.headers["Access-Control-Max-Age"] = "86400"  # 24 hours
+            return options_response
 
-        response = await call_next(request)
+        response: Response = await call_next(request)
 
         # Add security headers (but skip CSP for Swagger UI endpoints)
         self._add_security_headers(response, request)

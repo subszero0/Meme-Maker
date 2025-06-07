@@ -2,6 +2,7 @@ import logging
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Dict, Optional, Union, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from rq import Queue
@@ -18,7 +19,7 @@ router = APIRouter()
 
 # RQ queue setup
 try:
-    job_queue = Queue("clip_jobs", connection=redis)
+    job_queue: Optional[Queue] = Queue("clip_jobs", connection=redis)
 except Exception as e:
     logger.error(f"Failed to initialize job queue: {e}")
     job_queue = None
@@ -100,7 +101,7 @@ async def create_job(job_data: JobCreate) -> JobResponse:
     # Store job in Redis hash
     job_dict = job.model_dump()
     # Convert all values to Redis-compatible types
-    redis_data = {}
+    redis_data: Dict[str, Union[str, bytes, float, int]] = {}
     for key, value in job_dict.items():
         if isinstance(value, Decimal):
             redis_data[key] = str(value)
@@ -162,13 +163,17 @@ async def get_job(job_id: str) -> JobResponse:
             detail="Service temporarily unavailable",
         )
 
-    # Look up job in Redis
-    job_data = redis.hgetall(f"job:{job_id}")
-
-    if not job_data:
+    # Type assertion to help MyPy understand this is a sync Redis client
+    job_data_raw: Dict[Any, Any] = redis.hgetall(f"job:{job_id}")  # type: ignore
+    
+    # Ensure we have the data and it's not empty
+    if not job_data_raw:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
         )
+    
+    # Type the job_data properly - Redis returns dict directly for sync client
+    job_data = job_data_raw
 
     # Parse job data from Redis
     try:
@@ -181,18 +186,24 @@ async def get_job(job_id: str) -> JobResponse:
             decoded_data = {str(k): str(v) for k, v in job_data.items()}
 
         # Convert back to proper types for Job model
-        parsed_data = {}
+        parsed_data: Dict[str, Any] = {}
         for key, value in decoded_data.items():
             if key in ["in_ts", "out_ts"]:
                 parsed_data[key] = Decimal(value)
             elif key == "created_at":
-                parsed_data[key] = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            elif key in ["progress", "error_code"]:
+                # Handle datetime parsing more safely
+                if isinstance(value, str):
+                    parsed_data[key] = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                else:
+                    parsed_data[key] = datetime.utcnow()  # fallback
+            elif key == "progress":
                 parsed_data[key] = (
                     None
                     if value == "None"
-                    else (int(value) if key == "progress" and value else value)
+                    else (int(value) if value and value.isdigit() else None)
                 )
+            elif key == "error_code":
+                parsed_data[key] = None if value == "None" else value
             else:
                 parsed_data[key] = value
 

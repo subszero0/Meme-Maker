@@ -59,7 +59,11 @@ class Settings(BaseSettings):
             if v == "*":
                 return ["*"]
             return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+        # Ensure we return the correct type
+        if isinstance(v, list):
+            return v
+        # Fallback to string representation
+        return str(v)
 
 
 settings = Settings()

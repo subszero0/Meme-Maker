@@ -67,7 +67,7 @@ class MinIOStorage(StorageInterface):
     def generate_presigned_url(self, key: str, expiration: int = 3600) -> str:
         """Return a presigned URL for the given key."""
         try:
-            url = self.s3_client.generate_presigned_url(
+            url: str = self.s3_client.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": self.bucket_name, "Key": key},
                 ExpiresIn=expiration,

@@ -1,7 +1,7 @@
 """Rate limiting functionality for the Meme Maker API"""
 
 import math
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import redis.asyncio as redis
 from fastapi import HTTPException, Request, status
@@ -11,10 +11,13 @@ from fastapi_limiter.depends import RateLimiter
 from .config import settings
 
 # Import metrics safely
+rate_denied_metric: Optional[Any] = None
 try:
     from .metrics_definitions import RATE_DENIED
+    from prometheus_client import Counter
+    rate_denied_metric = RATE_DENIED
 except ImportError:
-    RATE_DENIED = None
+    pass  # rate_denied_metric remains None
 
 
 async def init_rate_limit() -> None:
@@ -26,7 +29,7 @@ async def init_rate_limit() -> None:
 
     try:
         # Create async Redis connection for rate limiting
-        redis_client = redis.from_url(
+        redis_client: redis.Redis = redis.from_url(  # type: ignore
             settings.redis_url, encoding="utf-8", decode_responses=True
         )
 
@@ -87,7 +90,7 @@ def create_job_limiter() -> Optional[RateLimiter]:
 
 # Global rate limiter: 10 requests per minute for all API routes
 try:
-    global_limiter = RateLimiter(
+    global_limiter: Optional[RateLimiter] = RateLimiter(
         times=settings.global_rate_limit_requests,  # 10 requests
         seconds=settings.global_rate_limit_window,  # 60 seconds (1 minute)
     )
@@ -96,21 +99,21 @@ except Exception as e:
     global_limiter = None
 
 # Create job creation limiter with configurable limits
-job_creation_limiter = create_job_limiter()
+job_creation_limiter: Optional[RateLimiter] = create_job_limiter()
 
 # Legacy limiter for backward compatibility (can be removed later)
 try:
-    clip_limiter = RateLimiter(times=40, seconds=60 * 60 * 24)  # 24 hours
+    clip_limiter: Optional[RateLimiter] = RateLimiter(times=40, seconds=60 * 60 * 24)  # 24 hours
 except Exception as e:
     print(f"Warning: Failed to create clip limiter: {e}")
     clip_limiter = None
 
 
-async def rate_limit_exception_handler(request: Request, exc: HTTPException) -> dict:
+async def rate_limit_exception_handler(request: Request, exc: HTTPException) -> Dict[str, Any]:
     """Custom exception handler for rate limit errors"""
     # Increment rate limit denied metric if available
-    if RATE_DENIED:
-        RATE_DENIED.inc()
+    if rate_denied_metric:
+        rate_denied_metric.inc()
 
     # Log rate limit event for monitoring
     client_ip = get_client_ip(request)
@@ -119,7 +122,8 @@ async def rate_limit_exception_handler(request: Request, exc: HTTPException) -> 
 
     # Check if this is a rate limit exception
     if exc.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
-        retry_after = exc.headers.get("Retry-After", "60")  # Default to 1 minute
+        retry_after_header = exc.headers.get("Retry-After", "60") if exc.headers else "60"
+        retry_after = retry_after_header if retry_after_header else "60"
         retry_after_int = int(retry_after) if retry_after.isdigit() else 60
 
         # Determine rate limit type based on path

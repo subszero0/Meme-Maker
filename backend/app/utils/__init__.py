@@ -1,9 +1,11 @@
 # Storage utilities
+from typing import Optional
+
 from .minio_storage import MinIOStorage
 from .storage_interface import StorageInterface
 
 # Global storage instance (singleton pattern)
-_storage_instance: StorageInterface = None
+_storage_instance: Optional[StorageInterface] = None
 
 
 def get_storage() -> StorageInterface:
