@@ -13,8 +13,6 @@ from .config import settings
 # Import metrics safely
 rate_denied_metric: Optional[Any] = None
 try:
-    from prometheus_client import Counter
-
     from .metrics_definitions import RATE_DENIED
 
     rate_denied_metric = RATE_DENIED
