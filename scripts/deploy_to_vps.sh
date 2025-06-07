@@ -72,6 +72,11 @@ ssh -o StrictHostKeyChecking=no -T $SSH_HOST <<'EOSSH'
   echo "Frontend: https://memeit.pro"
   echo "API Docs: https://memeit.pro/docs"
   echo "Health: https://memeit.pro/health"
+  
+  echo ""
+  echo "🔧 Running service diagnostics..."
+  chmod +x scripts/debug_vps_services.sh
+  ./scripts/debug_vps_services.sh
 EOSSH
 
 echo "✅ Deployment completed successfully!" 
