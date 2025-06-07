@@ -260,7 +260,7 @@ describe("Visual Regression Tests", () => {
     cy.get('[data-testid="end-time"]').clear().type("03:01.000");
 
     // Wait for validation error to appear
-    cy.contains("Trim to three minutes or less to proceed.").should(
+    cy.contains("Trim to thirty minutes or less to proceed.").should(
       "be.visible",
     );
 

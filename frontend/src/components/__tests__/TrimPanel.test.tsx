@@ -73,7 +73,7 @@ describe.skip("TrimPanel", () => {
     const endInput = screen.getByDisplayValue("03:00.000") as HTMLInputElement;
 
     expect(startInput.value).toBe("00:00.000");
-    expect(endInput.value).toBe("03:00.000"); // Capped at 180 seconds
+    expect(endInput.value).toBe("30:00.000"); // Capped at 1800 seconds
   });
 
   it("renders slider handles with correct test IDs", () => {
@@ -105,7 +105,7 @@ describe.skip("TrimPanel", () => {
     expect(submitButton).toBeEnabled();
   });
 
-  it("shows error message when clip duration exceeds 180 seconds", async () => {
+  it("shows error message when clip duration exceeds 1800 seconds", async () => {
     const user = userEvent.setup();
     render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
 
@@ -115,7 +115,7 @@ describe.skip("TrimPanel", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Trim to three minutes or less to proceed."),
+        screen.getByText("Trim to thirty minutes or less to proceed."),
       ).toBeInTheDocument();
     });
   });
@@ -139,7 +139,7 @@ describe.skip("TrimPanel", () => {
     });
   });
 
-  it("disables submit button when clip duration exceeds 180 seconds", async () => {
+  it("disables submit button when clip duration exceeds 1800 seconds", async () => {
     const user = userEvent.setup();
     render(<TrimPanel jobMeta={defaultJobMeta} onSubmit={mockOnSubmit} />);
 
@@ -239,7 +239,7 @@ describe.skip("TrimPanel", () => {
     });
   });
 
-  it("caps initial out time to 180 seconds for videos longer than 3 minutes", () => {
+  it("caps initial out time to 1800 seconds for videos longer than 30 minutes", () => {
     const longJobMeta = {
       ...defaultJobMeta,
       duration: 600, // 10 minutes

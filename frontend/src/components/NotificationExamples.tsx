@@ -116,7 +116,7 @@ export default function NotificationExamples() {
             </label>
             <input type="range" className="w-full" min="0" max="300" />
             <WarningNotification
-              message="Trim to three minutes or less to proceed."
+              message="Trim to thirty minutes or less to proceed."
               position="inline"
             />
           </div>

@@ -133,7 +133,7 @@ describe("Clip Downloader E2E Flow", () => {
     cy.get('[data-testid="end-time"]').clear().realType("03:01.000"); // 3 minutes 1 second
 
     // Should show validation error
-    cy.contains("Trim to three minutes or less to proceed.").should(
+    cy.contains("Trim to thirty minutes or less to proceed.").should(
       "be.visible",
     );
 

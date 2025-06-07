@@ -67,7 +67,7 @@ export default function TimeRangeSlider({
   const startPercentage = (startTime / duration) * 100;
   const endPercentage = (endTime / duration) * 100;
   const clipDuration = endTime - startTime;
-  const maxDuration = 3 * 60; // 3 minutes in seconds
+  const maxDuration = 30 * 60; // 30 minutes in seconds
 
   return (
     <div className="w-full space-y-4">
@@ -133,7 +133,7 @@ export default function TimeRangeSlider({
       {/* Validation message */}
       {clipDuration > maxDuration && (
         <p className="text-red-600 text-sm">
-          Trim to three minutes or less to proceed.
+          Trim to thirty minutes or less to proceed.
         </p>
       )}
     </div>

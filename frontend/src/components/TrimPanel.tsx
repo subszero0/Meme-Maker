@@ -63,7 +63,7 @@ export default function TrimPanel({
   const { pushToast } = useToast();
   const [state, dispatch] = useReducer(trimReducer, {
     in: 0,
-    out: Math.min(jobMeta.duration, 180), // Cap at 3 minutes
+    out: Math.min(jobMeta.duration, 1800), // Cap at 30 minutes
     rights: false,
   });
 
@@ -84,7 +84,7 @@ export default function TrimPanel({
   }, [state.in, state.out]);
 
   const clipDuration = state.out - state.in;
-  const maxDuration = 180; // 3 minutes in seconds
+  const maxDuration = 1800; // 30 minutes in seconds
 
   // Validation
   const isValidClip = state.out > state.in && clipDuration <= maxDuration;
@@ -317,7 +317,7 @@ export default function TrimPanel({
       {clipDuration > maxDuration && (
         <Notification
           type="error"
-          message="Trim to three minutes or less to proceed."
+          message="Trim to thirty minutes or less to proceed."
           position="inline"
           data-cy="duration-error"
         />
@@ -388,7 +388,7 @@ export default function TrimPanel({
         {!isValidClip && !state.rights
           ? "Button disabled: Please set valid clip times and accept terms"
           : !isValidClip
-            ? "Button disabled: Please set valid clip times within 3 minutes"
+            ? "Button disabled: Please set valid clip times within 30 minutes"
             : !state.rights
               ? "Button disabled: Please accept the terms of use"
               : "Create and download your video clip"}
