@@ -164,8 +164,7 @@ class TestE2EUserFlow:
             print(f"   Response: {response.text}")
 
         assert response.status_code == 200, (
-            f"Metadata request failed with {response.status_code}: "
-            f"{response.text}"
+            f"Metadata request failed with {response.status_code}: " f"{response.text}"
         )
         return response.json()
 
@@ -182,8 +181,7 @@ class TestE2EUserFlow:
             print(f"   Response: {response.text}")
 
         assert response.status_code == 202, (
-            f"Job creation failed with {response.status_code}: "
-            f"{response.text}"
+            f"Job creation failed with {response.status_code}: " f"{response.text}"
         )
         return response.json()
 
@@ -204,8 +202,7 @@ class TestE2EUserFlow:
                 print(f"   Response: {response.text}")
 
             assert response.status_code == 200, (
-                f"Job polling failed with {response.status_code}: "
-                f"{response.text}"
+                f"Job polling failed with {response.status_code}: " f"{response.text}"
             )
 
             status = response.json()
