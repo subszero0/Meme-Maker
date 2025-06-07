@@ -37,7 +37,7 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       body: { 
         status: "done", 
         progress: 100,
-        url: "https://example.com/download/test-video.mp4"
+        download_url: "https://example.com/download/test-video.mp4"
       }
     }).as('jobStatus');
 
@@ -96,6 +96,10 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       cy.get('@termsCheckbox').should("be.checked");
 
       cy.get('[data-testid="create-clip-button"]').click();
+
+      // Wait for job creation and then for job polling to complete
+      cy.wait('@createJob');
+      cy.wait('@jobStatus');
 
       // Step 4: Wait for download modal to appear (homepage flow)
       cy.get('[data-testid="download-btn"]', { timeout: 30000 }).as('downloadBtn');
