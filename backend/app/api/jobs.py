@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from rq import Queue
@@ -101,7 +101,7 @@ async def create_job(job_data: JobCreate) -> JobResponse:
     # Store job in Redis hash
     job_dict = job.model_dump()
     # Convert all values to Redis-compatible types
-    redis_data: Dict[str, Union[str, bytes, float, int]] = {}
+    redis_data: Dict[str, str] = {}
     for key, value in job_dict.items():
         if isinstance(value, Decimal):
             redis_data[key] = str(value)
@@ -164,7 +164,7 @@ async def get_job(job_id: str) -> JobResponse:
         )
 
     # Type assertion to help MyPy understand this is a sync Redis client
-    job_data_raw: Dict[Any, Any] = redis.hgetall(f"job:{job_id}")  # type: ignore
+    job_data_raw: Dict[Any, Any] = cast(Dict[Any, Any], redis.hgetall(f"job:{job_id}"))
 
     # Ensure we have the data and it's not empty
     if not job_data_raw:
