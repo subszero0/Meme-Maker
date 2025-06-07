@@ -7,11 +7,27 @@ echo "🚀 Deploying Meme Maker to VPS..."
 echo "SSH_HOST: $SSH_HOST"
 echo "SSH connection test..."
 
-# Test SSH connection first
-if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -T $SSH_HOST 'echo "SSH connection successful"'; then
+# Check local SSH key fingerprint
+echo "📋 Local SSH key fingerprint:"
+ssh-keygen -lf ~/.ssh/id_rsa || echo "Could not read local key fingerprint"
+
+# Check which public key is expected on the server
+echo "🔍 Checking server's authorized_keys for our public key..."
+LOCAL_PUBLIC_KEY=$(ssh-keygen -yf ~/.ssh/id_rsa 2>/dev/null || echo "Could not extract public key")
+echo "Our public key: $LOCAL_PUBLIC_KEY"
+
+# Test SSH connection with verbose output
+echo "🔐 Testing SSH connection with verbose output..."
+if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -v -T $SSH_HOST 'echo "SSH connection successful"' 2>&1; then
   echo "✅ SSH connection test passed"
 else
   echo "❌ SSH connection test failed"
+  echo "🔍 Attempting to diagnose the issue..."
+  
+  # Try to see what's in the authorized_keys file (this might fail but worth trying)
+  echo "Checking if we can identify the authentication issue..."
+  ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o PasswordAuthentication=no -v $SSH_HOST 'exit' 2>&1 | grep -E "(debug1|Offering|userauth_pubkey)" || echo "Could not get detailed SSH debug info"
+  
   exit 1
 fi
 
