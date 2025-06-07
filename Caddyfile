@@ -2,9 +2,12 @@
 # Serves frontend UI (via FastAPI static handling) and proxies API requests
 
 {
-    # Global options
-    auto_https off
+    # Global options  
+    # auto_https off  # DISABLED - Let Caddy handle SSL certificates automatically
     admin off
+    
+    # Email for Let's Encrypt (required for automatic certificates)
+    email admin@memeit.pro
 }
 
 # Main site configuration

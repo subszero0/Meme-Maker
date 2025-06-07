@@ -115,6 +115,11 @@ ssh -o StrictHostKeyChecking=no -T $SSH_HOST <<'EOSSH'
   echo "🔧 Running service diagnostics..."
   chmod +x scripts/debug_vps_services.sh
   ./scripts/debug_vps_services.sh
+  
+  echo ""
+  echo "🔬 Running targeted SSL & Backend diagnostics..."
+  chmod +x scripts/diagnose_ssl_backend.sh
+  ./scripts/diagnose_ssl_backend.sh
 EOSSH
 
 echo "✅ Deployment completed successfully!" 
