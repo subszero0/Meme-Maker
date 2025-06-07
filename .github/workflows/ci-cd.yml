@@ -400,7 +400,7 @@ jobs:
           echo "SSH key fingerprint:"
           ssh-keygen -lf ~/.ssh/id_rsa || echo "Could not read SSH key fingerprint"
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PRIVATE_KEY: ${{ secrets.meme_vps }}
       - name: Deploy to VPS
         run: chmod +x scripts/deploy_to_vps.sh && ./scripts/deploy_to_vps.sh
         env:
