@@ -1,7 +1,8 @@
 """Prometheus metrics definitions for Meme Maker backend"""
 
-from typing import Any, ContextManager, Union
 from contextlib import nullcontext
+from typing import Any, ContextManager, Union
+
 
 # Create dummy metrics that do nothing
 class DummyMetric:
@@ -20,6 +21,7 @@ class DummyMetric:
 
     def labels(self, *args: Any, **kwargs: Any) -> "DummyMetric":
         return self
+
 
 try:
     from prometheus_client import Counter, Gauge, Histogram
@@ -43,7 +45,9 @@ try:
     )
 
     # New required metrics
-    QUEUE_DEPTH: Union[Gauge, DummyMetric] = Gauge("rq_queue_depth", "Jobs waiting in RQ 'clips' queue")
+    QUEUE_DEPTH: Union[Gauge, DummyMetric] = Gauge(
+        "rq_queue_depth", "Jobs waiting in RQ 'clips' queue"
+    )
 
     JOB_DURATION: Union[Histogram, DummyMetric] = Histogram(
         "clip_job_duration_seconds",
@@ -58,7 +62,9 @@ try:
     )
 
     # Rate limiting metric
-    RATE_DENIED: Union[Counter, DummyMetric] = Counter("rate_limit_denied_total", "Jobs blocked by rate limit")
+    RATE_DENIED: Union[Counter, DummyMetric] = Counter(
+        "rate_limit_denied_total", "Jobs blocked by rate limit"
+    )
 
 except ImportError:
     METRICS_AVAILABLE = False

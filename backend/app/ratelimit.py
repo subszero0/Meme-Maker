@@ -13,8 +13,10 @@ from .config import settings
 # Import metrics safely
 rate_denied_metric: Optional[Any] = None
 try:
-    from .metrics_definitions import RATE_DENIED
     from prometheus_client import Counter
+
+    from .metrics_definitions import RATE_DENIED
+
     rate_denied_metric = RATE_DENIED
 except ImportError:
     pass  # rate_denied_metric remains None
@@ -103,13 +105,17 @@ job_creation_limiter: Optional[RateLimiter] = create_job_limiter()
 
 # Legacy limiter for backward compatibility (can be removed later)
 try:
-    clip_limiter: Optional[RateLimiter] = RateLimiter(times=40, seconds=60 * 60 * 24)  # 24 hours
+    clip_limiter: Optional[RateLimiter] = RateLimiter(
+        times=40, seconds=60 * 60 * 24
+    )  # 24 hours
 except Exception as e:
     print(f"Warning: Failed to create clip limiter: {e}")
     clip_limiter = None
 
 
-async def rate_limit_exception_handler(request: Request, exc: HTTPException) -> Dict[str, Any]:
+async def rate_limit_exception_handler(
+    request: Request, exc: HTTPException
+) -> Dict[str, Any]:
     """Custom exception handler for rate limit errors"""
     # Increment rate limit denied metric if available
     if rate_denied_metric:
@@ -122,7 +128,9 @@ async def rate_limit_exception_handler(request: Request, exc: HTTPException) -> 
 
     # Check if this is a rate limit exception
     if exc.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
-        retry_after_header = exc.headers.get("Retry-After", "60") if exc.headers else "60"
+        retry_after_header = (
+            exc.headers.get("Retry-After", "60") if exc.headers else "60"
+        )
         retry_after = retry_after_header if retry_after_header else "60"
         retry_after_int = int(retry_after) if retry_after.isdigit() else 60
 

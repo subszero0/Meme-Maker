@@ -44,7 +44,7 @@ def connect_to_redis(
                 else:
                     logger.warning("Redis connection failed, but not required")
                     return None
-    
+
     # This should never be reached, but add for completeness
     return None
 

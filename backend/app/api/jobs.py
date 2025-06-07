@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, Optional, Union, Any
+from typing import Any, Dict, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from rq import Queue
@@ -165,13 +165,13 @@ async def get_job(job_id: str) -> JobResponse:
 
     # Type assertion to help MyPy understand this is a sync Redis client
     job_data_raw: Dict[Any, Any] = redis.hgetall(f"job:{job_id}")  # type: ignore
-    
+
     # Ensure we have the data and it's not empty
     if not job_data_raw:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
         )
-    
+
     # Type the job_data properly - Redis returns dict directly for sync client
     job_data = job_data_raw
 
@@ -193,7 +193,9 @@ async def get_job(job_id: str) -> JobResponse:
             elif key == "created_at":
                 # Handle datetime parsing more safely
                 if isinstance(value, str):
-                    parsed_data[key] = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                    parsed_data[key] = datetime.fromisoformat(
+                        value.replace("Z", "+00:00")
+                    )
                 else:
                     parsed_data[key] = datetime.utcnow()  # fallback
             elif key == "progress":

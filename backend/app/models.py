@@ -79,11 +79,11 @@ class JobCreate(BaseModel):
         """Validate that clip duration doesn't exceed maximum allowed"""
         if not isinstance(info.data, dict):
             raise ValueError("Validation info data is not available")
-        
+
         start_seconds = info.data.get("start", 0)
         if not isinstance(start_seconds, (int, float)):
             raise ValueError("start time must be numeric")
-        
+
         start_seconds = float(start_seconds)
 
         # Check that end > start
