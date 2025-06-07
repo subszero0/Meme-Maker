@@ -118,7 +118,10 @@ class TestWorkerPipelineLogic:
     def test_keyframe_detection_logic(self, mock_subprocess):
         """Test keyframe detection logic"""
         # Mock ffprobe output with keyframes at 0s, 2s, 4s, 6s
-        mock_subprocess.return_value.stdout = "0.000000,1\n1.500000,0\n2.000000,1\n3.500000,0\n4.000000,1\n5.500000,0\n6.000000,1\n"
+        mock_subprocess.return_value.stdout = (
+            "0.000000,1\n1.500000,0\n2.000000,1\n3.500000,0\n"
+            "4.000000,1\n5.500000,0\n6.000000,1\n"
+        )
         mock_subprocess.return_value.returncode = 0
 
         # Test the keyframe detection logic directly

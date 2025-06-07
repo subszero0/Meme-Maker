@@ -44,7 +44,9 @@ def test_storage_singleton_pattern(mock_init):
 
 
 def test_interface_methods_are_abstract():
-    """Test that StorageInterface methods are abstract and cannot be instantiated directly"""
+    """
+    Test that StorageInterface methods are abstract and cannot be instantiated directly.
+    """
     with pytest.raises(TypeError):
         # Should raise TypeError because abstract methods are not implemented
         StorageInterface()

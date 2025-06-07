@@ -61,7 +61,8 @@ class TestJobFlowWithMockStorage:
         self, client_with_mock_storage, mock_storage
     ):
         """Test creating a job returns 202 and correct job_id."""
-        # FIXED: Using new schema (start/end) instead of old (start_seconds/end_seconds) - Issue #422
+        # FIXED: Using new schema (start/end) instead of old
+        # (start_seconds/end_seconds) - Issue #422
         job_data = {
             "url": "https://www.youtube.com/watch?v=BaW_jenozKc",
             "start": 5.0,
@@ -255,9 +256,12 @@ class TestJobFlowWithMockStorage:
     def test_complete_job_flow_integration(
         self, client_with_mock_storage, mock_storage, fake_redis
     ):
-        """Test the complete job flow from creation to cleanup in one integrated test."""
+        """
+        Test the complete job flow from creation to cleanup in one integrated test.
+        """
         # 1. Create job
-        # FIXED: Using new schema (start/end) instead of old (start_seconds/end_seconds) - Schema Update
+        # FIXED: Using new schema (start/end) instead of old
+        # (start_seconds/end_seconds) - Schema Update
         job_data = {
             "url": "https://www.youtube.com/watch?v=BaW_jenozKc",
             "start": 10.0,

@@ -227,7 +227,8 @@ class TestE2EUserFlow:
             time.sleep(poll_interval)
 
         pytest.fail(
-            f"Job {job_id} did not complete within {max_wait} seconds. Last status: {last_status}"
+            f"Job {job_id} did not complete within {max_wait} seconds. "
+            f"Last status: {last_status}"
         )
 
     def _download_clip(
@@ -263,7 +264,10 @@ class TestE2EUserFlow:
 
 @pytest.mark.smoke
 @pytest.mark.skip(
-    reason="Health check test requires live backend server - run manually with backend running"
+    reason=(
+        "Health check test requires live backend server - "
+        "run manually with backend running"
+    )
 )
 class TestHealthCheck:
     """Basic health check test"""
@@ -279,7 +283,10 @@ class TestHealthCheck:
 
 @pytest.mark.smoke
 @pytest.mark.skip(
-    reason="API availability test requires live backend server - run manually with backend running"
+    reason=(
+        "API availability test requires live backend server - "
+        "run manually with backend running"
+    )
 )
 class TestAPIAvailability:
     """Test basic API availability before running full E2E tests"""

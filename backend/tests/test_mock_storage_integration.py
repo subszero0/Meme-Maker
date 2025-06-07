@@ -89,7 +89,9 @@ def test_mock_storage_with_manual_patching(monkeypatch):
     },
 )
 def test_mock_storage_with_env_override():
-    """Test that we can override environment variables to avoid MinIO connection issues."""
+    """
+    Test that we can override environment variables to avoid MinIO connection issues.
+    """
     from app.utils.mock_storage import InMemoryStorage
 
     # Create a standalone mock storage instance

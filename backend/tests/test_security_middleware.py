@@ -42,11 +42,19 @@ class TestSecurityHeaders:
         # Check all required security headers
         expected_headers = {
             "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
-            "content-security-policy": "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' https:; font-src 'self' https:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'",
+            "content-security-policy": (
+                "default-src 'self'; img-src 'self' data: https:; "
+                "style-src 'self' 'unsafe-inline' https:; "
+                "script-src 'self' 'unsafe-inline' https:; "
+                "font-src 'self' https:; connect-src 'self' https:; "
+                "frame-ancestors 'none'; base-uri 'self'"
+            ),
             "x-content-type-options": "nosniff",
             "x-frame-options": "DENY",
             "referrer-policy": "no-referrer",
-            "permissions-policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+            "permissions-policy": (
+                "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+            ),
         }
 
         for header, expected_value in expected_headers.items():
@@ -112,7 +120,8 @@ class TestSecurityHeaders:
 
         try:
             response = client.get("/test", headers={"origin": "https://any-domain.com"})
-            # Note: We can't assert exact CORS behavior without mocking because it uses real settings
+            # Note: We can't assert exact CORS behavior without mocking
+            # because it uses real settings
             # But we can verify the response is successful and contains security headers
             assert response.status_code == 200
             assert "x-frame-options" in response.headers
@@ -132,4 +141,5 @@ class TestSecurityHeaders:
             "access-control-allow-credentials" in response.headers
             or "access-control-allow-origin" in response.headers
         )
-        # This may or may not be true depending on settings, so we just verify the response works
+        # This may or may not be true depending on settings,
+        # so we just verify the response works
