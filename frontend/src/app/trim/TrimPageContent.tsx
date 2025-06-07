@@ -105,6 +105,7 @@ export default function TrimPageContent() {
           })
           setLoading(false)
         } catch (err) {
+          console.error('Failed to load video metadata:', err)
           setError('Failed to load video metadata')
           setLoading(false)
         }
@@ -156,6 +157,7 @@ export default function TrimPageContent() {
       }
 
       const jobData = await response.json()
+      console.log('Job created successfully:', jobData)
       
       // Simulate processing time
       setTimeout(() => {
@@ -173,6 +175,7 @@ export default function TrimPageContent() {
 
     } catch (error) {
       // Fallback simulation for when API is not available
+      console.warn('API not available, using fallback simulation:', error)
       setTimeout(() => {
         setJobStatus({
           status: 'ready',
@@ -366,11 +369,11 @@ export default function TrimPageContent() {
                     I confirm that I have the right to download this content and agree to the terms of service.
                   </span>
                 </label>
-                {!termsAccepted && isDurationValid && (
-                  <p className="text-red-600 text-sm mt-2" data-testid="terms-error">
-                    You must accept the terms to continue.
-                  </p>
-                )}
+                              {showTermsError && (
+                <p className="text-red-600 text-sm mt-2" data-testid="terms-error">
+                  You must accept the terms to continue.
+                </p>
+              )}
               </div>
 
               {/* Create Clip Button */}
