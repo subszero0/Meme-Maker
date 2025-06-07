@@ -6,6 +6,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
 logger = logging.getLogger(__name__)
+# Ensure proper Black formatting for CI
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
