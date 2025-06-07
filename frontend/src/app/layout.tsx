@@ -29,7 +29,10 @@ const AppShell: FC<PropsWithChildren> = ({ children }) => {
         {/* Fixed Header */}
         <header className="fixed top-0 left-0 right-0 z-50 bg-primary-700 text-white shadow-lg">
           <div className="container mx-auto px-4 py-3">
-            <nav className="flex items-center justify-center" data-testid="main-nav">
+            <nav
+              className="flex items-center justify-center"
+              data-testid="main-nav"
+            >
               <span className="text-xl font-semibold">Clip Downloader</span>
             </nav>
           </div>

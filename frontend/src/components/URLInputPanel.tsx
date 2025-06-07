@@ -88,8 +88,10 @@ export default function URLInputPanel({
     }
 
     // For invalid URLs (like example.com), don't proceed
-    if (url.includes('example.com') || url.includes('not-a-video')) {
-      setError('Please provide a valid video URL from YouTube, Instagram, Facebook, Threads, or Reddit.');
+    if (url.includes("example.com") || url.includes("not-a-video")) {
+      setError(
+        "Please provide a valid video URL from YouTube, Instagram, Facebook, Threads, or Reddit.",
+      );
       return;
     }
 
@@ -97,9 +99,10 @@ export default function URLInputPanel({
   };
 
   const hasError = !!error && !isDebouncing;
-  
+
   // For accessibility and testing, ensure button is enabled when URL is valid
-  const isButtonDisabled = !url.trim() || (hasError && !isDebouncing) || loading || disabled;
+  const isButtonDisabled =
+    !url.trim() || (hasError && !isDebouncing) || loading || disabled;
 
   return (
     <div className="mx-auto max-w-md">

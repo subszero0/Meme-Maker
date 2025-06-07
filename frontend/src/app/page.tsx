@@ -82,12 +82,15 @@ export default function Home() {
 
     try {
       const metadata = await fetchVideoMetadata(url);
-      
+
       // Replace mock/test data with expected test data for YouTube URLs
-      if ((url.includes('youtube.com') || url.includes('youtu.be')) && metadata.title === 'Sample Video Title') {
+      if (
+        (url.includes("youtube.com") || url.includes("youtu.be")) &&
+        metadata.title === "Sample Video Title"
+      ) {
         const correctedMetadata = {
           ...metadata,
-          title: "Rick Astley - Never Gonna Give You Up"
+          title: "Rick Astley - Never Gonna Give You Up",
         };
         setState({ phase: "trim", metadata: correctedMetadata });
       } else {
@@ -96,11 +99,11 @@ export default function Home() {
       pushToast({ type: "success", message: "Video loaded successfully!" });
     } catch (error) {
       // Fallback to mock data for testing/development when API is not available
-      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      if (url.includes("youtube.com") || url.includes("youtu.be")) {
         const mockMetadata = {
           url: url,
           title: "Rick Astley - Never Gonna Give You Up",
-          duration: 212
+          duration: 212,
         };
         setState({ phase: "trim", metadata: mockMetadata });
         pushToast({ type: "success", message: "Video loaded successfully!" });

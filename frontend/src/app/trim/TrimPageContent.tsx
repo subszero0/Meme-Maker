@@ -1,203 +1,207 @@
-'use client'
+"use client";
 
-import { useSearchParams, useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useSearchParams, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 interface VideoMetadata {
-  title: string
-  duration: number
-  thumbnails: string[]
+  title: string;
+  duration: number;
+  thumbnails: string[];
   formats: Array<{
-    format_id: string
-    resolution: string
-    fps: number
-  }>
+    format_id: string;
+    resolution: string;
+    fps: number;
+  }>;
 }
 
 interface JobStatus {
-  status: 'pending' | 'processing' | 'ready' | 'failed'
-  download_url?: string
-  error?: string
+  status: "pending" | "processing" | "ready" | "failed";
+  download_url?: string;
+  error?: string;
 }
 
 export default function TrimPageContent() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const url = searchParams.get('url')
-  const [startTime, setStartTime] = useState('00:00:00')
-  const [endTime, setEndTime] = useState('00:00:05')
-  const [termsAccepted, setTermsAccepted] = useState(false)
-  const [metadata, setMetadata] = useState<VideoMetadata | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [jobStatus, setJobStatus] = useState<JobStatus | null>(null)
-  const [copyFeedback, setCopyFeedback] = useState('')
-  const [showTermsError, setShowTermsError] = useState(false)
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const url = searchParams.get("url");
+  const [startTime, setStartTime] = useState("00:00:00");
+  const [endTime, setEndTime] = useState("00:00:05");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [metadata, setMetadata] = useState<VideoMetadata | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState("");
+  const [showTermsError, setShowTermsError] = useState(false);
 
   // Parse time to seconds
   const parseTime = (timeStr: string): number => {
-    if (!timeStr || timeStr.trim() === '') return 0
-    
-    const parts = timeStr.split(':').map(Number)
-    
+    if (!timeStr || timeStr.trim() === "") return 0;
+
+    const parts = timeStr.split(":").map(Number);
+
     // Handle incomplete inputs gracefully
-    const hours = parts[0] || 0
-    const minutes = parts[1] || 0
-    const seconds = parts[2] || 0
-    
+    const hours = parts[0] || 0;
+    const minutes = parts[1] || 0;
+    const seconds = parts[2] || 0;
+
     // Return NaN if any part is actually NaN (invalid number)
-    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return 0
-    
-    return hours * 3600 + minutes * 60 + seconds
-  }
+    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return 0;
+
+    return hours * 3600 + minutes * 60 + seconds;
+  };
 
   // Calculate clip duration safely
-  const startSeconds = parseTime(startTime)
-  const endSeconds = parseTime(endTime)
-  const clipDuration = endSeconds - startSeconds
+  const startSeconds = parseTime(startTime);
+  const endSeconds = parseTime(endTime);
+  const clipDuration = endSeconds - startSeconds;
 
   // Check if duration is valid (not over 30 minutes = 1800 seconds)
-  const isDurationValid = !isNaN(clipDuration) && clipDuration > 0 && clipDuration <= 1800
+  const isDurationValid =
+    !isNaN(clipDuration) && clipDuration > 0 && clipDuration <= 1800;
 
   // Load video metadata when URL is provided
   useEffect(() => {
     if (url) {
-      setLoading(true)
-      setError('')
-      
+      setLoading(true);
+      setError("");
+
       // Check for start/end params in URL
-      const startParam = searchParams.get('start')
-      const endParam = searchParams.get('end')
-      
+      const startParam = searchParams.get("start");
+      const endParam = searchParams.get("end");
+
       if (startParam) {
-        const startSeconds = parseInt(startParam, 10)
-        const hours = Math.floor(startSeconds / 3600)
-        const minutes = Math.floor((startSeconds % 3600) / 60)
-        const seconds = startSeconds % 60
-        setStartTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+        const startSeconds = parseInt(startParam, 10);
+        const hours = Math.floor(startSeconds / 3600);
+        const minutes = Math.floor((startSeconds % 3600) / 60);
+        const seconds = startSeconds % 60;
+        setStartTime(
+          `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
+        );
       }
-      
+
       if (endParam) {
-        const endSeconds = parseInt(endParam, 10)
-        const hours = Math.floor(endSeconds / 3600)
-        const minutes = Math.floor((endSeconds % 3600) / 60)
-        const seconds = endSeconds % 60
-        setEndTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+        const endSeconds = parseInt(endParam, 10);
+        const hours = Math.floor(endSeconds / 3600);
+        const minutes = Math.floor((endSeconds % 3600) / 60);
+        const seconds = endSeconds % 60;
+        setEndTime(
+          `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
+        );
       }
-      
+
       // Simulate API call for metadata
       setTimeout(() => {
         try {
           // Simulate validation - reject invalid URLs
-          if (url.includes('example.com') || url.includes('not-a-video')) {
-            setError('Please provide a valid video URL from YouTube, Instagram, Facebook, Threads, or Reddit.')
-            setLoading(false)
-            return
+          if (url.includes("example.com") || url.includes("not-a-video")) {
+            setError(
+              "Please provide a valid video URL from YouTube, Instagram, Facebook, Threads, or Reddit.",
+            );
+            setLoading(false);
+            return;
           }
 
           setMetadata({
-            title: 'Rick Astley - Never Gonna Give You Up',
+            title: "Rick Astley - Never Gonna Give You Up",
             duration: 212,
             thumbnails: [],
-            formats: [
-              { format_id: '22', resolution: '720p', fps: 30 }
-            ]
-          })
-          setLoading(false)
+            formats: [{ format_id: "22", resolution: "720p", fps: 30 }],
+          });
+          setLoading(false);
         } catch (err) {
-          console.error('Failed to load video metadata:', err)
-          setError('Failed to load video metadata')
-          setLoading(false)
+          console.error("Failed to load video metadata:", err);
+          setError("Failed to load video metadata");
+          setLoading(false);
         }
-      }, 1000)
+      }, 1000);
     }
-  }, [url, searchParams])
+  }, [url, searchParams]);
 
   const handleCreateClip = async () => {
     if (!termsAccepted) {
-      setShowTermsError(true)
-      return
+      setShowTermsError(true);
+      return;
     }
-    
-    if (!isDurationValid || !url) return
 
-    setLoading(true)
-    setJobStatus({ status: 'processing' })
-    setShowTermsError(false)
+    if (!isDurationValid || !url) return;
+
+    setLoading(true);
+    setJobStatus({ status: "processing" });
+    setShowTermsError(false);
 
     // Calculate times at call time
-    const currentStartSeconds = parseTime(startTime)
-    const currentEndSeconds = parseTime(endTime)
+    const currentStartSeconds = parseTime(startTime);
+    const currentEndSeconds = parseTime(endTime);
 
     try {
       // Make actual API call for testing purposes
-      const response = await fetch('/api/v1/jobs', {
-        method: 'POST',
+      const response = await fetch("/api/v1/jobs", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           url: url,
           start_time: currentStartSeconds,
-          end_time: currentEndSeconds
-        })
-      })
+          end_time: currentEndSeconds,
+        }),
+      });
 
       if (!response.ok) {
         if (response.status === 429) {
           setJobStatus({
-            status: 'failed',
-            error: 'Queue is full. Try again in a minute.'
-          })
+            status: "failed",
+            error: "Queue is full. Try again in a minute.",
+          });
         } else {
-          throw new Error(`HTTP error! status: ${response.status}`)
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-        setLoading(false)
-        return
+        setLoading(false);
+        return;
       }
 
-      const jobData = await response.json()
-      console.log('Job created successfully:', jobData)
-      
+      const jobData = await response.json();
+      console.log("Job created successfully:", jobData);
+
       // Simulate processing time
       setTimeout(() => {
         setJobStatus({
-          status: 'ready',
-          download_url: 'https://example.com/download/video.mp4'
-        })
-        setLoading(false)
-        
-        // Auto-copy to clipboard
-        navigator.clipboard.writeText('Download ready!')
-        setCopyFeedback('Copied to clipboard')
-        setTimeout(() => setCopyFeedback(''), 2000)
-      }, 2000)
+          status: "ready",
+          download_url: "https://example.com/download/video.mp4",
+        });
+        setLoading(false);
 
+        // Auto-copy to clipboard
+        navigator.clipboard.writeText("Download ready!");
+        setCopyFeedback("Copied to clipboard");
+        setTimeout(() => setCopyFeedback(""), 2000);
+      }, 2000);
     } catch (error) {
       // Fallback simulation for when API is not available
-      console.warn('API not available, using fallback simulation:', error)
+      console.warn("API not available, using fallback simulation:", error);
       setTimeout(() => {
         setJobStatus({
-          status: 'ready',
-          download_url: 'https://example.com/download/video.mp4'
-        })
-        setLoading(false)
-        
+          status: "ready",
+          download_url: "https://example.com/download/video.mp4",
+        });
+        setLoading(false);
+
         // Auto-copy to clipboard
-        navigator.clipboard.writeText('Download ready!')
-        setCopyFeedback('Copied to clipboard')
-        setTimeout(() => setCopyFeedback(''), 2000)
-      }, 2000)
+        navigator.clipboard.writeText("Download ready!");
+        setCopyFeedback("Copied to clipboard");
+        setTimeout(() => setCopyFeedback(""), 2000);
+      }, 2000);
     }
-  }
+  };
 
   const formatDuration = (seconds: number): string => {
-    if (isNaN(seconds) || seconds < 0) return '0 seconds'
-    if (seconds < 60) return `${seconds} seconds`
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return secs > 0 ? `${mins}m ${secs}s` : `${mins} minutes`
-  }
+    if (isNaN(seconds) || seconds < 0) return "0 seconds";
+    if (seconds < 60) return `${seconds} seconds`;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins} minutes`;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -215,7 +219,9 @@ export default function TrimPageContent() {
         {/* Error Display */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-800" data-testid="url-error">{error}</p>
+            <p className="text-red-800" data-testid="url-error">
+              {error}
+            </p>
           </div>
         )}
 
@@ -223,12 +229,15 @@ export default function TrimPageContent() {
         {metadata && (
           <div className="mb-8" data-testid="video-metadata">
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4" data-testid="video-title">
+              <h2
+                className="text-xl font-semibold mb-4"
+                data-testid="video-title"
+              >
                 {metadata.title}
               </h2>
-              
+
               {/* Video Player Placeholder */}
-              <div 
+              <div
                 className="w-full h-64 bg-black rounded-lg mb-4 flex items-center justify-center"
                 data-testid="video-player"
               >
@@ -240,7 +249,7 @@ export default function TrimPageContent() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Timeline
                 </label>
-                <div 
+                <div
                   className="relative w-full h-8 bg-gray-200 rounded-lg cursor-pointer"
                   data-testid="timeline-slider"
                   role="slider"
@@ -249,33 +258,39 @@ export default function TrimPageContent() {
                   aria-valuemax={metadata.duration}
                   aria-valuenow={startSeconds}
                 >
-                  <div 
+                  <div
                     className="absolute left-0 top-0 bg-blue-500 rounded cursor-grab"
                     data-testid="start-handle"
-                    style={{ width: '44px', height: '44px' }}
+                    style={{ width: "44px", height: "44px" }}
                     onMouseDown={(e) => {
-                      e.preventDefault()
+                      e.preventDefault();
                       // Simulate changing start time when handle is moved
-                      const rect = e.currentTarget.parentElement?.getBoundingClientRect()
+                      const rect =
+                        e.currentTarget.parentElement?.getBoundingClientRect();
                       if (rect) {
-                        const newTime = Math.floor((100 / rect.width) * metadata.duration)
-                        const timeStr = `00:00:${String(Math.min(newTime, 59)).padStart(2, '0')}`
-                        setStartTime(timeStr)
+                        const newTime = Math.floor(
+                          (100 / rect.width) * metadata.duration,
+                        );
+                        const timeStr = `00:00:${String(Math.min(newTime, 59)).padStart(2, "0")}`;
+                        setStartTime(timeStr);
                       }
                     }}
                   ></div>
-                  <div 
+                  <div
                     className="absolute right-0 top-0 bg-blue-500 rounded cursor-grab"
                     data-testid="end-handle"
-                    style={{ width: '44px', height: '44px' }}
+                    style={{ width: "44px", height: "44px" }}
                     onMouseDown={(e) => {
-                      e.preventDefault()
+                      e.preventDefault();
                       // Simulate changing end time when handle is moved
-                      const rect = e.currentTarget.parentElement?.getBoundingClientRect()
+                      const rect =
+                        e.currentTarget.parentElement?.getBoundingClientRect();
                       if (rect) {
-                        const newTime = Math.floor((200 / rect.width) * metadata.duration)
-                        const timeStr = `00:00:${String(Math.max(newTime, 10)).padStart(2, '0')}`
-                        setEndTime(timeStr)
+                        const newTime = Math.floor(
+                          (200 / rect.width) * metadata.duration,
+                        );
+                        const timeStr = `00:00:${String(Math.max(newTime, 10)).padStart(2, "0")}`;
+                        setEndTime(timeStr);
                       }
                     }}
                   ></div>
@@ -292,14 +307,19 @@ export default function TrimPageContent() {
                     type="text"
                     value={startTime}
                     onChange={(e) => {
-                      setStartTime(e.target.value)
+                      setStartTime(e.target.value);
                       // Update URL with new start time only if input is complete
                       if (url && e.target.value.match(/^\d{2}:\d{2}:\d{2}$/)) {
-                        const newUrl = new URL(window.location.href)
-                        const startSeconds = parseTime(e.target.value)
+                        const newUrl = new URL(window.location.href);
+                        const startSeconds = parseTime(e.target.value);
                         if (!isNaN(startSeconds) && startSeconds >= 0) {
-                          newUrl.searchParams.set('start', startSeconds.toString())
-                          router.replace(newUrl.pathname + newUrl.search, { scroll: false })
+                          newUrl.searchParams.set(
+                            "start",
+                            startSeconds.toString(),
+                          );
+                          router.replace(newUrl.pathname + newUrl.search, {
+                            scroll: false,
+                          });
                         }
                       }
                     }}
@@ -317,14 +337,16 @@ export default function TrimPageContent() {
                     type="text"
                     value={endTime}
                     onChange={(e) => {
-                      setEndTime(e.target.value)
+                      setEndTime(e.target.value);
                       // Update URL with new end time only if input is complete
                       if (url && e.target.value.match(/^\d{2}:\d{2}:\d{2}$/)) {
-                        const newUrl = new URL(window.location.href)
-                        const endSeconds = parseTime(e.target.value)
+                        const newUrl = new URL(window.location.href);
+                        const endSeconds = parseTime(e.target.value);
                         if (!isNaN(endSeconds) && endSeconds >= 0) {
-                          newUrl.searchParams.set('end', endSeconds.toString())
-                          router.replace(newUrl.pathname + newUrl.search, { scroll: false })
+                          newUrl.searchParams.set("end", endSeconds.toString());
+                          router.replace(newUrl.pathname + newUrl.search, {
+                            scroll: false,
+                          });
                         }
                       }
                     }}
@@ -338,15 +360,22 @@ export default function TrimPageContent() {
               {/* Clip Duration Display */}
               <div className="mb-4">
                 <p className="text-sm text-gray-600">
-                  Clip Duration: <span data-testid="clip-duration">{formatDuration(clipDuration)}</span>
+                  Clip Duration:{" "}
+                  <span data-testid="clip-duration">
+                    {formatDuration(clipDuration)}
+                  </span>
                 </p>
               </div>
 
               {/* Duration Error */}
               {!isDurationValid && clipDuration > 1800 && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                  <p className="text-red-800 text-sm" data-testid="duration-error">
-                    Clips cannot be longer than thirty minutes. Please adjust your trim points.
+                  <p
+                    className="text-red-800 text-sm"
+                    data-testid="duration-error"
+                  >
+                    Clips cannot be longer than thirty minutes. Please adjust
+                    your trim points.
                   </p>
                 </div>
               )}
@@ -358,22 +387,26 @@ export default function TrimPageContent() {
                     type="checkbox"
                     checked={termsAccepted}
                     onChange={(e) => {
-                      setTermsAccepted(e.target.checked)
-                      setShowTermsError(false)
+                      setTermsAccepted(e.target.checked);
+                      setShowTermsError(false);
                     }}
                     className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     data-testid="terms-checkbox"
                     aria-describedby="terms-text"
                   />
                   <span className="text-sm text-gray-700" id="terms-text">
-                    I confirm that I have the right to download this content and agree to the terms of service.
+                    I confirm that I have the right to download this content and
+                    agree to the terms of service.
                   </span>
                 </label>
-                              {showTermsError && (
-                <p className="text-red-600 text-sm mt-2" data-testid="terms-error">
-                  You must accept the terms to continue.
-                </p>
-              )}
+                {showTermsError && (
+                  <p
+                    className="text-red-600 text-sm mt-2"
+                    data-testid="terms-error"
+                  >
+                    You must accept the terms to continue.
+                  </p>
+                )}
               </div>
 
               {/* Create Clip Button */}
@@ -381,10 +414,10 @@ export default function TrimPageContent() {
                 onClick={handleCreateClip}
                 disabled={!termsAccepted || !isDurationValid || loading}
                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                style={{ minHeight: '44px' }}
+                style={{ minHeight: "44px" }}
                 data-testid="create-clip-button"
               >
-                {loading ? 'Processing...' : 'Create Clip'}
+                {loading ? "Processing..." : "Create Clip"}
               </button>
 
               {/* Job Status */}
@@ -394,16 +427,19 @@ export default function TrimPageContent() {
                   <p className="font-medium" data-testid="job-status">
                     {jobStatus.status}
                   </p>
-                  
-                  {jobStatus.status === 'failed' && jobStatus.error && (
+
+                  {jobStatus.status === "failed" && jobStatus.error && (
                     <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                      <p className="text-red-800 text-sm" data-testid="queue-error">
+                      <p
+                        className="text-red-800 text-sm"
+                        data-testid="queue-error"
+                      >
                         {jobStatus.error}
                       </p>
                     </div>
                   )}
-                  
-                  {jobStatus.status === 'ready' && jobStatus.download_url && (
+
+                  {jobStatus.status === "ready" && jobStatus.download_url && (
                     <div className="mt-4">
                       <a
                         href={jobStatus.download_url}
@@ -414,7 +450,10 @@ export default function TrimPageContent() {
                         Download Video
                       </a>
                       {copyFeedback && (
-                        <p className="text-green-600 text-sm mt-2" data-testid="copy-feedback">
+                        <p
+                          className="text-green-600 text-sm mt-2"
+                          data-testid="copy-feedback"
+                        >
                           {copyFeedback}
                         </p>
                       )}
@@ -443,5 +482,5 @@ export default function TrimPageContent() {
         </div>
       </div>
     </div>
-  )
-} 
+  );
+}

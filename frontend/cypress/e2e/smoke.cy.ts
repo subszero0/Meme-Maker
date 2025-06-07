@@ -10,42 +10,45 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
 
     // Add API interceptors for more reliable testing
     cy.intercept("POST", "/api/v1/metadata", (req) => {
-      if (req.body.url.includes('youtube.com') || req.body.url.includes('youtu.be')) {
+      if (
+        req.body.url.includes("youtube.com") ||
+        req.body.url.includes("youtu.be")
+      ) {
         req.reply({
           statusCode: 200,
           body: {
             url: req.body.url,
             title: "Rick Astley - Never Gonna Give You Up",
-            duration: 212
-          }
+            duration: 212,
+          },
         });
       } else {
         req.reply({
           statusCode: 400,
-          body: { detail: "Invalid or unsupported video URL" }
+          body: { detail: "Invalid or unsupported video URL" },
         });
       }
-    }).as('fetchMetadata');
+    }).as("fetchMetadata");
 
     cy.intercept("POST", "/api/v1/jobs", {
       statusCode: 200,
-      body: { jobId: "test-job-123" }
-    }).as('createJob');
+      body: { jobId: "test-job-123" },
+    }).as("createJob");
 
     cy.intercept("GET", "/api/v1/jobs/test-job-123", {
       statusCode: 200,
-      body: { 
-        status: "done", 
+      body: {
+        status: "done",
         progress: 100,
-        download_url: "https://example.com/download/test-video.mp4"
-      }
-    }).as('jobStatus');
+        download_url: "https://example.com/download/test-video.mp4",
+      },
+    }).as("jobStatus");
 
     // Ensure API is healthy before running tests (with fallback)
     cy.request({
-      method: "GET", 
+      method: "GET",
       url: "http://localhost:8000/health",
-      failOnStatusCode: false
+      failOnStatusCode: false,
     }).then((response) => {
       if (response.status === 200) {
         cy.log("✅ Backend API is available");
@@ -58,9 +61,9 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
   describe("✅ Happy Path - Complete Video Clip Flow", () => {
     it("should successfully clip a YouTube video from start to finish", () => {
       // Step 1: Paste URL and get metadata
-      cy.get('[data-testid="url-input"]').as('urlInput');
-      cy.get('@urlInput').type(TEST_YOUTUBE_URL);
-      cy.get('@urlInput').should("have.value", TEST_YOUTUBE_URL);
+      cy.get('[data-testid="url-input"]').as("urlInput");
+      cy.get("@urlInput").type(TEST_YOUTUBE_URL);
+      cy.get("@urlInput").should("have.value", TEST_YOUTUBE_URL);
 
       cy.get('[data-testid="analyze-button"]').click();
 
@@ -75,47 +78,46 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       );
 
       // Step 2: Set trim points (5 seconds clip) - using correct format with milliseconds
-      cy.get('[data-testid="start-time-input"]').as('startInput');
-      cy.get('@startInput').clear();
-      cy.get('@startInput').type("00:05.000");
+      cy.get('[data-testid="start-time-input"]').as("startInput");
+      cy.get("@startInput").clear();
+      cy.get("@startInput").type("00:05.000");
 
-      cy.get('[data-testid="end-time-input"]').as('endInput');
-      cy.get('@endInput').clear();
-      cy.get('@endInput').type("00:10.000");
+      cy.get('[data-testid="end-time-input"]').as("endInput");
+      cy.get("@endInput").clear();
+      cy.get("@endInput").type("00:10.000");
 
       // Verify duration is calculated correctly
-      cy.get('[data-testid="clip-duration"]').as('clipDuration');
-      cy.get('@clipDuration').should(
-        "contain.text",
-        "5 seconds",
-      );
+      cy.get('[data-testid="clip-duration"]').as("clipDuration");
+      cy.get("@clipDuration").should("contain.text", "5 seconds");
 
       // Step 3: Accept terms and create job
-      cy.get('[data-testid="terms-checkbox"]').as('termsCheckbox');
-      cy.get('@termsCheckbox').check();
-      cy.get('@termsCheckbox').should("be.checked");
+      cy.get('[data-testid="terms-checkbox"]').as("termsCheckbox");
+      cy.get("@termsCheckbox").check();
+      cy.get("@termsCheckbox").should("be.checked");
 
       cy.get('[data-testid="create-clip-button"]').click();
 
       // Wait for job creation and then for job polling to complete
-      cy.wait('@createJob');
-      cy.wait('@jobStatus');
+      cy.wait("@createJob");
+      cy.wait("@jobStatus");
 
       // Step 4: Wait for download modal to appear (homepage flow)
-      cy.get('[data-testid="download-btn"]', { timeout: 30000 }).as('downloadBtn');
-      cy.get('@downloadBtn').should("be.visible");
-      cy.get('@downloadBtn').should("not.be.disabled");
+      cy.get('[data-testid="download-btn"]', { timeout: 30000 }).as(
+        "downloadBtn",
+      );
+      cy.get("@downloadBtn").should("be.visible");
+      cy.get("@downloadBtn").should("not.be.disabled");
 
       // Verify the modal title is shown
       cy.contains("Clip ready!").should("be.visible");
 
       // Verify download link functionality
-      cy.get('@downloadBtn')
+      cy.get("@downloadBtn")
         .invoke("attr", "href")
         .should("include", "example.com/download/test-video.mp4");
 
       // Verify download button text
-      cy.get('@downloadBtn').should("contain.text", "Download Now");
+      cy.get("@downloadBtn").should("contain.text", "Download Now");
     });
 
     it("should handle slider-based trimming correctly", () => {
@@ -295,23 +297,23 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       cy.visit("/");
 
       // Tab through key elements using keyboard commands
-      cy.get('[data-testid="url-input"]').as('urlInput');
-      cy.get('@urlInput').focus();
+      cy.get('[data-testid="url-input"]').as("urlInput");
+      cy.get("@urlInput").focus();
       cy.focused().should("have.attr", "data-testid", "url-input");
 
       // Enter URL to enable the analyze button
-      cy.get('@urlInput').type(TEST_YOUTUBE_URL);
+      cy.get("@urlInput").type(TEST_YOUTUBE_URL);
 
       // Wait for validation to complete and button to become enabled
       cy.wait(1000); // Give extra time for debouncing and validation
-      
+
       // Test accessibility regardless of button enabled state
-      cy.get('[data-testid="analyze-button"]').should('be.visible');
-      
+      cy.get('[data-testid="analyze-button"]').should("be.visible");
+
       // For accessibility testing, the main concern is that elements are reachable
       // Try to test button focus if it's enabled, otherwise just verify visibility
       cy.get('[data-testid="analyze-button"]').then(($button) => {
-        const isDisabled = $button.prop('disabled');
+        const isDisabled = $button.prop("disabled");
         if (!isDisabled) {
           // Only test focus if button is enabled
           cy.wrap($button).focus();
@@ -321,7 +323,7 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       });
 
       // Test focus visibility on input (which should always work)
-      cy.get('@urlInput').focus();
+      cy.get("@urlInput").focus();
       cy.focused().then(($el) => {
         const outlineStyle = $el.css("outline-style");
         const boxShadow = $el.css("box-shadow");

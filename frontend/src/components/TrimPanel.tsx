@@ -92,11 +92,11 @@ export default function TrimPanel({
 
   // Format duration in human-readable format
   const formatDuration = (seconds: number): string => {
-    if (isNaN(seconds) || seconds < 0) return '0 seconds'
-    if (seconds < 60) return `${seconds} seconds`
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return secs > 0 ? `${mins}m ${secs}s` : `${mins} minutes`
+    if (isNaN(seconds) || seconds < 0) return "0 seconds";
+    if (seconds < 60) return `${seconds} seconds`;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins} minutes`;
   };
 
   // @accessibility - Announce value changes to screen readers
@@ -110,19 +110,25 @@ export default function TrimPanel({
   }, []);
 
   // Input handlers - removed debounce for immediate state updates
-  const handleInChange = useCallback((value: string) => {
-    const parsed = parseTime(value);
-    if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
-      dispatch({ type: "SET_IN", payload: parsed });
-    }
-  }, [jobMeta.duration]);
+  const handleInChange = useCallback(
+    (value: string) => {
+      const parsed = parseTime(value);
+      if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
+        dispatch({ type: "SET_IN", payload: parsed });
+      }
+    },
+    [jobMeta.duration],
+  );
 
-  const handleOutChange = useCallback((value: string) => {
-    const parsed = parseTime(value);
-    if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
-      dispatch({ type: "SET_OUT", payload: parsed });
-    }
-  }, [jobMeta.duration]);
+  const handleOutChange = useCallback(
+    (value: string) => {
+      const parsed = parseTime(value);
+      if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
+        dispatch({ type: "SET_OUT", payload: parsed });
+      }
+    },
+    [jobMeta.duration],
+  );
 
   const handleSliderChange = useCallback(
     (values: number[]) => {
@@ -193,7 +199,10 @@ export default function TrimPanel({
   );
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto p-6" data-testid="video-metadata">
+    <div
+      className="space-y-6 max-w-4xl mx-auto p-6"
+      data-testid="video-metadata"
+    >
       {/* @accessibility - Hidden live region for screen reader announcements */}
       <div
         ref={announcementRef}
@@ -218,7 +227,10 @@ export default function TrimPanel({
 
       {/* Video Info */}
       <div className="text-center">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate" data-testid="video-title">
+        <h3
+          className="text-lg font-semibold text-gray-900 dark:text-white truncate"
+          data-testid="video-title"
+        >
           {jobMeta.title}
         </h3>
         <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -305,7 +317,10 @@ export default function TrimPanel({
             }
             aria-label={`Clip duration: ${formatTime(clipDuration)}${clipDuration > maxDuration ? " - exceeds maximum allowed duration" : ""}`}
           >
-            Duration: <span data-testid="clip-duration">{formatDuration(clipDuration)}</span>
+            Duration:{" "}
+            <span data-testid="clip-duration">
+              {formatDuration(clipDuration)}
+            </span>
           </span>
           <span aria-label={`Current end time: ${formatTime(state.out)}`}>
             {formatTime(state.out)}
