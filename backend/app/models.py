@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, HttpUrl, ValidationInfo, field_validator
 
 
 class JobStatus(str, Enum):
@@ -58,7 +58,7 @@ class JobCreate(BaseModel):
 
     @field_validator("start", "end", mode="before")
     @classmethod
-    def _to_seconds(cls, v):
+    def _to_seconds(cls, v: Any) -> float:
         """Convert start/end to seconds - accepts mm:ss strings or numeric seconds"""
         # already numeric → ok
         if isinstance(v, (int, float)):
@@ -75,7 +75,7 @@ class JobCreate(BaseModel):
 
     @field_validator("end")
     @classmethod
-    def validate_clip_duration(cls, end_seconds, info):
+    def validate_clip_duration(cls, end_seconds: float, info: ValidationInfo) -> float:
         """Validate that clip duration doesn't exceed maximum allowed"""
         start_seconds = info.data.get("start", 0)
 

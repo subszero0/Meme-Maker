@@ -1,5 +1,5 @@
 import logging
-from typing import Callable
+from typing import Any, Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -28,7 +28,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "base-uri 'self'"
         )
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[..., Any]) -> Response:
         """Add security headers to response"""
 
         # Import settings here to avoid circular imports and get current values
@@ -94,7 +94,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         response.headers.update(security_headers)
 
-    def _add_cors_headers(self, response: Response, request: Request, settings) -> None:
+    def _add_cors_headers(self, response: Response, request: Request, settings: Any) -> None:
         """Add CORS headers based on settings"""
         origin = request.headers.get("origin")
 

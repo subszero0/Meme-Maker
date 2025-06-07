@@ -51,7 +51,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 
 @app.on_event("startup")
-async def startup():
+async def startup() -> None:
     """Initialize rate limiting and metrics on startup"""
     try:
         await init_rate_limit()
@@ -96,12 +96,12 @@ async def health_check() -> dict[str, str]:
 if settings.debug:
 
     @app.get("/test-error", tags=["testing"])
-    async def test_error():
+    async def test_error() -> None:
         """Test endpoint that always returns 500 error for alert testing"""
         raise HTTPException(status_code=500, detail="Test error for monitoring")
 
     @app.get("/test-timeout", tags=["testing"])
-    async def test_timeout():
+    async def test_timeout() -> dict[str, str]:
         """Test endpoint that simulates a timeout"""
         import time
 
@@ -118,7 +118,7 @@ if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     @app.get("/{full_path:path}", tags=["frontend"])
-    async def serve_frontend(full_path: str):
+    async def serve_frontend(full_path: str) -> FileResponse:
         """Serve frontend SPA for all non-API routes"""
         # Don't serve frontend for API routes, docs, or health
         if full_path.startswith(

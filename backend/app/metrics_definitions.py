@@ -45,13 +45,13 @@ except ImportError:
 
     # Create dummy metrics that do nothing
     class DummyMetric:
-        def inc(self, *args, **kwargs):
+        def inc(self, *args, **kwargs) -> None:
             pass
 
-        def observe(self, *args, **kwargs):
+        def observe(self, *args, **kwargs) -> None:
             pass
 
-        def set(self, *args, **kwargs):
+        def set(self, *args, **kwargs) -> None:
             pass
 
         def time(self):
@@ -60,7 +60,7 @@ except ImportError:
 
             return nullcontext()
 
-        def labels(self, *args, **kwargs):
+        def labels(self, *args, **kwargs) -> "DummyMetric":
             return self
 
     clip_job_latency_seconds = DummyMetric()

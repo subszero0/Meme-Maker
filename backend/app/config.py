@@ -1,14 +1,14 @@
 import os
-from typing import Union
+from typing import Any, Union
 
-from pydantic import ConfigDict, field_validator
-from pydantic_settings import BaseSettings
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings with environment variable support"""
 
-    model_config = ConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=".env")
 
     # Application
     debug: bool = False
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
 
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def validate_cors_origins(cls, v):
+    def validate_cors_origins(cls, v: Any) -> Union[str, list[str]]:
         """Parse CORS origins from environment variable or list"""
         if isinstance(v, str):
             if v == "*":

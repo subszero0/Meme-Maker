@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class MinIOStorage(StorageInterface):
     """MinIO/S3 storage implementation"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize boto3 client with MinIO/S3 configuration"""
         try:
             self.s3_client = boto3.client(

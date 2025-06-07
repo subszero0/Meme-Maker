@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 redis_url = os.environ.get("REDIS_URL", "redis://redis:6379")
 
 
-async def update_queue_metrics():
+async def update_queue_metrics() -> None:
     """Update RQ queue depth metrics every 5 seconds"""
     if not METRICS_AVAILABLE:
         logger.warning("Metrics not available, skipping queue depth updates")
@@ -39,7 +39,7 @@ async def update_queue_metrics():
         logger.error(f"Failed to initialize queue metrics updater: {e}")
 
 
-def start_queue_metrics_updater():
+def start_queue_metrics_updater() -> None:
     """Start the queue metrics updater task"""
     if METRICS_AVAILABLE:
         # Create task to run in background

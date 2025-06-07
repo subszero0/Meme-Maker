@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class InMemoryStorage(StorageInterface):
     """In-memory storage implementation for testing purposes."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the in-memory storage with an empty store."""
         self._store: Dict[str, bytes] = {}
         logger.debug("Initialized InMemoryStorage")
