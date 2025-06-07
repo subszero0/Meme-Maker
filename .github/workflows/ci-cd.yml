@@ -460,7 +460,7 @@ jobs:
       - name: Deploy to VPS
         run: chmod +x scripts/deploy_to_vps.sh && ./scripts/deploy_to_vps.sh
         env:
-          SSH_HOST: ubuntu@memeit.pro
+          SSH_HOST: ubuntu@memeit.pro  # Fixed: use ubuntu user instead of memeit
 
   health_check:
     needs: deploy
