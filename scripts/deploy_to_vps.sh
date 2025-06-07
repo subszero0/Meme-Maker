@@ -50,15 +50,45 @@ ssh -o StrictHostKeyChecking=no -T $SSH_HOST <<'EOSSH'
   sudo systemctl restart caddy
   
   echo "⏳ Waiting for services to start..."
-  sleep 10
+  sleep 15
+  
+  echo "🔄 Giving backend extra time to initialize..."
+  sleep 5
   
   echo "🔍 Checking service health..."
   
-  # Check if FastAPI is running
+  # Check Docker container status first
+  echo "📊 Docker container status:"
+  docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+  
+  # Check backend container logs for any startup errors
+  echo "📋 Backend container logs (last 10 lines):"
+  docker logs meme-maker-backend --tail 10 || echo "Could not fetch backend logs"
+  
+  # Check if FastAPI is running with more detailed diagnostics
+  echo "🔍 Testing FastAPI health endpoint..."
   if curl -s http://localhost:8000/health > /dev/null; then
     echo "✅ FastAPI backend is healthy"
   else
     echo "❌ FastAPI backend health check failed"
+    echo "🔍 Debugging backend connectivity..."
+    
+    # Check if port 8000 is listening
+    echo "📡 Checking if port 8000 is listening:"
+    netstat -tlnp | grep :8000 || echo "Port 8000 not found in netstat"
+    
+    # Try to get more details from curl
+    echo "🌐 Detailed curl response:"
+    curl -v http://localhost:8000/health 2>&1 || echo "Curl failed"
+    
+    # Check if backend container is actually running
+    echo "🐳 Backend container status:"
+    docker ps | grep meme-maker-backend || echo "Backend container not found in ps"
+    
+    # Get more backend logs
+    echo "📜 Full backend container logs:"
+    docker logs meme-maker-backend || echo "Could not fetch full backend logs"
+    
     exit 1
   fi
   
