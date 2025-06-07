@@ -394,11 +394,67 @@ jobs:
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
+          
+          # Debug: Check if SSH_PRIVATE_KEY is available
+          if [ -z "$SSH_PRIVATE_KEY" ]; then
+            echo "❌ SSH_PRIVATE_KEY is empty or not set"
+            exit 1
+          fi
+          
+          # Show first few characters to verify key is available (without exposing it)
+          echo "SSH private key starts with: $(echo "$SSH_PRIVATE_KEY" | head -c 30)..."
+          
+          # Write the key with proper formatting
           echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          
+          # Alternative method if the above fails - use printf to handle formatting better
+          if [ ! -s ~/.ssh/id_rsa ]; then
+            echo "Trying alternative key writing method..."
+            printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          fi
+          
+          # Ensure proper file permissions
           chmod 600 ~/.ssh/id_rsa
+          
+          # Verify the key file was created and has content
+          if [ ! -f ~/.ssh/id_rsa ]; then
+            echo "❌ SSH key file was not created"
+            exit 1
+          fi
+          
+          KEY_SIZE=$(wc -c < ~/.ssh/id_rsa)
+          echo "SSH key file size: $KEY_SIZE bytes"
+          
+          if [ "$KEY_SIZE" -lt 100 ]; then
+            echo "❌ SSH key file is too small (likely empty or corrupted)"
+            echo "Key content preview:"
+            cat ~/.ssh/id_rsa | head -5
+            exit 1
+          fi
+          
+          # Check key format
+          if head -1 ~/.ssh/id_rsa | grep -q "BEGIN"; then
+            echo "✅ SSH key appears to have proper BEGIN header"
+          else
+            echo "❌ SSH key missing proper BEGIN header"
+            echo "First line of key:"
+            head -1 ~/.ssh/id_rsa
+            exit 1
+          fi
+          
+          # Add known hosts
           ssh-keyscan -H memeit.pro >> ~/.ssh/known_hosts 2>/dev/null || true
+          
+          # Try to read SSH key fingerprint
           echo "SSH key fingerprint:"
-          ssh-keygen -lf ~/.ssh/id_rsa || echo "Could not read SSH key fingerprint"
+          if ssh-keygen -lf ~/.ssh/id_rsa; then
+            echo "✅ SSH key format validation passed"
+          else
+            echo "❌ SSH key format validation failed"
+            echo "Key file contents (first 10 lines):"
+            head -10 ~/.ssh/id_rsa
+            exit 1
+          fi
         env:
           SSH_PRIVATE_KEY: ${{ secrets.meme_vps }}
       - name: Deploy to VPS
