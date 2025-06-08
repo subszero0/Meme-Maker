@@ -41,7 +41,7 @@ resource "aws_iam_role_policy" "s3_access" {
         Effect = "Allow"
         Action = [
           "s3:PutObject",
-          "s3:GetObject", 
+          "s3:GetObject",
           "s3:DeleteObject"
         ]
         Resource = "${aws_s3_bucket.clips.arn}/*"
@@ -65,6 +65,6 @@ resource "aws_iam_instance_profile" "worker_backend" {
   tags = {
     Name        = "${var.project_name}-worker-backend-profile"
     Environment = var.env
-    Project     = var.project_name
+        Project     = var.project_name
   }
-} 
+}

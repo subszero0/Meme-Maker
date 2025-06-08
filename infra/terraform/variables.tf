@@ -4,7 +4,7 @@ variable "project_name" {
   description = "Name of the project (used for resource naming)"
   type        = string
   default     = "meme-maker"
-  
+
   validation {
     condition     = can(regex("^[a-z][a-z0-9-]*[a-z0-9]$", var.project_name))
     error_message = "Project name must start with a letter, contain only lowercase letters, numbers, and hyphens, and end with a letter or number."
@@ -15,7 +15,7 @@ variable "env" {
   description = "Environment name (dev, staging, prod)"
   type        = string
   default     = "dev"
-  
+
   validation {
     condition     = contains(["dev", "staging", "prod"], var.env)
     error_message = "Environment must be one of: dev, staging, prod."
@@ -73,4 +73,4 @@ variable "acme_challenge_token" {
   type        = string
   default     = ""
   sensitive   = true
-} 
+}

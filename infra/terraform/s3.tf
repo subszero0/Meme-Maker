@@ -25,7 +25,7 @@ resource "aws_s3_bucket_public_access_block" "clips" {
 # Disable versioning as specified in requirements
 resource "aws_s3_bucket_versioning" "clips" {
   bucket = aws_s3_bucket.clips.id
-  
+
   versioning_configuration {
     status = "Disabled"
   }
@@ -63,4 +63,4 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "clips" {
     }
     bucket_key_enabled = true
   }
-} 
+}

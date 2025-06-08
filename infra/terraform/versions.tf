@@ -14,4 +14,4 @@ terraform {
       version = "~> 3.1"
     }
   }
-} 
+}

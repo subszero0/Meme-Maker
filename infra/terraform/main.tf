@@ -3,7 +3,7 @@
 
 terraform {
   required_version = ">= 1.5"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -48,4 +48,4 @@ resource "random_string" "suffix" {
   length  = 8
   special = false
   upper   = false
-} 
+}
