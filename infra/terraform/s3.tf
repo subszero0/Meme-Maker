@@ -39,6 +39,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "clips" {
     id     = "delete-clips-after-1-day"
     status = "Enabled"
 
+    # Apply to all objects (empty filter)
+    filter {}
+
     # Delete all objects after 1 day
     expiration {
       days = 1

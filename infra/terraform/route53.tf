@@ -17,13 +17,6 @@ resource "aws_route53_record" "app_memeit_pro" {
   type    = "A"
   ttl     = 300
   records = [var.production_server_ip]
-
-  tags = {
-    Name        = "app.memeit.pro"
-    Environment = "production"
-    Project     = var.project_name
-    Purpose     = "ProductionAppRecord"
-  }
 }
 
 resource "aws_route53_record" "www_memeit_pro" {
@@ -34,13 +27,6 @@ resource "aws_route53_record" "www_memeit_pro" {
   type    = "CNAME"
   ttl     = 300
   records = ["app.memeit.pro"]
-
-  tags = {
-    Name        = "www.memeit.pro"
-    Environment = "production"
-    Project     = var.project_name
-    Purpose     = "ProductionWWWRedirect"
-  }
 }
 
 # Monitoring subdomain for Prometheus/Grafana
@@ -52,13 +38,6 @@ resource "aws_route53_record" "monitoring_memeit_pro" {
   type    = "A"
   ttl     = 300
   records = [var.production_server_ip]
-
-  tags = {
-    Name        = "monitoring.memeit.pro"
-    Environment = "production"
-    Project     = var.project_name
-    Purpose     = "ProductionMonitoringRecord"
-  }
 }
 
 # ACME DNS-01 challenge record for Let's Encrypt wildcard certificates
@@ -70,13 +49,6 @@ resource "aws_route53_record" "acme_dns_challenge" {
   type    = "TXT"
   ttl     = 60
   records = ["placeholder-for-acme-challenge"]
-
-  tags = {
-    Name        = "_acme-challenge.memeit.pro"
-    Environment = "production"
-    Project     = var.project_name
-    Purpose     = "ACMEChallengeRecord"
-  }
 
   lifecycle {
     ignore_changes = [records]
@@ -93,13 +65,6 @@ resource "aws_route53_record" "acme_dns_challenge_wildcard" {
   ttl     = 60
   records = ["placeholder-for-acme-challenge-wildcard"]
 
-  tags = {
-    Name        = "_acme-challenge.*.memeit.pro"
-    Environment = "production"
-    Project     = var.project_name
-    Purpose     = "ACMEChallengeWildcardRecord"
-  }
-
   lifecycle {
     ignore_changes = [records]
   }
@@ -114,13 +79,6 @@ resource "aws_route53_record" "api" {
   type    = "CNAME"
   ttl     = 300
   records = [var.lb_dns]
-
-  tags = {
-    Name        = "memeit.${var.domain}"
-    Environment = var.env
-    Project     = var.project_name
-    Purpose     = "APIDNSRecord"
-  }
 }
 
 # Alternative: Create A record with alias (if load balancer is ALB)
