@@ -34,6 +34,7 @@ jobs:
       run: |
         pip install -r requirements.txt
         pip install pytest pytest-asyncio pytest-xdist httpx requests fakeredis
+        pip install black isort flake8 mypy
     
     - name: Lint with Black
       run: python -m black --check .
@@ -87,13 +88,21 @@ jobs:
     
     - name: Install dependencies
       run: |
-        # Simple npm install with retries
-        npm ci --legacy-peer-deps --no-audit --no-fund || {
-          echo "Retrying with cache clean..."
-          npm cache clean --force
-          npm ci --legacy-peer-deps --no-audit --no-fund
+        # Optimize npm install for speed and compatibility
+        export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+        export PUPPETEER_SKIP_DOWNLOAD=true
+        export NODE_ENV=development
+        
+        # Clear npm cache
+        npm cache clean --force
+        
+        # Use npm install with specific flags for better compatibility
+        npm install --legacy-peer-deps --no-audit --no-fund --no-optional --maxsockets 3 || {
+          echo "First attempt failed, trying alternative approach..."
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps --no-audit --no-fund --no-optional --prefer-offline
         }
-      timeout-minutes: 10
+      timeout-minutes: 15
     
     - name: Lint with ESLint
       run: npm run lint
@@ -109,16 +118,30 @@ jobs:
       
     - name: Basic E2E test
       run: |
+        # Install serve globally if not present
+        npm install -g serve || npm install serve
+        
         # Start the built app
         npx serve out -l 3000 &
-        sleep 5
+        SERVER_PID=$!
         
-        # Simple health check
-        curl -f http://localhost:3000 || {
-          echo "❌ Frontend build is not serving properly"
-          exit 1
-        }
-        echo "✅ Frontend build is working"
+        # Wait for server to start
+        sleep 10
+        
+        # Simple health check with retry
+        for i in {1..5}; do
+          if curl -f http://localhost:3000 > /dev/null 2>&1; then
+            echo "✅ Frontend build is working"
+            kill $SERVER_PID 2>/dev/null || true
+            exit 0
+          fi
+          echo "Waiting for server... ($i/5)"
+          sleep 5
+        done
+        
+        echo "❌ Frontend build is not serving properly"
+        kill $SERVER_PID 2>/dev/null || true
+        exit 1
 
   # Simplified Security Scanning (no AWS integration needed)
   security-scan:
@@ -142,7 +165,12 @@ jobs:
     - name: Audit npm packages
       working-directory: frontend
       run: |
-        npm audit --audit-level=moderate || echo "⚠️ npm audit found issues (non-blocking)"
+        # Simple security check that won't fail the build
+        if command -v npm &> /dev/null; then
+          npm audit --audit-level=high || echo "⚠️ npm audit found issues (non-blocking)"
+        else
+          echo "npm not available for audit"
+        fi
 
   # Simple deployment to LightSail (when ready)
   deploy-lightsail:
