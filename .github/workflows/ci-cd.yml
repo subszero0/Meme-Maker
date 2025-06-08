@@ -82,9 +82,16 @@ jobs:
       
       - name: Install dependencies
         run: |
-          chmod +x ../scripts/install-npm-deps.sh
-          ../scripts/install-npm-deps.sh 180 .
-        timeout-minutes: 5
+          # Force clean install to resolve platform-specific optional dependencies
+          echo "🔧 Forcing clean install for platform-specific binaries..."
+          rm -rf node_modules package-lock.json
+          npm install --prefer-offline=false --force
+          
+          # Verify lightningcss Linux binary is available
+          echo "🔍 Checking lightningcss platform binaries..."
+          npm list lightningcss || echo "lightningcss not found"
+          find node_modules -name "*lightningcss*linux*" -type d 2>/dev/null || echo "No Linux lightningcss binaries found"
+        timeout-minutes: 8
       
       - name: Install Cypress binary
         run: |
@@ -162,9 +169,17 @@ jobs:
       
       - name: Install frontend dependencies
         run: |
-          chmod +x scripts/install-npm-deps.sh
-          ./scripts/install-npm-deps.sh 180 frontend
-        timeout-minutes: 5
+          # Force clean install to resolve platform-specific optional dependencies
+          echo "🔧 Forcing clean install for platform-specific binaries..."
+          cd frontend
+          rm -rf node_modules package-lock.json
+          npm install --prefer-offline=false --force
+          
+          # Verify lightningcss Linux binary is available
+          echo "🔍 Checking lightningcss platform binaries..."
+          npm list lightningcss || echo "lightningcss not found"
+          find node_modules -name "*lightningcss*linux*" -type d 2>/dev/null || echo "No Linux lightningcss binaries found"
+        timeout-minutes: 8
       
       - name: Install global audit tools
         run: |
