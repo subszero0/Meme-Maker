@@ -49,12 +49,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             options_response = Response()
             self._add_cors_headers(options_response, request, settings)
-            options_response.headers[
-                "Access-Control-Allow-Methods"
-            ] = "GET,POST,OPTIONS"
-            options_response.headers[
-                "Access-Control-Allow-Headers"
-            ] = "Content-Type, Authorization"
+            options_response.headers["Access-Control-Allow-Methods"] = (
+                "GET,POST,OPTIONS"
+            )
+            options_response.headers["Access-Control-Allow-Headers"] = (
+                "Content-Type, Authorization"
+            )
             options_response.headers["Access-Control-Max-Age"] = "86400"  # 24 hours
             return options_response
 
