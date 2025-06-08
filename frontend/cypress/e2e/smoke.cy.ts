@@ -278,6 +278,9 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
     it("should handle mobile layout correctly", () => {
       cy.visit("/");
 
+      // Wait for page to fully load and CSS to be applied
+      cy.get('[data-testid="url-input"]').should("be.visible");
+
       // Main container should not overflow
       cy.get("body").should("have.css", "overflow-x", "hidden");
 
