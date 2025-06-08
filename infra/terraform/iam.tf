@@ -65,6 +65,6 @@ resource "aws_iam_instance_profile" "worker_backend" {
   tags = {
     Name        = "${var.project_name}-worker-backend-profile"
     Environment = var.env
-        Project     = var.project_name
+    Project     = var.project_name
   }
 }
