@@ -120,6 +120,8 @@ jobs:
         run: npm test
       
       - name: Build for E2E
+        env:
+          CSS_TRANSFORMER_WASM: "1"
         run: npm run build
       
       - name: Install serve
@@ -241,7 +243,7 @@ jobs:
           cd frontend
           
           echo "🏗️ Building frontend..."
-          npm run build
+          CSS_TRANSFORMER_WASM=1 npm run build
           
           echo "🌐 Starting frontend server on port 3000..."
           npx serve out -l 3000 --no-clipboard &
