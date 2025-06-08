@@ -63,5 +63,9 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "webpack-bundle-analyzer": "^4.10.2"
+  },
+  "optionalDependencies": {
+    "@next/swc-linux-x64-gnu": "15.3.2",
+    "@next/swc-linux-x64-musl": "15.3.2"
   }
 }
