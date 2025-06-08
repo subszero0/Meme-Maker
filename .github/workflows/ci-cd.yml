@@ -119,6 +119,21 @@ jobs:
       - name: Run unit tests
         run: npm test
       
+      - name: Setup Lightning CSS WASM
+        run: |
+          echo "🔧 Setting up Lightning CSS WASM package..."
+          npm install lightningcss-wasm@1.30.1 --save-dev --silent
+          
+          # Copy WASM package to where lightningcss expects it
+          if [ -d "node_modules/lightningcss-wasm" ]; then
+            echo "✅ Found lightningcss-wasm package"
+            cp -r node_modules/lightningcss-wasm node_modules/lightningcss/pkg
+            echo "✅ WASM package copied to lightningcss/pkg"
+          else
+            echo "❌ lightningcss-wasm package not found"
+            exit 1
+          fi
+      
       - name: Build for E2E
         env:
           CSS_TRANSFORMER_WASM: "1"
@@ -241,6 +256,19 @@ jobs:
           
           # Build and start frontend server for audits and smoke tests
           cd frontend
+          
+          echo "🔧 Setting up Lightning CSS WASM package..."
+          npm install lightningcss-wasm@1.30.1 --save-dev --silent
+          
+          # Copy WASM package to where lightningcss expects it
+          if [ -d "node_modules/lightningcss-wasm" ]; then
+            echo "✅ Found lightningcss-wasm package"
+            cp -r node_modules/lightningcss-wasm node_modules/lightningcss/pkg
+            echo "✅ WASM package copied to lightningcss/pkg"
+          else
+            echo "❌ lightningcss-wasm package not found"
+            exit 1
+          fi
           
           echo "🏗️ Building frontend..."
           CSS_TRANSFORMER_WASM=1 npm run build
