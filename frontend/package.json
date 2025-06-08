@@ -38,6 +38,9 @@
   },
   "devDependencies": {
     "@axe-core/puppeteer": "^4.8.1",
+    "@babel/preset-env": "^7.25.0",
+    "@babel/preset-react": "^7.25.0",
+    "@babel/preset-typescript": "^7.25.0",
     "@eslint/eslintrc": "^3",
     "@percy/cli": "^1.15.0",
     "@percy/cypress": "^3.1.2",
