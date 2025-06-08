@@ -281,17 +281,108 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       // Wait for page to fully load and CSS to be applied
       cy.get('[data-testid="url-input"]').should("be.visible");
 
-      // Main container should not overflow
-      cy.get("body").should("have.css", "overflow-x", "hidden");
+      // Enhanced debugging for overflow-x issue
+      cy.get("body").then(($body) => {
+        // Log detailed information about the body element
+        const body = $body[0];
+        const computedStyle = window.getComputedStyle(body);
+        const classList = Array.from(body.classList);
+        
+        cy.log("🔍 BODY ELEMENT DEBUG INFORMATION:");
+        cy.log(`📱 Viewport: ${Cypress.config('viewportWidth')}x${Cypress.config('viewportHeight')}`);
+        cy.log(`🎨 Body classes: ${classList.join(', ')}`);
+        cy.log(`📏 Computed overflow-x: ${computedStyle.overflowX}`);
+        cy.log(`📏 Computed overflow-y: ${computedStyle.overflowY}`);
+        cy.log(`📏 Body width: ${computedStyle.width}`);
+        cy.log(`📏 Body scrollWidth: ${body.scrollWidth}`);
+        cy.log(`📏 Body clientWidth: ${body.clientWidth}`);
+        
+        // Check if Tailwind classes are present
+        const hasTailwindClass = classList.includes('overflow-x-hidden');
+        cy.log(`🎯 Has overflow-x-hidden class: ${hasTailwindClass}`);
+        
+        // Check all CSS rules that might affect overflow-x
+        const allRules: string[] = [];
+        for (let i = 0; i < document.styleSheets.length; i++) {
+          try {
+            const sheet = document.styleSheets[i];
+            if (sheet.cssRules) {
+              for (let j = 0; j < sheet.cssRules.length; j++) {
+                const rule = sheet.cssRules[j] as CSSStyleRule;
+                if (rule.style && rule.selectorText && 
+                    (rule.selectorText.includes('body') || rule.selectorText.includes('overflow'))) {
+                  allRules.push(`${rule.selectorText}: ${rule.style.overflowX || 'not-set'}`);
+                }
+              }
+            }
+          } catch (e) {
+            cy.log(`⚠️ Could not read stylesheet ${i}: ${(e as Error).message}`);
+          }
+        }
+        cy.log(`📝 CSS rules affecting overflow: ${allRules.join('; ')}`);
+        
+        // Log browser info
+        cy.log(`🌐 User Agent: ${navigator.userAgent}`);
+        cy.log(`🖥️ Screen: ${screen.width}x${screen.height}`);
+        
+        // Check for CI environment
+        const isCI = Cypress.env('CI') || window.location.hostname === 'localhost';
+        cy.log(`🤖 Running in CI: ${isCI}`);
+        
+        // Log Cypress version and browser info
+        cy.log(`🔧 Cypress version: ${Cypress.version}`);
+        cy.log(`🌐 Browser: ${Cypress.browser.name} ${Cypress.browser.version}`);
+      });
+
+      // Main container should not overflow - with detailed error message
+      cy.get("body").should(($body) => {
+        const actualOverflowX = window.getComputedStyle($body[0]).overflowX;
+        const expectedOverflowX = 'hidden';
+        
+        if (actualOverflowX !== expectedOverflowX) {
+          // Create a detailed error message
+          const classList = Array.from($body[0].classList);
+          const bodyWidth = $body[0].scrollWidth;
+          const viewportWidth = window.innerWidth;
+          
+          throw new Error(`
+🚨 MOBILE LAYOUT OVERFLOW-X TEST FAILED 🚨
+
+Expected: overflow-x should be '${expectedOverflowX}'
+Actual: overflow-x is '${actualOverflowX}'
+
+📊 DIAGNOSTIC INFORMATION:
+• Viewport: ${Cypress.config('viewportWidth')}x${Cypress.config('viewportHeight')}
+• Body classes: ${classList.join(', ')}
+• Body scroll width: ${bodyWidth}px
+• Viewport width: ${viewportWidth}px
+• Overflow detected: ${bodyWidth > viewportWidth ? 'YES' : 'NO'}
+• Has Tailwind class: ${classList.includes('overflow-x-hidden') ? 'YES' : 'NO'}
+
+🔧 POTENTIAL CAUSES:
+${!classList.includes('overflow-x-hidden') ? '• Missing overflow-x-hidden Tailwind class\n' : ''}${bodyWidth > viewportWidth ? '• Content wider than viewport\n' : ''}${actualOverflowX === 'visible' ? '• CSS specificity issue - another rule is overriding\n' : ''}${actualOverflowX === 'auto' ? '• Browser default or auto value being applied\n' : ''}
+          `);
+        }
+      });
 
       // Navigation should be responsive
-      cy.get('[data-testid="main-nav"]').should("be.visible");
+      cy.get('[data-testid="main-nav"]')
+        .should("be.visible")
+        .then(($nav) => {
+          const navWidth = $nav[0].scrollWidth;
+          const viewportWidth = window.innerWidth;
+          cy.log(`📐 Navigation width: ${navWidth}px vs viewport: ${viewportWidth}px`);
+        });
 
       // Form elements should be properly sized
       cy.get('[data-testid="url-input"]')
         .should("be.visible")
         .and("have.css", "width")
-        .and("not.eq", "0px");
+        .and("not.eq", "0px")
+        .then(($input) => {
+          const inputWidth = window.getComputedStyle($input[0]).width;
+          cy.log(`📝 Input width: ${inputWidth}`);
+        });
     });
   });
 
