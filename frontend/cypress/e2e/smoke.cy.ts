@@ -249,8 +249,10 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
 
   describe("📱 Mobile Responsiveness", () => {
     beforeEach(() => {
-      // Test on mobile viewport
+      // Test on mobile viewport with proper wait
       cy.viewport(360, 640);
+      // Wait for viewport to be applied
+      cy.wait(100);
     });
 
     it("should have touch-friendly controls on mobile", () => {
@@ -278,8 +280,20 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
     it("should handle mobile layout correctly", () => {
       cy.visit("/");
 
+      // Ensure viewport is properly set for mobile test
+      cy.viewport(360, 640);
+      
       // Wait for page to fully load and CSS to be applied
       cy.get('[data-testid="url-input"]').should("be.visible");
+      
+      // Additional wait for CSS to be fully processed
+      cy.wait(200);
+
+      // Verify viewport is correctly set before proceeding
+      cy.window().should(($win) => {
+        expect($win.innerWidth).to.equal(360);
+        expect($win.innerHeight).to.equal(640);
+      });
 
       // Enhanced debugging for overflow-x issue
       cy.get("body").then(($body) => {

@@ -64,10 +64,19 @@ html body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Ensure overflow-x is always hidden - higher specificity than Tailwind */
+/* Ensure overflow-x is always hidden - maximum specificity */
 html body.overflow-x-hidden,
-html body {
+html body,
+.overflow-x-hidden,
+body.overflow-x-hidden {
   overflow-x: hidden !important;
+}
+
+/* Force Tailwind utility to work correctly */
+@layer utilities {
+  .overflow-x-hidden {
+    overflow-x: hidden !important;
+  }
 }
 
 /* Respect prefers-reduced-motion for toast animations */
