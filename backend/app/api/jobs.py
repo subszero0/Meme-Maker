@@ -164,7 +164,7 @@ async def get_job(job_id: str) -> JobResponse:
         )
 
     # Get Redis data
-    job_data_raw = cast(Dict[Any, Any], redis.hgetall(f"job:{job_id}"))
+    job_data_raw: dict = redis.hgetall(f"job:{job_id}")  # type: ignore
 
     # Ensure we have the data and it's not empty
     if not job_data_raw:
