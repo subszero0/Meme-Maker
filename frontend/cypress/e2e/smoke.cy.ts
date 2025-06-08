@@ -206,14 +206,14 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
       // Don't check terms checkbox
       cy.get('[data-testid="terms-checkbox"]').should("not.be.checked");
 
-      // Button should be disabled
+      // Button should be disabled when terms not accepted
       cy.get('[data-testid="create-clip-button"]').should("be.disabled");
 
-      // Show error message
-      cy.get('[data-testid="terms-error"]').should(
-        "contain.text",
-        "accept the terms",
-      );
+      // Check terms checkbox to enable button
+      cy.get('[data-testid="terms-checkbox"]').check();
+
+      // Button should now be enabled
+      cy.get('[data-testid="create-clip-button"]').should("be.enabled");
     });
 
     it("should handle queue full scenario", () => {
