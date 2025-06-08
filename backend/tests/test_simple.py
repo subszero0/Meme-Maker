@@ -2,7 +2,6 @@
 Simple test to verify basic imports and app creation work.
 """
 
-
 from app.main import app
 
 
