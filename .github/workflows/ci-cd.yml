@@ -82,15 +82,25 @@ jobs:
       
       - name: Install dependencies
         run: |
-          # Force clean install to resolve platform-specific optional dependencies
-          echo "🔧 Forcing clean install for platform-specific binaries..."
-          rm -rf node_modules package-lock.json
-          npm install --prefer-offline=false --force
+          chmod +x ../scripts/install-npm-deps.sh
+          ../scripts/install-npm-deps.sh 180 .
           
-          # Verify lightningcss Linux binary is available
-          echo "🔍 Checking lightningcss platform binaries..."
-          npm list lightningcss || echo "lightningcss not found"
-          find node_modules -name "*lightningcss*linux*" -type d 2>/dev/null || echo "No Linux lightningcss binaries found"
+          # TARGETED FIX: Manually install the exact lightningcss Linux package
+          echo "🎯 Installing lightningcss-linux-x64-gnu package explicitly..."
+          npm install lightningcss-linux-x64-gnu@1.30.1 --save-optional || echo "Failed to install lightningcss-linux-x64-gnu"
+          
+          # Verify installation
+          echo "🔍 Verifying lightningcss Linux binary installation..."
+          npm list lightningcss-linux-x64-gnu || echo "lightningcss-linux-x64-gnu package not found"
+          
+          # Check if the actual .node file exists where lightningcss expects it
+          if [ -f "node_modules/lightningcss-linux-x64-gnu/lightningcss.linux-x64-gnu.node" ]; then
+            echo "✅ Found lightningcss.linux-x64-gnu.node in separate package"
+            # Copy it to where lightningcss expects it
+            cp node_modules/lightningcss-linux-x64-gnu/lightningcss.linux-x64-gnu.node node_modules/lightningcss/ || echo "Failed to copy .node file"
+          fi
+          
+          ls -la node_modules/lightningcss/ || echo "lightningcss directory not found"
         timeout-minutes: 8
       
       - name: Install Cypress binary
@@ -169,16 +179,22 @@ jobs:
       
       - name: Install frontend dependencies
         run: |
-          # Force clean install to resolve platform-specific optional dependencies
-          echo "🔧 Forcing clean install for platform-specific binaries..."
-          cd frontend
-          rm -rf node_modules package-lock.json
-          npm install --prefer-offline=false --force
+          chmod +x scripts/install-npm-deps.sh
+          ./scripts/install-npm-deps.sh 180 frontend
           
-          # Verify lightningcss Linux binary is available
-          echo "🔍 Checking lightningcss platform binaries..."
-          npm list lightningcss || echo "lightningcss not found"
-          find node_modules -name "*lightningcss*linux*" -type d 2>/dev/null || echo "No Linux lightningcss binaries found"
+          # TARGETED FIX: Manually install the exact lightningcss Linux package
+          cd frontend
+          echo "🎯 Installing lightningcss-linux-x64-gnu package explicitly..."
+          npm install lightningcss-linux-x64-gnu@1.30.1 --save-optional || echo "Failed to install lightningcss-linux-x64-gnu"
+          
+          # Verify installation and copy .node file if needed
+          echo "🔍 Verifying lightningcss Linux binary installation..."
+          if [ -f "node_modules/lightningcss-linux-x64-gnu/lightningcss.linux-x64-gnu.node" ]; then
+            echo "✅ Found lightningcss.linux-x64-gnu.node in separate package"
+            cp node_modules/lightningcss-linux-x64-gnu/lightningcss.linux-x64-gnu.node node_modules/lightningcss/ || echo "Failed to copy .node file"
+          fi
+          
+          ls -la node_modules/lightningcss/ || echo "lightningcss directory not found"
         timeout-minutes: 8
       
       - name: Install global audit tools
