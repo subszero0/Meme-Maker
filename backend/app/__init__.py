@@ -1,7 +1,7 @@
 import logging
 import os
 import time
-from typing import Optional, Any
+from typing import Any, Optional
 
 from redis import Redis
 from rq import Queue
