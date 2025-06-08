@@ -1,0 +1,250 @@
+name: LightSail CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  # Testing and Quality Checks (keeping what works)
+  test-backend:
+    name: Backend Tests & Linting
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        cache-dependency-path: 'backend/requirements.txt'
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio pytest-xdist httpx requests fakeredis
+    
+    - name: Lint with Black
+      run: python -m black --check .
+      
+    - name: Lint with isort
+      run: python -m isort --check-only .
+      
+    - name: Lint with flake8
+      run: python -m flake8 .
+      
+    - name: Type check with MyPy
+      run: python -m mypy app/ --ignore-missing-imports
+    
+    - name: Run tests
+      run: |
+        echo "🧪 Running backend tests..."
+        python -m pytest tests/ --ignore=tests/e2e --ignore=tests/test_e2e_smoke.py -v --maxfail=3 --disable-warnings --tb=short
+      env:
+        TESTING: "1"
+    
+    - name: Validate mock storage
+      run: |
+        echo "✅ Validating InMemoryStorage functionality..."
+        python -c "
+        from app.utils.mock_storage import InMemoryStorage
+        storage = InMemoryStorage()
+        storage._store['test.mp4'] = b'test content'
+        assert storage.get_file_content('test.mp4') == b'test content'
+        print('✅ Mock storage validation passed!')
+        "
+      env:
+        TESTING: "1"
+
+  test-frontend:
+    name: Frontend Tests & Linting
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        # Simple npm install with retries
+        npm ci --legacy-peer-deps --no-audit --no-fund || {
+          echo "Retrying with cache clean..."
+          npm cache clean --force
+          npm ci --legacy-peer-deps --no-audit --no-fund
+        }
+      timeout-minutes: 10
+    
+    - name: Lint with ESLint
+      run: npm run lint
+      
+    - name: Check formatting with Prettier
+      run: npx prettier --check .
+    
+    - name: Run unit tests
+      run: npm test -- --passWithNoTests --watchAll=false
+    
+    - name: Build application
+      run: npm run build
+      
+    - name: Basic E2E test
+      run: |
+        # Start the built app
+        npx serve out -l 3000 &
+        sleep 5
+        
+        # Simple health check
+        curl -f http://localhost:3000 || {
+          echo "❌ Frontend build is not serving properly"
+          exit 1
+        }
+        echo "✅ Frontend build is working"
+
+  # Simplified Security Scanning (no AWS integration needed)
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'table'
+        exit-code: '0'  # Don't fail on vulnerabilities, just report
+    
+    - name: Audit npm packages
+      working-directory: frontend
+      run: |
+        npm audit --audit-level=moderate || echo "⚠️ npm audit found issues (non-blocking)"
+
+  # Simple deployment to LightSail (when ready)
+  deploy-lightsail:
+    name: Deploy to LightSail
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, security-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Build deployment package
+      run: |
+        echo "📦 Creating deployment package..."
+        
+        # Create a simple deployment script
+        cat > deploy.sh << 'EOF'
+        #!/bin/bash
+        set -e
+        
+        echo "🚀 Starting deployment to LightSail..."
+        
+        # Update system packages
+        sudo apt-get update -y
+        
+        # Install Docker if not present
+        if ! command -v docker &> /dev/null; then
+          echo "Installing Docker..."
+          curl -fsSL https://get.docker.com -o get-docker.sh
+          sudo sh get-docker.sh
+          sudo usermod -aG docker $USER
+        fi
+        
+        # Install Docker Compose if not present
+        if ! command -v docker-compose &> /dev/null; then
+          echo "Installing Docker Compose..."
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+        fi
+        
+        # Navigate to app directory
+        cd /home/ubuntu/meme-maker || {
+          echo "Creating app directory..."
+          sudo mkdir -p /home/ubuntu/meme-maker
+          sudo chown ubuntu:ubuntu /home/ubuntu/meme-maker
+          cd /home/ubuntu/meme-maker
+        }
+        
+        # Stop existing containers
+        docker-compose down || echo "No existing containers to stop"
+        
+        # Pull latest code (you'll need to set this up)
+        echo "📥 Code deployment would happen here"
+        echo "✅ Deployment complete!"
+        
+        EOF
+        
+        chmod +x deploy.sh
+    
+    - name: Show deployment instructions
+      run: |
+        echo "## 🚀 LightSail Deployment Ready" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Next Steps (Manual Setup Required):" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "1. **SSH into your LightSail server**" >> $GITHUB_STEP_SUMMARY
+        echo "2. **Clone your repository**:" >> $GITHUB_STEP_SUMMARY
+        echo "   \`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        echo "   git clone https://github.com/${{ github.repository }}.git /home/ubuntu/meme-maker" >> $GITHUB_STEP_SUMMARY
+        echo "   cd /home/ubuntu/meme-maker" >> $GITHUB_STEP_SUMMARY
+        echo "   \`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "3. **Run the deployment**:" >> $GITHUB_STEP_SUMMARY
+        echo "   \`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        echo "   chmod +x deploy.sh && ./deploy.sh" >> $GITHUB_STEP_SUMMARY
+        echo "   docker-compose up -d" >> $GITHUB_STEP_SUMMARY
+        echo "   \`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### ✅ All Tests Passed!" >> $GITHUB_STEP_SUMMARY
+        echo "- Backend: Linting, Type checking, Unit tests" >> $GITHUB_STEP_SUMMARY
+        echo "- Frontend: Linting, Build verification, Basic E2E" >> $GITHUB_STEP_SUMMARY
+        echo "- Security: Vulnerability scanning completed" >> $GITHUB_STEP_SUMMARY
+
+  # Summary job
+  ci-success:
+    name: CI Pipeline Complete
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, security-scan]
+    if: always()
+    
+    steps:
+    - name: Check results
+      run: |
+        if [[ "${{ needs.test-backend.result }}" == "success" && 
+              "${{ needs.test-frontend.result }}" == "success" && 
+              "${{ needs.security-scan.result }}" == "success" ]]; then
+          echo "✅ All CI checks passed!"
+          echo "## 🎉 CI Pipeline Success" >> $GITHUB_STEP_SUMMARY
+          echo "All quality checks completed successfully." >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Some CI checks failed"
+          echo "## ❌ CI Pipeline Failed" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the failed jobs above." >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi 
