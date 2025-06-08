@@ -11,25 +11,26 @@ const customJestConfig = {
   },
   testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/"],
   collectCoverageFrom: ["src/**/*.{js,jsx,ts,tsx}", "!src/**/*.d.ts"],
-  
+
   // Use Babel instead of SWC for transformations
   transform: {
-    "^.+\\.(js|jsx|ts|tsx)$": ["babel-jest", {
-      presets: [
-        ["@babel/preset-env", { targets: { node: "current" } }],
-        ["@babel/preset-react", { runtime: "automatic" }],
-        "@babel/preset-typescript",
-      ],
-    }],
+    "^.+\\.(js|jsx|ts|tsx)$": [
+      "babel-jest",
+      {
+        presets: [
+          ["@babel/preset-env", { targets: { node: "current" } }],
+          ["@babel/preset-react", { runtime: "automatic" }],
+          "@babel/preset-typescript",
+        ],
+      },
+    ],
   },
-  
+
   // File extensions to process
   moduleFileExtensions: ["js", "jsx", "ts", "tsx", "json", "node"],
-  
+
   // Transform node_modules if needed
-  transformIgnorePatterns: [
-    "node_modules/(?!(some-module-to-transform)/)",
-  ],
+  transformIgnorePatterns: ["node_modules/(?!(some-module-to-transform)/)"],
 };
 
 module.exports = customJestConfig;
