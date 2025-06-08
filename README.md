@@ -442,8 +442,50 @@ curl -I https://app.memeit.pro | grep -E "(Strict-Transport-Security|Content-Sec
 
 For detailed production setup instructions, see [Production Deployment Guide](docs/production-deployment.md).
 
+## 🧪 Testing
+
+We follow a **Test Pyramid** approach with fast, reliable tests focused on business value.
+
+### Quick Test Commands
+
+```bash
+# Quick feedback (< 1 minute) - Unit tests only
+./scripts/test-quick.sh
+
+# Full validation (< 3 minutes) - Unit + Integration 
+./scripts/test-full.sh
+
+# Include E2E tests (adds ~1 minute)
+./scripts/test-full.sh --with-e2e
+```
+
+### Windows Users
+```powershell
+# Quick unit tests
+.\scripts\test-quick.ps1
+
+# Or run tests directly
+cd backend && python -m pytest tests/test_business_logic.py tests/test_simple.py
+cd frontend && npm test
+```
+
+### Test Structure
+- **🟦 Unit Tests (70%)**: Business logic, validation, utilities
+- **🔸 Integration Tests (20%)**: API contracts, system behavior
+- **🔺 E2E Tests (5%)**: Critical user journeys
+- **📊 Static Analysis (5%)**: Linting, type checking
+
+### Key Testing Files
+- `backend/tests/test_business_logic.py` - Core validation logic
+- `backend/tests/test_api_contracts.py` - API endpoint behavior
+- `backend/tests/test_critical_path.py` - Complete user journey
+- `frontend/cypress/e2e/smoke.cy.ts` - Critical UI flows
+
+For detailed testing guide, see **[Testing Documentation](docs/TESTING.md)**.
+
 ## Project documentation
 
+- **[Testing Guide](docs/TESTING.md)** - Complete testing strategy and best practices
 - [Production Deployment Guide](docs/production-deployment.md)
 - [Security Guide](docs/security.md)
 - [Staging Deployment Guide](docs/staging-deployment.md)
