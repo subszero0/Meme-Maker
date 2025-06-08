@@ -92,8 +92,7 @@ if timeout "$TIMEOUT" npm install \
     --silent \
     --prefer-offline \
     --cache .npm-cache \
-    --maxsockets 1 \
-    --no-optional; then
+    --maxsockets 1; then
     
     echo -e "${GREEN}✅ npm install succeeded${NC}"
     verify_installation && exit 0
