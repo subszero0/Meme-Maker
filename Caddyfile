@@ -27,7 +27,7 @@ memeit.pro {
     # API routes - proxy to FastAPI backend
     @api path /api/* /health /metrics /docs /redoc /openapi.json
     handle @api {
-        reverse_proxy 127.0.0.1:8000 {
+        reverse_proxy backend:8000 {
             # Forward real client IP
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
@@ -44,7 +44,7 @@ memeit.pro {
     @static path /_next/* /static/* *.js *.css *.ico *.png *.jpg *.jpeg *.gif *.svg *.woff *.woff2
     handle @static {
         header Cache-Control "public, max-age=31536000, immutable"
-        reverse_proxy 127.0.0.1:8000 {
+        reverse_proxy backend:8000 {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}
@@ -57,7 +57,7 @@ memeit.pro {
         header Cache-Control "no-cache, no-store, must-revalidate"
         header Pragma "no-cache"
         header Expires "0"
-        reverse_proxy 127.0.0.1:8000 {
+        reverse_proxy backend:8000 {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}
@@ -67,7 +67,7 @@ memeit.pro {
     # All other routes - proxy to FastAPI (which serves SPA)
     # This includes any client-side routes not matched above
     handle {
-        reverse_proxy 127.0.0.1:8000 {
+        reverse_proxy backend:8000 {
             # Forward real client IP
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}

@@ -38,6 +38,20 @@ services:
       - "8000:8000"
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
+  caddy:
+    image: caddy:2.8.4-alpine
+    container_name: meme-maker-caddy
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
   worker:
     build:
       context: .
@@ -133,3 +147,5 @@ volumes:
   prometheus-data:
   alertmanager-data:
   grafana-data:
+  caddy-data:
+  caddy-config:
