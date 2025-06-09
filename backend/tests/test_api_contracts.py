@@ -5,10 +5,11 @@ Tests API behavior and contracts with minimal mocking.
 Focus on API contracts, CORS, security headers, and endpoint behavior.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi.testclient import TestClient
+
 import fakeredis
+import pytest
+from fastapi.testclient import TestClient
 from rq import Queue
 
 from app.main import app

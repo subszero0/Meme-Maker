@@ -5,8 +5,9 @@ One test to rule them all - covers 80% of user value.
 Real API calls, minimal mocking, complete user journey.
 """
 
-import pytest
 import time
+
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app

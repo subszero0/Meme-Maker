@@ -6,7 +6,8 @@ Focus on business value: duration validation, time parsing, job status validatio
 """
 
 import pytest
-from app.models import JobStatus, JobCreate
+
+from app.models import JobCreate, JobStatus
 
 
 class TestJobCreateValidation:
