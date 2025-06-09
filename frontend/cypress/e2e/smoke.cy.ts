@@ -1,11 +1,11 @@
 /**
  * Simplified Smoke Tests - Critical User Flows Only
- * 
+ *
  * Reduced from 25+ tests to 3 focused tests following TestsToDo.md Phase 1.4:
  * - Core user flow (80% of business value)
  * - Invalid URL handling (critical error case)
  * - Terms acceptance (legal requirement)
- * 
+ *
  * Removed: Mobile tests, accessibility tests, performance tests, deep linking
  */
 
@@ -18,7 +18,10 @@ describe("🚀 Critical User Flows", () => {
 
     // Mock API responses for reliable testing
     cy.intercept("POST", "/api/v1/metadata", (req) => {
-      if (req.body.url.includes("youtube.com") || req.body.url.includes("youtu.be")) {
+      if (
+        req.body.url.includes("youtube.com") ||
+        req.body.url.includes("youtu.be")
+      ) {
         req.reply({
           statusCode: 200,
           body: {
@@ -56,7 +59,9 @@ describe("🚀 Critical User Flows", () => {
     cy.get('[data-testid="analyze-button"]').click();
 
     // Assert: Metadata loads
-    cy.get('[data-testid="video-metadata"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="video-metadata"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
     cy.get('[data-testid="video-title"]').should("contain.text", "Rick Astley");
 
     // Act: Set trim points (5 second clip)
@@ -73,10 +78,12 @@ describe("🚀 Critical User Flows", () => {
     // Assert: Job created and download ready
     cy.wait("@createJob");
     cy.wait("@jobStatus");
-    
-    cy.get('[data-testid="download-btn"]', { timeout: 30000 }).should("be.visible");
+
+    cy.get('[data-testid="download-btn"]', { timeout: 30000 }).should(
+      "be.visible",
+    );
     cy.contains("Clip ready!").should("be.visible");
-    
+
     // Assert: Download link is correct
     cy.get('[data-testid="download-btn"]')
       .invoke("attr", "href")
@@ -97,7 +104,9 @@ describe("🚀 Critical User Flows", () => {
   it("should enforce terms acceptance", () => {
     // Arrange: Navigate to trim page with valid URL
     cy.visit(`/trim?url=${encodeURIComponent(TEST_YOUTUBE_URL)}`);
-    cy.get('[data-testid="video-metadata"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="video-metadata"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
 
     // Act: Try to create job without accepting terms
     cy.get('[data-testid="start-time-input"]').clear().type("00:05.000");
@@ -112,4 +121,4 @@ describe("🚀 Critical User Flows", () => {
     // Assert: Create button should now be enabled
     cy.get('[data-testid="create-clip-button"]').should("not.be.disabled");
   });
-}); 
+});

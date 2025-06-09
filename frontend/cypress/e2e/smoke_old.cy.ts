@@ -280,19 +280,19 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
     it("should handle mobile layout correctly", () => {
       // Start with mobile viewport BEFORE visiting the page
       cy.viewport(360, 640);
-      
+
       // Visit the page with mobile viewport already set
       cy.visit("/");
 
       // Wait for page to fully load and CSS to be applied
       cy.get('[data-testid="url-input"]').should("be.visible");
-      
+
       // Force CSS to be re-evaluated by directly setting the style
       cy.get("body").then(($body) => {
         const body = $body[0];
         // Force the style to be applied using JavaScript
-        body.style.overflowX = 'hidden';
-        body.style.setProperty('overflow-x', 'hidden', 'important');
+        body.style.overflowX = "hidden";
+        body.style.setProperty("overflow-x", "hidden", "important");
       });
 
       // Wait for style changes to take effect
@@ -309,16 +309,20 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
         const body = $body[0];
         const computedStyle = window.getComputedStyle(body);
         const classList = Array.from(body.classList);
-        
+
         cy.log("🔍 PRE-TEST DEBUG INFORMATION:");
-        cy.log(`📱 Actual Viewport: ${window.innerWidth}x${window.innerHeight}`);
-        cy.log(`📱 Config Viewport: ${Cypress.config('viewportWidth')}x${Cypress.config('viewportHeight')}`);
-        cy.log(`🎨 Body classes: ${classList.join(', ')}`);
+        cy.log(
+          `📱 Actual Viewport: ${window.innerWidth}x${window.innerHeight}`,
+        );
+        cy.log(
+          `📱 Config Viewport: ${Cypress.config("viewportWidth")}x${Cypress.config("viewportHeight")}`,
+        );
+        cy.log(`🎨 Body classes: ${classList.join(", ")}`);
         cy.log(`📏 Computed overflow-x: ${computedStyle.overflowX}`);
         cy.log(`📏 Body scrollWidth: ${body.scrollWidth}px`);
         cy.log(`📏 Body clientWidth: ${body.clientWidth}px`);
         cy.log(`📏 Window innerWidth: ${window.innerWidth}px`);
-        
+
         // Log all CSS rules that might affect overflow-x
         const allRules: string[] = [];
         for (let i = 0; i < document.styleSheets.length; i++) {
@@ -327,9 +331,15 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
             if (sheet.cssRules) {
               for (let j = 0; j < sheet.cssRules.length; j++) {
                 const rule = sheet.cssRules[j] as CSSStyleRule;
-                if (rule.style && rule.selectorText && 
-                    (rule.selectorText.includes('body') || rule.selectorText.includes('overflow'))) {
-                  allRules.push(`${rule.selectorText}: overflow-x=${rule.style.overflowX || 'not-set'}`);
+                if (
+                  rule.style &&
+                  rule.selectorText &&
+                  (rule.selectorText.includes("body") ||
+                    rule.selectorText.includes("overflow"))
+                ) {
+                  allRules.push(
+                    `${rule.selectorText}: overflow-x=${rule.style.overflowX || "not-set"}`,
+                  );
                 }
               }
             }
@@ -338,26 +348,27 @@ describe("🚀 Smoke Test - Critical User Flows", () => {
           }
         }
         if (allRules.length > 0) {
-          cy.log(`📝 CSS rules affecting overflow: ${allRules.join('; ')}`);
+          cy.log(`📝 CSS rules affecting overflow: ${allRules.join("; ")}`);
         }
       });
 
       // Main test with better error handling
       cy.get("body").should(($body) => {
         const body = $body[0];
-        const computedStyle = window.getComputedStyle(body);  
+        const computedStyle = window.getComputedStyle(body);
         const actualOverflowX = computedStyle.overflowX;
-        const expectedOverflowX = 'hidden';
-        
+        const expectedOverflowX = "hidden";
+
         // Additional checks
         const classList = Array.from(body.classList);
         const bodyScrollWidth = body.scrollWidth;
         const windowInnerWidth = window.innerWidth;
-        const hasOverflowClass = classList.includes('overflow-x-hidden');
-        
+        const hasOverflowClass = classList.includes("overflow-x-hidden");
+
         // More lenient check - if we have the class OR the computed style is hidden
-        const isOverflowHandled = actualOverflowX === 'hidden' || hasOverflowClass;
-        
+        const isOverflowHandled =
+          actualOverflowX === "hidden" || hasOverflowClass;
+
         if (!isOverflowHandled) {
           throw new Error(`
 🚨 MOBILE LAYOUT OVERFLOW-X TEST FAILED 🚨
@@ -367,11 +378,11 @@ Actual: overflow-x is '${actualOverflowX}' and has class: ${hasOverflowClass}
 
 📊 DIAGNOSTIC INFORMATION:
 • Window dimensions: ${windowInnerWidth}x${window.innerHeight}
-• Body classes: ${classList.join(', ')}
+• Body classes: ${classList.join(", ")}
 • Body scroll width: ${bodyScrollWidth}px
 • Viewport width: ${windowInnerWidth}px
-• Content overflow: ${bodyScrollWidth > windowInnerWidth ? 'YES' : 'NO'}
-• Has Tailwind class: ${hasOverflowClass ? 'YES' : 'NO'}
+• Content overflow: ${bodyScrollWidth > windowInnerWidth ? "YES" : "NO"}
+• Has Tailwind class: ${hasOverflowClass ? "YES" : "NO"}
 • Computed overflow-x: ${actualOverflowX}
 
 🔧 TEST APPROACH:
@@ -379,12 +390,14 @@ Actual: overflow-x is '${actualOverflowX}' and has class: ${hasOverflowClass}
 • CSS forced via JavaScript
 • More lenient validation (class OR computed style)
 
-📱 MOBILE RESPONSIVENESS STATUS: ${isOverflowHandled ? '✅ PASSED' : '❌ FAILED'}
+📱 MOBILE RESPONSIVENESS STATUS: ${isOverflowHandled ? "✅ PASSED" : "❌ FAILED"}
           `);
         }
-        
+
         // If we get here, the test passed
-        cy.log(`✅ Mobile overflow-x test PASSED! (overflow-x: ${actualOverflowX}, has class: ${hasOverflowClass})`);
+        cy.log(
+          `✅ Mobile overflow-x test PASSED! (overflow-x: ${actualOverflowX}, has class: ${hasOverflowClass})`,
+        );
       });
 
       // Navigation should be responsive
@@ -393,7 +406,9 @@ Actual: overflow-x is '${actualOverflowX}' and has class: ${hasOverflowClass}
         .then(($nav) => {
           const navWidth = $nav[0].scrollWidth;
           const viewportWidth = window.innerWidth;
-          cy.log(`📐 Navigation width: ${navWidth}px vs viewport: ${viewportWidth}px`);
+          cy.log(
+            `📐 Navigation width: ${navWidth}px vs viewport: ${viewportWidth}px`,
+          );
         });
 
       // Form elements should be properly sized
