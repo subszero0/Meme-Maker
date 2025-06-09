@@ -113,9 +113,10 @@ jobs:
       - name: 🎯 Run critical E2E tests
         run: |
           cd frontend
-          npx cypress run --spec 'cypress/e2e/smoke.cy.ts' --headless
+          npm run test:e2e:ci
         env:
           CYPRESS_BASE_URL: http://localhost:3000
+          CI: true
 
   # Success Summary
   ci-success:
