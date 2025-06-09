@@ -96,11 +96,11 @@ jobs:
         # Clear npm cache
         npm cache clean --force
         
-        # Use npm install with specific flags for better compatibility
-        npm install --legacy-peer-deps --no-audit --no-fund --no-optional --maxsockets 3 || {
+        # Install dependencies - ALLOW optional dependencies for lightningcss platform binaries
+        npm install --legacy-peer-deps --no-audit --no-fund --maxsockets 3 || {
           echo "First attempt failed, trying alternative approach..."
           rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps --no-audit --no-fund --no-optional --prefer-offline
+          npm install --legacy-peer-deps --no-audit --no-fund --prefer-offline
         }
       timeout-minutes: 15
     

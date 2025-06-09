@@ -41,7 +41,7 @@ jobs:
         timeout 300 npm install --production=false --legacy-peer-deps --no-audit --no-fund --maxsockets 1 || {
           echo "First attempt failed, trying with different approach..."
           rm -rf node_modules package-lock.json
-          timeout 300 npm install --production=false --legacy-peer-deps --no-audit --no-fund --no-optional --maxsockets 1
+          timeout 300 npm install --production=false --legacy-peer-deps --no-audit --no-fund --maxsockets 1
         }
       timeout-minutes: 8
         
