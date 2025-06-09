@@ -150,7 +150,8 @@ class TestRateLimiting:
             for i in range(settings.global_rate_limit_requests + 2):
                 if i % 2 == 0:
                     response = client.post(
-                        "/api/v1/metadata", json={"url": "https://youtube.com/watch?v=test"}
+                        "/api/v1/metadata",
+                        json={"url": "https://youtube.com/watch?v=test"},
                     )
                     metadata_requests += 1
                 else:
