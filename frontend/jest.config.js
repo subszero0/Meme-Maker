@@ -11,13 +11,16 @@ const customJestConfig = {
   collectCoverageFrom: ["src/**/*.{js,jsx,ts,tsx}", "!src/**/*.d.ts"],
   // Use Babel for compilation instead of SWC
   transform: {
-    "^.+\\.(js|jsx|ts|tsx)$": ["babel-jest", {
-      presets: [
-        ["@babel/preset-env", { targets: { node: "current" } }],
-        ["@babel/preset-react", { runtime: "automatic" }],
-        "@babel/preset-typescript"
-      ]
-    }],
+    "^.+\\.(js|jsx|ts|tsx)$": [
+      "babel-jest",
+      {
+        presets: [
+          ["@babel/preset-env", { targets: { node: "current" } }],
+          ["@babel/preset-react", { runtime: "automatic" }],
+          "@babel/preset-typescript",
+        ],
+      },
+    ],
   },
   // Optimize for CI environments
   maxWorkers: process.env.CI ? 1 : "50%",
@@ -26,9 +29,9 @@ const customJestConfig = {
   extensionsToTreatAsEsm: [".ts", ".tsx"],
   globals: {
     "ts-jest": {
-      useESM: true
-    }
-  }
+      useESM: true,
+    },
+  },
 };
 
 module.exports = customJestConfig;
