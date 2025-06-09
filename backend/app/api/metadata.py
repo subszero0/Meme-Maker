@@ -17,6 +17,7 @@ async def get_video_metadata(request: MetadataRequest) -> MetadataResponse:
     """
     # Placeholder implementation
     return MetadataResponse(
+        url=str(request.url),
         title="Sample Video Title",
         duration=123.45,  # seconds
         thumbnail_url="https://example.com/thumbnail.jpg",

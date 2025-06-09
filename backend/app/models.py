@@ -132,6 +132,7 @@ class MetadataRequest(BaseModel):
 class MetadataResponse(BaseModel):
     """Response model for video metadata"""
 
+    url: str
     title: str
     duration: float  # seconds
     thumbnail_url: Optional[str] = None

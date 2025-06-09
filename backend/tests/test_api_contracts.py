@@ -6,6 +6,7 @@ Focus on API contracts, CORS, security headers, and endpoint behavior.
 """
 
 import pytest
+from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -13,8 +14,20 @@ from app.main import app
 
 @pytest.fixture
 def client():
-    """Test client for API contract testing"""
-    return TestClient(app)
+    """Test client for API contract testing with proper FastAPILimiter mocking"""
+    # Mock rate limiter to avoid initialization issues
+    async def mock_rate_limiter(*args, **kwargs):
+        return None
+
+    with (
+        patch("app.ratelimit.init_rate_limit", new_callable=AsyncMock),
+        patch("fastapi_limiter.FastAPILimiter.init", new_callable=AsyncMock),
+        patch(
+            "fastapi_limiter.depends.RateLimiter.__call__",
+            new_callable=lambda: mock_rate_limiter,
+        ),
+    ):
+        yield TestClient(app)
 
 
 class TestMetadataEndpointContract:
