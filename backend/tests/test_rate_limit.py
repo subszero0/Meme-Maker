@@ -41,14 +41,14 @@ class TestRateLimiting:
             # Make requests up to the limit
             for i in range(settings.global_rate_limit_requests):
                 response = client.post(
-                    "/api/v1/metadata", json={"url": "https://example.com/video"}
+                    "/api/v1/metadata", json={"url": "https://youtube.com/watch?v=test"}
                 )
                 # Should succeed (200) or be rate limited (429) if Redis is working
                 assert response.status_code in [200, 429]
 
             # The next request should be rate limited
             response = client.post(
-                "/api/v1/metadata", json={"url": "https://example.com/video"}
+                "/api/v1/metadata", json={"url": "https://youtube.com/watch?v=test"}
             )
             if response.status_code == 429:
                 data = response.json()
@@ -73,7 +73,7 @@ class TestRateLimiting:
             mock_queue.enqueue.return_value.id = "test-job-id"
 
             job_data = {
-                "url": "https://example.com/video",
+                "url": "https://youtube.com/watch?v=test",
                 "start": 1,
                 "end": 10,
                 "accepted_terms": True,
@@ -107,7 +107,7 @@ class TestRateLimiting:
             # Make enough requests to trigger rate limit
             for _ in range(15):  # Exceed global limit
                 response = client.post(
-                    "/api/v1/metadata", json={"url": "https://example.com/video"}
+                    "/api/v1/metadata", json={"url": "https://youtube.com/watch?v=test"}
                 )
                 if response.status_code == 429:
                     data = response.json()
@@ -150,14 +150,14 @@ class TestRateLimiting:
             for i in range(settings.global_rate_limit_requests + 2):
                 if i % 2 == 0:
                     response = client.post(
-                        "/api/v1/metadata", json={"url": "https://example.com/video"}
+                        "/api/v1/metadata", json={"url": "https://youtube.com/watch?v=test"}
                     )
                     metadata_requests += 1
                 else:
                     response = client.post(
                         "/api/v1/jobs",
                         json={
-                            "url": "https://example.com/video",
+                            "url": "https://youtube.com/watch?v=test",
                             "start": 1,
                             "end": 10,
                             "accepted_terms": True,

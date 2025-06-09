@@ -30,7 +30,10 @@ async def get_video_metadata(request: MetadataRequest) -> MetadataResponse:
     if not any(domain in url_str for domain in supported_domains):
         raise HTTPException(
             status_code=400,
-            detail="Please provide a valid video URL from YouTube, Instagram, Facebook, Threads, or Reddit.",
+            detail=(
+                "Please provide a valid video URL from YouTube, Instagram, "
+                "Facebook, Threads, or Reddit."
+            ),
         )
 
     # Placeholder implementation for valid URLs

@@ -151,7 +151,8 @@ def test_create_job_happy_path(client_with_fake_redis):
 def test_create_job_validation_errors(
     client_with_fake_redis, invalid_data, expected_error
 ):
-    """Test various job creation validation scenarios return 422 with appropriate errors"""
+    """Test various job creation validation scenarios return 422 with
+    appropriate errors"""
     # Act
     response = client_with_fake_redis.post("/api/v1/jobs", json=invalid_data)
 
@@ -285,7 +286,8 @@ def test_job_completion_flow(client_with_fake_redis, fake_redis):
             mapping={
                 "status": "done",
                 "progress": 100,
-                "object_key": "test-clip.mp4",  # Add object_key for presigned URL generation
+                # Add object_key for presigned URL generation
+                "object_key": "test-clip.mp4",
             },
         )
 

@@ -17,7 +17,8 @@ from app.main import app
 
 @pytest.fixture
 def client():
-    """Test client for API contract testing with proper FastAPILimiter and Redis/RQ mocking"""
+    """Test client for API contract testing with proper FastAPILimiter and Redis/RQ
+    mocking"""
 
     # Mock rate limiter to avoid initialization issues
     async def mock_rate_limiter(*args, **kwargs):
@@ -235,7 +236,6 @@ class TestCorsAndSecurityHeaders:
         assert response.status_code == 200
 
         # Check for basic security headers
-        headers = response.headers
         # Note: Specific headers depend on middleware configuration
         # This test ensures the endpoint is accessible and returns proper HTTP response
 

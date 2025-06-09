@@ -43,7 +43,8 @@ class TestCompleteUserJourney:
         print("🎬 Step 1: Fetching video metadata...")
 
         metadata_payload = {
-            "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # Rick Roll - reliable test video
+            # Rick Roll - reliable test video
+            "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         }
 
         metadata_response = client.post("/api/v1/metadata", json=metadata_payload)
@@ -109,7 +110,7 @@ class TestCompleteUserJourney:
 
             if current_status == "done":
                 final_status = status_data
-                print(f"   ✅ Job completed successfully!")
+                print("   ✅ Job completed successfully!")
                 break
             elif current_status == "error":
                 error_msg = status_data.get("error_message", "Unknown error")
@@ -155,8 +156,8 @@ class TestCompleteUserJourney:
         # Test Summary
         elapsed_time = time.time() - start_time
         print(f"\n🎉 Complete user journey test PASSED in {elapsed_time:.1f} seconds!")
-        print(f"   📊 Covered: Metadata → Job Creation → Processing → Download")
-        print(f"   🎯 Business Value: User can successfully clip a video end-to-end")
+        print("   📊 Covered: Metadata → Job Creation → Processing → Download")
+        print("   🎯 Business Value: User can successfully clip a video end-to-end")
 
 
 @pytest.mark.e2e
