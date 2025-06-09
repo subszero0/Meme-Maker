@@ -19,7 +19,7 @@ class TestJobCreateValidation:
             "url": "https://youtube.com/watch?v=test",
             "start": "00:30",
             "end": "01:30",
-            "accepted_terms": True
+            "accepted_terms": True,
         }
         job = JobCreate(**job_data)
         assert job.start_seconds == 30.0
@@ -32,7 +32,7 @@ class TestJobCreateValidation:
             "url": "https://youtube.com/watch?v=test",
             "start": 30,
             "end": 90.5,
-            "accepted_terms": True
+            "accepted_terms": True,
         }
         job = JobCreate(**job_data)
         assert job.start_seconds == 30.0
@@ -45,7 +45,7 @@ class TestJobCreateValidation:
             "url": "https://youtube.com/watch?v=test",
             "start": 0,
             "end": 30,
-            "accepted_terms": True
+            "accepted_terms": True,
         }
         job = JobCreate(**job_data)
         assert job.end_seconds - job.start_seconds == 30
@@ -57,9 +57,9 @@ class TestJobCreateValidation:
             "url": "https://youtube.com/watch?v=test",
             "start": 0,
             "end": 1801,  # Over 30 minutes
-            "accepted_terms": True
+            "accepted_terms": True,
         }
-        
+
         # Act & Assert
         with pytest.raises(ValueError, match="Clip too long"):
             JobCreate(**job_data)
@@ -71,11 +71,13 @@ class TestJobCreateValidation:
             "url": "https://youtube.com/watch?v=test",
             "start": 100,
             "end": 50,  # End before start
-            "accepted_terms": True
+            "accepted_terms": True,
         }
-        
+
         # Act & Assert
-        with pytest.raises(ValueError, match="end time must be greater than start time"):
+        with pytest.raises(
+            ValueError, match="end time must be greater than start time"
+        ):
             JobCreate(**job_data)
 
 
@@ -97,9 +99,9 @@ class TestJobStatusEnum:
             JobStatus.queued: [JobStatus.working, JobStatus.error],
             JobStatus.working: [JobStatus.done, JobStatus.error],
             JobStatus.done: [],  # Terminal state
-            JobStatus.error: []  # Terminal state
+            JobStatus.error: [],  # Terminal state
         }
-        
+
         # Act & Assert - Test transition logic
         for current_status, allowed_next in valid_transitions.items():
             # Can transition to allowed states
@@ -115,4 +117,4 @@ class TestJobStatusEnum:
             return to_status in [JobStatus.done, JobStatus.error]
         elif from_status in [JobStatus.done, JobStatus.error]:
             return False  # Terminal states
-        return False 
+        return False
