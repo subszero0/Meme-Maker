@@ -220,9 +220,12 @@ async def get_job(job_id: str) -> JobResponse:
         created_at=job.created_at,
     )
 
-    # Include progress for queued/working jobs
+    # Include progress for queued/working/done jobs
     if job.status in {JobStatus.queued, JobStatus.working}:
         response.progress = job.progress
+    elif job.status == JobStatus.done:
+        # Done jobs should have 100% progress
+        response.progress = job.progress if job.progress is not None else 100
 
     # Include download URL for completed jobs
     if job.status == JobStatus.done:

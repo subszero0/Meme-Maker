@@ -156,7 +156,10 @@ def test_create_job_validation_errors(
     response = client_with_fake_redis.post("/api/v1/jobs", json=invalid_data)
 
     # Assert
-    assert response.status_code in [400, 422]  # Both are valid client errors for validation
+    assert response.status_code in [
+        400,
+        422,
+    ]  # Both are valid client errors for validation
     assert expected_error in str(response.json())
 
 
@@ -202,25 +205,48 @@ def test_get_job_status(
         "created_at": datetime.utcnow().isoformat() + "Z",
         **expected_response,
     }
-    fake_redis.hset(f"job:{job_id}", mapping=job_data)
 
-    # Act
-    response = client_with_fake_redis.get(f"/api/v1/jobs/{job_id}")
+    # For done status, add object_key and mock presigned URL generation
+    expected_download_url = None
+    if job_status == "done" and "url" in expected_response:
+        job_data["object_key"] = "test-clip.mp4"
+        # Keep the original URL field for Job model validation
+        # just store the expected URL separately for later comparison
+        expected_download_url = expected_response["url"]
 
-    # Assert
-    assert response.status_code == 200
-    data = response.json()
-    assert data["job_id"] == job_id
-    assert data["status"] == job_status
+    # Filter out None values as Redis doesn't accept them
+    job_data = {k: v for k, v in job_data.items() if v is not None}
 
-    # Assert specific status fields
-    if "progress" in expected_response:
-        if expected_response["progress"] is not None:
-            assert data["progress"] == expected_response["progress"]
-    if "url" in expected_response:
-        assert data["link"] == expected_response["url"]
-    if "error_code" in expected_response:
-        assert data["error_code"] == expected_response["error_code"]
+    # Mock presigned URL generation for done jobs
+    with patch("app.api.jobs.get_storage") as mock_get_storage:
+        if job_status == "done" and "object_key" in job_data:
+            mock_storage = MagicMock()
+            mock_storage.generate_presigned_url.return_value = expected_download_url
+            mock_get_storage.return_value = mock_storage
+
+        fake_redis.hset(f"job:{job_id}", mapping=job_data)
+
+        # Act
+        response = client_with_fake_redis.get(f"/api/v1/jobs/{job_id}")
+
+        # Assert
+        assert response.status_code == 200
+        data = response.json()
+        assert data["job_id"] == job_id
+        assert data["status"] == job_status
+
+        # Assert specific status fields
+        if "progress" in expected_response:
+            if expected_response["progress"] is not None:
+                assert data["progress"] == expected_response["progress"]
+        if "url" in expected_response:
+            if job_status == "done":
+                # For done jobs, compare with the expected download URL
+                assert data["link"] == expected_download_url
+            else:
+                assert data["link"] == expected_response["url"]
+        if "error_code" in expected_response:
+            assert data["error_code"] == expected_response["error_code"]
 
 
 def test_job_completion_flow(client_with_fake_redis, fake_redis):
@@ -259,30 +285,38 @@ def test_job_completion_flow(client_with_fake_redis, fake_redis):
             mapping={
                 "status": "done",
                 "progress": 100,
-                "url": "https://s3.example.com/clip.mp4",
+                "object_key": "test-clip.mp4",  # Add object_key for presigned URL generation
             },
         )
 
-        # Act - Check completion status
-        final_response = client_with_fake_redis.get(f"/api/v1/jobs/{job_id}")
-        assert final_response.status_code == 200
-        final_data = final_response.json()
-        assert final_data["status"] == "done"
-        assert final_data["progress"] == 100
-        assert final_data["link"] == "https://s3.example.com/clip.mp4"
+        # Mock presigned URL generation for the completion status check
+        with patch("app.api.jobs.get_storage") as mock_get_storage:
+            mock_storage = MagicMock()
+            mock_storage.generate_presigned_url.return_value = (
+                "https://s3.example.com/clip.mp4"
+            )
+            mock_get_storage.return_value = mock_storage
+
+            # Act - Check completion status
+            final_response = client_with_fake_redis.get(f"/api/v1/jobs/{job_id}")
+            assert final_response.status_code == 200
+            final_data = final_response.json()
+            assert final_data["status"] == "done"
+            assert final_data["progress"] == 100
+            assert final_data["link"] == "https://s3.example.com/clip.mp4"
 
 
 def test_rate_limiting():
     """Test that rate limiting configuration is properly enabled"""
     # This is a simple test to ensure rate limiting is configured
     # Real rate limiting testing would require integration tests
-    from app.ratelimit import GLOBAL_RATE_LIMIT, JOB_CREATION_RATE_LIMIT
+    from app.config import settings
 
     # Assert rate limiting is configured
-    assert GLOBAL_RATE_LIMIT > 0
-    assert JOB_CREATION_RATE_LIMIT > 0
-    assert isinstance(GLOBAL_RATE_LIMIT, int)
-    assert isinstance(JOB_CREATION_RATE_LIMIT, int)
+    assert settings.global_rate_limit_requests > 0
+    assert settings.max_jobs_per_hour > 0
+    assert isinstance(settings.global_rate_limit_requests, int)
+    assert isinstance(settings.max_jobs_per_hour, int)
 
 
 def test_job_not_found(client_with_fake_redis):
