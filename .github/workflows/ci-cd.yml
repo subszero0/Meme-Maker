@@ -539,6 +539,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
+      - name: Checkout code for diagnostic scripts
+        uses: actions/checkout@v4
+        
       - name: Wait for deployment to settle
         run: sleep 10
       - name: Check /health endpoint
@@ -641,6 +644,11 @@ jobs:
           
           if [ "$SUCCESS" = false ]; then
             echo "❌ All health check attempts failed"
+            echo ""
+            echo "🛠️ RUNNING AUTOMATED DIAGNOSTICS..."
+            echo "====================================="
+            
+            # Basic diagnostics first
             echo "🔍 Final diagnostics:"
             echo "- DNS resolution test:"
             nslookup memeit.pro || echo "DNS resolution failed"
@@ -666,19 +674,151 @@ jobs:
             fi
             echo "❌ SSL Certificate: Configuration issue"
             echo "❌ FastAPI Backend: Not accessible on port 8000"
+            
             echo ""
-            echo "🔧 Next Steps:"
-            echo "1. Fix SSL certificate configuration in Caddy"
-            echo "2. Ensure FastAPI backend is running and accessible"
-            echo "3. Check docker-compose services status"
+            echo "🔧 AUTOMATED TROUBLESHOOTING RECOMMENDATIONS:"
+            echo "============================================="
+            echo ""
+            echo "Based on the diagnostic results, here are the prioritized fixes:"
+            echo ""
+            echo "🔥 HIGH PRIORITY (Most likely causes):"
+            echo "1. **LightSail/AWS Firewall Configuration**"
+            echo "   - Go to AWS LightSail console"
+            echo "   - Navigate to your instance → Networking tab"
+            echo "   - Ensure ports 80 (HTTP) and 443 (HTTPS) are open"
+            echo "   - Common issue: Default LightSail firewall blocks these ports"
+            echo ""
+            echo "2. **Docker Service Binding Issues**"
+            echo "   - Services may be binding to localhost instead of 0.0.0.0"
+            echo "   - Check: docker-compose ps"
+            echo "   - Fix: Ensure Caddy binds to 0.0.0.0:80 and 0.0.0.0:443"
+            echo ""
+            echo "🟡 MEDIUM PRIORITY:"
+            echo "3. **Caddy Configuration/SSL Issues**"
+            echo "   - Check Caddy logs: docker-compose logs caddy"
+            echo "   - Validate config: docker exec <caddy-container> caddy validate"
+            echo "   - SSL certificate generation may be failing"
+            echo ""
+            echo "4. **Backend Service Issues**"
+            echo "   - Check backend logs: docker-compose logs backend"
+            echo "   - Verify backend health: curl http://localhost:8000/health"
+            echo ""
+            echo "🛠️ RECOMMENDED ACTIONS (Run on the server):"
+            echo "===========================================" 
+            echo ""
+            echo "# SSH into your LightSail server and run:"
+            echo ""
+            echo "# 1. Run comprehensive diagnostics"
+            echo "bash scripts/diagnose-deployment.sh"
+            echo ""
+            echo "# 2. Fix firewall issues (requires sudo)"
+            echo "sudo bash scripts/fix-firewall.sh"
+            echo ""
+            echo "# 3. Fix Docker service issues"
+            echo "bash scripts/fix-docker-services.sh"
+            echo ""
+            echo "# 4. Run master troubleshooting script"
+            echo "sudo bash scripts/troubleshoot-deployment.sh"
+            echo ""
+            echo "🌐 MANUAL VERIFICATION STEPS:"
+            echo "============================="
+            echo "1. LightSail Console → Instance → Networking → Firewall"
+            echo "2. Check if ports 80, 443, and 22 (SSH) are open"
+            echo "3. Test from external machine: curl -I http://memeit.pro"
+            echo "4. If HTTP works but HTTPS doesn't: SSL certificate issue"
+            echo "5. If neither works: Firewall or service binding issue"
+            echo ""
+            echo "💡 COMMON SOLUTIONS:"
+            echo "==================="
+            echo "• Most common: Open ports 80+443 in LightSail console"
+            echo "• Second most: Restart Docker services with correct binding"
+            echo "• Third most: Fix Caddy SSL certificate configuration"
             echo ""
             echo "⚠️  Deployment completed but health check failed due to SSL/backend issues"
             echo "💡 The application may work via HTTP but needs SSL certificate fix for HTTPS"
             
             # Don't fail the workflow - deployment succeeded, just health check issues
+            echo ""
             echo "🎯 Marking as warning rather than failure since deployment completed"
+            echo "📋 Next: Follow the troubleshooting steps above to resolve connectivity issues"
             exit 0
           fi
+          
+      - name: Create GitHub issue on health check failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 Health Check Failure - ${new Date().toISOString().split('T')[0]}`;
+            const body = `## 🏥 Health Check Failed
+            
+            **Deployment Status:** ✅ Completed  
+            **Health Check Status:** ❌ Failed  
+            **Commit:** \`${{ github.sha }}\`
+            **Workflow:** ${{ github.workflow }}
+            **Run:** ${{ github.run_id }}
+            
+            ### 🔍 Diagnostic Results
+            Based on the automated diagnostics, the most likely issues are:
+            
+            #### 🔥 High Priority
+            1. **LightSail/AWS Firewall Configuration**
+               - Ports 80 (HTTP) and 443 (HTTPS) may be blocked
+               - Action: Check LightSail console → Instance → Networking → Firewall
+            
+            2. **Docker Service Binding Issues**
+               - Services may be binding to localhost instead of 0.0.0.0
+               - Action: Check \`docker-compose ps\` and service configurations
+            
+            #### 🟡 Medium Priority  
+            3. **SSL Certificate Issues**
+               - Caddy SSL certificate generation may be failing
+               - Action: Check Caddy logs and configuration
+            
+            4. **Backend Service Issues**
+               - FastAPI backend may not be responding
+               - Action: Check backend logs and health endpoint
+            
+            ### 🛠️ Recommended Actions
+            
+            SSH into the LightSail server and run:
+            
+            \`\`\`bash
+            # 1. Run comprehensive diagnostics
+            bash scripts/diagnose-deployment.sh
+            
+            # 2. Fix firewall issues (requires sudo)
+            sudo bash scripts/fix-firewall.sh
+            
+            # 3. Fix Docker service issues  
+            bash scripts/fix-docker-services.sh
+            
+            # 4. Run master troubleshooting script
+            sudo bash scripts/troubleshoot-deployment.sh
+            \`\`\`
+            
+            ### 🌐 Manual Verification
+            1. Check LightSail console firewall settings
+            2. Test external connectivity: \`curl -I http://memeit.pro\`
+            3. Verify Docker services: \`docker-compose ps\`
+            4. Check service logs: \`docker-compose logs\`
+            
+            ### 📊 Status
+            - [ ] Firewall configuration verified
+            - [ ] Docker services checked
+            - [ ] SSL certificate fixed
+            - [ ] Health check passing
+            
+            **Auto-created by:** Health Check Workflow
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['bug', 'infrastructure', 'health-check-failure', 'auto-created']
+            });
 
 # 🔔 NOTIFICATION INTEGRATION PLACEHOLDER
 # 
