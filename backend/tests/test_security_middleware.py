@@ -47,7 +47,8 @@ class TestSecurityHeaders:
                 "style-src 'self' 'unsafe-inline' https:; "
                 "script-src 'self' 'unsafe-inline' https:; "
                 "font-src 'self' https:; connect-src 'self' https:; "
-                "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; "
+                "frame-src 'self' https://www.youtube.com "
+                "https://www.youtube-nocookie.com; "
                 "frame-ancestors 'none'; base-uri 'self'"
             ),
             "x-content-type-options": "nosniff",
