@@ -32,15 +32,17 @@ export default function VideoPreview({
   className = "w-full h-64",
 }: VideoPreviewProps) {
   const [embedError, setEmbedError] = useState(false);
-  
+
   if (embedError) {
     return (
-      <div className={`relative ${className} bg-gray-100 flex items-center justify-center`}>
+      <div
+        className={`relative ${className} bg-gray-100 flex items-center justify-center`}
+      >
         <div className="text-center">
           <p className="text-gray-600 mb-4">Video preview unavailable</p>
-          <a 
-            href={url} 
-            target="_blank" 
+          <a
+            href={url}
+            target="_blank"
             rel="noopener noreferrer"
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
@@ -62,14 +64,17 @@ export default function VideoPreview({
         controls={false}
         onProgress={onProgress}
         onError={(error) => {
-          console.error('ReactPlayer error:', error);
+          console.error("ReactPlayer error:", error);
           setEmbedError(true);
         }}
         config={{
           youtube: {
-            playerVars: { 
+            playerVars: {
               showinfo: 1,
-              origin: typeof window !== 'undefined' ? window.location.origin : undefined
+              origin:
+                typeof window !== "undefined"
+                  ? window.location.origin
+                  : undefined,
             },
           },
         }}

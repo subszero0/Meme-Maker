@@ -99,8 +99,8 @@ export default function Home() {
       pushToast({ type: "success", message: "Video loaded successfully!" });
     } catch (error) {
       // Prevent React error #418 by ensuring proper error handling
-      console.error('Metadata fetch failed:', error);
-      
+      console.error("Metadata fetch failed:", error);
+
       // Fallback to mock data for testing/development when API is not available
       if (url.includes("youtube.com") || url.includes("youtu.be")) {
         const mockMetadata = {
@@ -121,10 +121,11 @@ export default function Home() {
         setIsRetryDisabled(true);
       } else {
         // More specific error handling to prevent React crashes
-        const errorMessage = error instanceof Error 
-          ? `Failed to load video: ${error.message}`
-          : "Failed to load video. Please check the URL and try again.";
-        
+        const errorMessage =
+          error instanceof Error
+            ? `Failed to load video: ${error.message}`
+            : "Failed to load video. Please check the URL and try again.";
+
         pushToast({
           type: "error",
           message: errorMessage,
