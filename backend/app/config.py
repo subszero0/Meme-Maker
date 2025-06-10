@@ -25,13 +25,16 @@ class Settings(BaseSettings):
             kwargs["debug"] = True
 
         super().__init__(**kwargs)
-        
+
         # Log debug mode detection for troubleshooting
         import logging
+
         logger = logging.getLogger(__name__)
         logger.info(f"[CONFIG] Debug mode initialized: {self.debug}")
-        logger.info(f"[CONFIG] Environment DEBUG variable: {os.getenv('DEBUG', 'not set')}")
-        
+        logger.info(
+            f"[CONFIG] Environment DEBUG variable: {os.getenv('DEBUG', 'not set')}"
+        )
+
         # Check common debug environment variables
         for var in ["DEBUG", "ENVIRONMENT", "ENV", "NODE_ENV"]:
             value = os.getenv(var)

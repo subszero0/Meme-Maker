@@ -57,7 +57,7 @@ class TestSecurityHeaders:
         # Check CSP header separately since it's environment-dependent
         csp_header = response.headers.get("content-security-policy")
         assert csp_header is not None
-        
+
         # Check that required CSP directives are present
         required_csp_parts = [
             "default-src 'self'",
@@ -68,9 +68,9 @@ class TestSecurityHeaders:
             "connect-src 'self' https:",
             "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
             "frame-ancestors 'none'",
-            "base-uri 'self'"
+            "base-uri 'self'",
         ]
-        
+
         for csp_part in required_csp_parts:
             assert csp_part in csp_header, f"Missing CSP directive: {csp_part}"
 
