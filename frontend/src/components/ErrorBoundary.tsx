@@ -29,7 +29,7 @@ class ErrorBoundary extends React.Component<
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log error details for debugging
     console.error("React Error Boundary caught an error:", error, errorInfo);
-    
+
     // You can also log the error to an error reporting service here
     // Example: logErrorToService(error, errorInfo);
   }
@@ -94,4 +94,4 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-export default ErrorBoundary; 
+export default ErrorBoundary;

@@ -47,6 +47,7 @@ class TestSecurityHeaders:
                 "style-src 'self' 'unsafe-inline' https:; "
                 "script-src 'self' 'unsafe-inline' https:; "
                 "font-src 'self' https:; connect-src 'self' https:; "
+                "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; "
                 "frame-ancestors 'none'; base-uri 'self'"
             ),
             "x-content-type-options": "nosniff",
@@ -93,22 +94,23 @@ class TestSecurityHeaders:
         assert response.status_code == 200
         assert response.headers["access-control-allow-methods"] == "GET,POST,OPTIONS"
 
-    def test_csp_header_cached(self, app):
-        """Test that CSP header is cached in middleware instance"""
-        middleware = SecurityHeadersMiddleware(app)
+    def test_csp_header_dynamic_generation(self, client):
+        """Test that CSP header is generated dynamically with correct content"""
+        response = client.get("/test")
 
-        expected_csp = (
-            "default-src 'self'; "
-            "img-src 'self' data: https:; "
-            "style-src 'self' 'unsafe-inline' https:; "
-            "script-src 'self' 'unsafe-inline' https:; "
-            "font-src 'self' https:; "
-            "connect-src 'self' https:; "
-            "frame-ancestors 'none'; "
-            "base-uri 'self'"
+        assert response.status_code == 200
+
+        # Verify CSP header exists and contains required parts
+        csp_header = response.headers.get("content-security-policy")
+        assert csp_header is not None
+
+        # Check that key CSP directives are present
+        assert "default-src 'self'" in csp_header
+        assert (
+            "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com"
+            in csp_header
         )
-
-        assert middleware.csp_header == expected_csp
+        assert "frame-ancestors 'none'" in csp_header
 
     def test_cors_with_wildcard_env(self, app):
         """Test CORS with wildcard using environment variable"""

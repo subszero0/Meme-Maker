@@ -75,7 +75,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if settings.debug:
             # Allow localhost connections in development
             connect_src += " http://localhost:* ws://localhost:*"
-        
+
         # Build environment-aware CSP
         csp_header = (
             "default-src 'self'; "
