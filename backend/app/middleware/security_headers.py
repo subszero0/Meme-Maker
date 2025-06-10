@@ -13,19 +13,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app: ASGIApp):
         super().__init__(app)
-
-        # Cache CSP string to avoid rebuilding on each request
-        # More permissive CSP for Swagger UI to work
-        self.csp_header = (
-            "default-src 'self'; "
-            "img-src 'self' data: https:; "
-            "style-src 'self' 'unsafe-inline' https:; "
-            "script-src 'self' 'unsafe-inline' https:; "
-            "font-src 'self' https:; "
-            "connect-src 'self' https:; "
-            "frame-ancestors 'none'; "
-            "base-uri 'self'"
-        )
+        # CSP will be built dynamically based on environment in dispatch method
 
     async def dispatch(
         self, request: Request, call_next: Callable[..., Any]
@@ -69,6 +57,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def _add_security_headers(self, response: Response, request: Request) -> None:
         """Add all security headers to the response"""
 
+        # Import settings here to get current values
+        from ..config import settings
+
         # Skip ALL security headers for Swagger UI, ReDoc and OpenAPI
         # endpoints
         swagger_paths = ["/docs", "/redoc", "/openapi.json"]
@@ -79,8 +70,24 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if "/swagger-ui" in request.url.path or "/redoc" in request.url.path:
             return
 
-        # More lenient CSP for development docs endpoints
-        csp_header = self.csp_header
+        # Build CSP based on environment
+        connect_src = "'self' https:"
+        if settings.debug:
+            # Allow localhost connections in development
+            connect_src += " http://localhost:* ws://localhost:*"
+        
+        # Build environment-aware CSP
+        csp_header = (
+            "default-src 'self'; "
+            "img-src 'self' data: https:; "
+            "style-src 'self' 'unsafe-inline' https:; "
+            "script-src 'self' 'unsafe-inline' https:; "
+            "font-src 'self' https:; "
+            f"connect-src {connect_src}; "
+            "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self'"
+        )
 
         security_headers = {
             "Strict-Transport-Security": (

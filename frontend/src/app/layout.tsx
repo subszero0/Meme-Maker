@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import type { FC, PropsWithChildren } from "react";
 import ToastProvider from "@/components/ToastProvider";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -49,7 +50,9 @@ const AppShell: FC<PropsWithChildren> = ({ children }) => {
 
         {/* Main Content */}
         <main className="pt-20">
-          <ToastProvider>{children}</ToastProvider>
+          <ErrorBoundary>
+            <ToastProvider>{children}</ToastProvider>
+          </ErrorBoundary>
         </main>
       </body>
     </html>
