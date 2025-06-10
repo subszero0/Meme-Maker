@@ -1,4 +1,32 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Dynamic API base URL with proper environment detection
+const getApiBaseUrl = (): string => {
+  // In browser environment
+  if (typeof window !== "undefined") {
+    // Production: Use relative URLs (same domain as frontend)
+    if (window.location.hostname !== "localhost") {
+      console.log(
+        `[API] Production environment detected. Using relative URLs for domain: ${window.location.hostname}`,
+      );
+      return ""; // Empty string means relative URLs
+    }
+    // Development: Use localhost with port
+    console.log("[API] Development environment detected. Using localhost:8000");
+    return "http://localhost:8000";
+  }
+
+  // Server-side rendering fallback
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl) {
+    console.log(`[API] Using environment variable API URL: ${envUrl}`);
+    return envUrl;
+  }
+
+  // Default fallback for SSR
+  console.log("[API] Using default localhost URL for SSR");
+  return "http://localhost:8000";
+};
+
+const BASE_URL = getApiBaseUrl();
 
 export interface VideoMetadata {
   url: string;
@@ -67,35 +95,71 @@ async function handleApiError(response: Response): Promise<never> {
 }
 
 export async function fetchVideoMetadata(url: string): Promise<VideoMetadata> {
-  const response = await fetch(`${BASE_URL}/api/v1/metadata`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ url }),
-  });
+  const apiUrl = `${BASE_URL}/api/v1/metadata`;
+  console.log(`[API] Fetching metadata from: ${apiUrl}`);
+  console.log(`[API] Request payload:`, { url });
 
-  if (!response.ok) {
-    return handleApiError(response);
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url }),
+    });
+
+    console.log(
+      `[API] Response status: ${response.status} ${response.statusText}`,
+    );
+    console.log(
+      `[API] Response headers:`,
+      Object.fromEntries(response.headers.entries()),
+    );
+
+    if (!response.ok) {
+      return handleApiError(response);
+    }
+
+    const data = await response.json();
+    console.log(`[API] Metadata response:`, data);
+    return data;
+  } catch (error) {
+    console.error(`[API] Network error fetching metadata:`, error);
+    console.error(`[API] Request URL was: ${apiUrl}`);
+    throw error;
   }
-
-  return response.json();
 }
 
 export async function createJob(request: JobRequest): Promise<JobResponse> {
-  const response = await fetch(`${BASE_URL}/api/v1/jobs`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(request),
-  });
+  const apiUrl = `${BASE_URL}/api/v1/jobs`;
+  console.log(`[API] Creating job at: ${apiUrl}`);
+  console.log(`[API] Job request:`, request);
 
-  if (!response.ok) {
-    return handleApiError(response);
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    console.log(
+      `[API] Job creation response status: ${response.status} ${response.statusText}`,
+    );
+
+    if (!response.ok) {
+      return handleApiError(response);
+    }
+
+    const data = await response.json();
+    console.log(`[API] Job created:`, data);
+    return data;
+  } catch (error) {
+    console.error(`[API] Network error creating job:`, error);
+    console.error(`[API] Request URL was: ${apiUrl}`);
+    throw error;
   }
-
-  return response.json();
 }
 
 export async function getJobStatus(jobId: string): Promise<JobStatus> {

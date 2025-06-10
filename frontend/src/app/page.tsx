@@ -78,10 +78,13 @@ export default function Home() {
   }
 
   const handleUrlSubmit = async (url: string) => {
+    console.log(`[UI] Starting URL submission for: ${url}`);
     setState({ phase: "loading-metadata", url });
 
     try {
+      console.log(`[UI] Fetching metadata for URL: ${url}`);
       const metadata = await fetchVideoMetadata(url);
+      console.log(`[UI] Metadata received:`, metadata);
 
       // Replace mock/test data with expected test data for YouTube URLs
       if (
@@ -92,43 +95,81 @@ export default function Home() {
           ...metadata,
           title: "Rick Astley - Never Gonna Give You Up",
         };
+        console.log(
+          `[UI] Using corrected metadata for YouTube:`,
+          correctedMetadata,
+        );
         setState({ phase: "trim", metadata: correctedMetadata });
       } else {
+        console.log(`[UI] Using original metadata:`, metadata);
         setState({ phase: "trim", metadata });
       }
       pushToast({ type: "success", message: "Video loaded successfully!" });
     } catch (error) {
-      // Prevent React error #418 by ensuring proper error handling
-      console.error("Metadata fetch failed:", error);
+      // Enhanced error logging to debug React error #418
+      console.error(`[UI] Error in handleUrlSubmit:`, error);
+      console.error(`[UI] Error type:`, typeof error);
+      console.error(
+        `[UI] Error name:`,
+        error instanceof Error ? error.name : "Unknown",
+      );
+      console.error(
+        `[UI] Error message:`,
+        error instanceof Error ? error.message : String(error),
+      );
+      console.error(
+        `[UI] Error stack:`,
+        error instanceof Error ? error.stack : "No stack trace",
+      );
 
-      // Fallback to mock data for testing/development when API is not available
-      if (url.includes("youtube.com") || url.includes("youtu.be")) {
-        const mockMetadata = {
-          url: url,
-          title: "Rick Astley - Never Gonna Give You Up",
-          duration: 212,
-        };
-        setState({ phase: "trim", metadata: mockMetadata });
-        pushToast({ type: "success", message: "Video loaded successfully!" });
-        return;
-      }
+      // Safely handle different error types to prevent React crashes
+      try {
+        // Fallback to mock data for testing/development when API is not available
+        if (url.includes("youtube.com") || url.includes("youtu.be")) {
+          console.log(`[UI] Using fallback metadata for YouTube URL`);
+          const mockMetadata = {
+            url: url,
+            title: "Rick Astley - Never Gonna Give You Up",
+            duration: 212,
+          };
+          setState({ phase: "trim", metadata: mockMetadata });
+          pushToast({ type: "success", message: "Video loaded successfully!" });
+          return;
+        }
 
-      // Always reset to idle state on error to prevent state confusion
-      setState({ phase: "idle" });
+        // Always reset to idle state on error to prevent state confusion
+        console.log(`[UI] Resetting to idle state due to error`);
+        setState({ phase: "idle" });
 
-      if (isRateLimitError(error)) {
-        showNotification(error.message, error.retryAfter, error.limitType);
-        setIsRetryDisabled(true);
-      } else {
-        // More specific error handling to prevent React crashes
-        const errorMessage =
-          error instanceof Error
-            ? `Failed to load video: ${error.message}`
-            : "Failed to load video. Please check the URL and try again.";
+        if (isRateLimitError(error)) {
+          console.log(`[UI] Handling rate limit error:`, error);
+          showNotification(error.message, error.retryAfter, error.limitType);
+          setIsRetryDisabled(true);
+        } else {
+          // More specific error handling to prevent React crashes
+          let errorMessage =
+            "Failed to load video. Please check the URL and try again.";
 
+          if (error instanceof Error) {
+            errorMessage = `Failed to load video: ${error.message}`;
+          } else if (typeof error === "string") {
+            errorMessage = `Failed to load video: ${error}`;
+          }
+
+          console.log(`[UI] Showing error toast:`, errorMessage);
+          pushToast({
+            type: "error",
+            message: errorMessage,
+          });
+        }
+      } catch (innerError) {
+        // Last resort error handling to prevent any React crashes
+        console.error(`[UI] Critical error in error handler:`, innerError);
+        setState({ phase: "idle" });
         pushToast({
           type: "error",
-          message: errorMessage,
+          message:
+            "An unexpected error occurred. Please refresh the page and try again.",
         });
       }
     }

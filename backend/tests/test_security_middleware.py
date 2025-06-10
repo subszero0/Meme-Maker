@@ -39,18 +39,9 @@ class TestSecurityHeaders:
 
         assert response.status_code == 200
 
-        # Check all required security headers
-        expected_headers = {
+        # Check static security headers (non-CSP)
+        expected_static_headers = {
             "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
-            "content-security-policy": (
-                "default-src 'self'; img-src 'self' data: https:; "
-                "style-src 'self' 'unsafe-inline' https:; "
-                "script-src 'self' 'unsafe-inline' https:; "
-                "font-src 'self' https:; connect-src 'self' https:; "
-                "frame-src 'self' https://www.youtube.com "
-                "https://www.youtube-nocookie.com; "
-                "frame-ancestors 'none'; base-uri 'self'"
-            ),
             "x-content-type-options": "nosniff",
             "x-frame-options": "DENY",
             "referrer-policy": "no-referrer",
@@ -59,9 +50,29 @@ class TestSecurityHeaders:
             ),
         }
 
-        for header, expected_value in expected_headers.items():
+        for header, expected_value in expected_static_headers.items():
             assert header in response.headers
             assert response.headers[header] == expected_value
+
+        # Check CSP header separately since it's environment-dependent
+        csp_header = response.headers.get("content-security-policy")
+        assert csp_header is not None
+        
+        # Check that required CSP directives are present
+        required_csp_parts = [
+            "default-src 'self'",
+            "img-src 'self' data: https:",
+            "style-src 'self' 'unsafe-inline' https:",
+            "script-src 'self' 'unsafe-inline' https:",
+            "font-src 'self' https:",
+            "connect-src 'self' https:",
+            "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+            "frame-ancestors 'none'",
+            "base-uri 'self'"
+        ]
+        
+        for csp_part in required_csp_parts:
+            assert csp_part in csp_header, f"Missing CSP directive: {csp_part}"
 
     def test_health_endpoint_with_security_headers(self, client):
         """Test that health endpoint includes security headers"""

@@ -70,11 +70,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if "/swagger-ui" in request.url.path or "/redoc" in request.url.path:
             return
 
-        # Build CSP based on environment
+        # Build CSP based on environment with detailed logging
         connect_src = "'self' https:"
         if settings.debug:
             # Allow localhost connections in development
             connect_src += " http://localhost:* ws://localhost:*"
+            logger.info(
+                f"[CSP] Debug mode enabled. Using development CSP with localhost access"
+            )
+        else:
+            logger.info(
+                f"[CSP] Production mode. Using production CSP without localhost access"
+            )
 
         # Build environment-aware CSP
         csp_header = (
@@ -89,6 +96,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "frame-ancestors 'none'; "
             "base-uri 'self'"
         )
+
+        logger.info(f"[CSP] Generated CSP header: {csp_header}")
+        logger.info(f"[CSP] Debug setting: {settings.debug}")
+        logger.info(f"[CSP] Request path: {request.url.path}")
+        logger.info(f"[CSP] Request host: {request.headers.get('host', 'unknown')}")
+        logger.info(f"[CSP] Request origin: {request.headers.get('origin', 'none')}")
 
         security_headers = {
             "Strict-Transport-Security": (
