@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # Application
     debug: bool = False
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         # Auto-detect debug mode from environment indicators BEFORE super().__init__
         debug_indicators = [
             os.getenv("DEBUG", "").lower() in ["true", "1", "yes"],
