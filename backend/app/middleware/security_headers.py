@@ -76,11 +76,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # Allow localhost connections in development
             connect_src += " http://localhost:* ws://localhost:*"
             logger.info(
-                f"[CSP] Debug mode enabled. Using development CSP with localhost access"
+                "[CSP] Debug mode enabled. Using development CSP with localhost access"
             )
         else:
             logger.info(
-                f"[CSP] Production mode. Using production CSP without localhost access"
+                "[CSP] Production mode. Using production CSP without localhost access"
             )
 
         # Build environment-aware CSP

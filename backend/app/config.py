@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     def __init__(self, **kwargs):
-        # Auto-detect debug mode from common environment indicators BEFORE calling super().__init__
+        # Auto-detect debug mode from environment indicators BEFORE super().__init__
         debug_indicators = [
             os.getenv("DEBUG", "").lower() in ["true", "1", "yes"],
             os.getenv("ENVIRONMENT", "").lower() in ["development", "dev"],
