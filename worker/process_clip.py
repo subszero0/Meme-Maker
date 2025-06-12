@@ -26,28 +26,32 @@ def update_job_progress(job_id: str, progress: int, status: Optional[str] = None
     """Update job progress and status in Redis"""
     try:
         job_key = f"job:{job_id}"
-        update_data = {"progress": progress}
+        update_data = {"progress": str(progress)}  # Convert to string
         if status:
-            update_data["status"] = status
+            update_data["status"] = str(status)  # Convert to string
         redis.hset(job_key, mapping=update_data)
         redis.expire(job_key, 3600)  # 1 hour expiry
+        logger.info(f"📊 Job {job_id} progress: {progress}% {f'({status})' if status else ''}")
     except Exception as e:
-        logger.error(f"Failed to update job progress for {job_id}: {e}")
+        logger.error(f"❌ Failed to update job progress for {job_id}: {e}")
 
 
 def update_job_error(job_id: str, error_code: str, error_message: str):
     """Update job with error status and details"""
     try:
         job_key = f"job:{job_id}"
-        redis.hset(job_key, mapping={
-            "status": JobStatus.error.value,
-            "error_code": error_code,
-            "error_message": error_message[:500],  # Truncate long error messages
-            "progress": "null"  # Use string instead of None for Redis
-        })
+        # Convert all values to strings to avoid Redis type errors
+        mapping_data = {
+            "status": str(JobStatus.error.value),
+            "error_code": str(error_code),
+            "error_message": str(error_message[:500]),  # Truncate long error messages
+            "progress": "0"  # Use "0" instead of null for error state
+        }
+        redis.hset(job_key, mapping=mapping_data)
         redis.expire(job_key, 3600)
+        logger.info(f"✅ Updated job {job_id} with error status: {error_code}")
     except Exception as e:
-        logger.error(f"Failed to update job error for {job_id}: {e}")
+        logger.error(f"❌ Failed to update job error for {job_id}: {e}")
 
 
 def find_nearest_keyframe(video_path: str, timestamp: float) -> float:
@@ -110,34 +114,76 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
         update_job_progress(job_id, 10, JobStatus.working.value)
         
         source_file = temp_dir / f"{job_id}.%(ext)s"
-        ydl_opts = {
-            'outtmpl': str(source_file),
-            'format': 'best[height<=1080]',
-            'quiet': True,
-            'no_warnings': True,
-            # Better YouTube compatibility
-            'writesubtitles': False,
-            'writeautomaticsub': False,
-            'extractor_args': {
-                'youtube': {
-                    'skip': ['dash', 'hls']
+        
+        # Multiple yt-dlp configurations to try in order
+        config_attempts = [
+            # Attempt 1: Most conservative approach
+            {
+                'outtmpl': str(source_file),
+                'format': 'worst[height<=720]',  # Try lower quality first
+                'quiet': True,
+                'no_warnings': True,
+                'writesubtitles': False,
+                'writeautomaticsub': False,
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android'],  # Use mobile client
+                        'skip': ['dash', 'hls']
+                    }
+                },
+                'http_headers': {
+                    'User-Agent': 'com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip'
                 }
             },
-            # Use cookies if available and add user agent
-            'cookiefile': None,
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            # Attempt 2: Different format selection
+            {
+                'outtmpl': str(source_file),
+                'format': 'best[height<=480]',  # Even lower quality
+                'quiet': True,
+                'no_warnings': True,
+                'writesubtitles': False,
+                'writeautomaticsub': False,
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15'
+                }
+            },
+            # Attempt 3: Simple fallback
+            {
+                'outtmpl': str(source_file),
+                'format': 'worst',
+                'quiet': True,
+                'no_warnings': True,
             }
-        }
+        ]
         
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        # Try each configuration
+        download_success = False
+        last_error = None
+        
+        for i, ydl_opts in enumerate(config_attempts):
             try:
-                info = ydl.extract_info(url, download=True)
-                # Handle playlist URLs
-                if 'entries' in info and info['entries']:
-                    info = info['entries'][0]
+                logger.info(f"Attempt {i+1}: Trying download with config {i+1}")
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    # Handle playlist URLs
+                    if 'entries' in info and info['entries']:
+                        info = info['entries'][0]
+                download_success = True
+                logger.info(f"✅ Download successful with config {i+1}")
+                break
             except Exception as e:
-                raise Exception(f"YTDLP_FAIL: {str(e)}")
+                last_error = e
+                logger.warning(f"❌ Config {i+1} failed: {str(e)}")
+                # Clean up any partial files
+                for f in temp_dir.glob(f"{job_id}.*"):
+                    try:
+                        f.unlink()
+                    except:
+                        pass
+                continue
+        
+        if not download_success:
+            raise Exception(f"YTDLP_FAIL: All download attempts failed. Last error: {str(last_error)}")
         
         # Find the actual downloaded file
         downloaded_files = list(temp_dir.glob(f"{job_id}.*"))
