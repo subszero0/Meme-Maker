@@ -43,12 +43,34 @@ export default function Home() {
     setState({ phase: 'loading-metadata', url });
     
     try {
+      console.log('Making API request to:', `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/metadata`);
       const metadata = await fetchVideoMetadata(url);
+      console.log('API response received:', metadata);
       setState({ phase: 'trim', metadata });
       pushToast({ type: 'success', message: 'Video loaded successfully!' });
     } catch (error) {
+      console.error('API request failed:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
       setState({ phase: 'idle' });
-      pushToast({ type: 'error', message: 'Failed to load video. Please check the URL and try again.' });
+      
+      // More detailed error message
+      let errorMessage = 'Failed to load video. Please check the URL and try again.';
+      if (error instanceof Error) {
+        if (error.message.includes('CORS')) {
+          errorMessage = 'CORS error: Backend not allowing frontend requests. Check server configuration.';
+        } else if (error.message.includes('Network Error')) {
+          errorMessage = 'Network error: Cannot connect to backend server. Is it running on port 8000?';
+        } else if (error.message.includes('timeout')) {
+          errorMessage = 'Request timeout: Backend is taking too long to respond.';
+        } else {
+          errorMessage = `Error: ${error.message}`;
+        }
+      }
+      
+      pushToast({ type: 'error', message: errorMessage });
     }
   };
 

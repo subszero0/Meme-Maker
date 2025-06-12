@@ -2,6 +2,7 @@ import json
 import uuid
 from datetime import datetime
 from typing import Dict, Any, Optional
+import asyncio
 
 from fastapi import APIRouter, HTTPException, status
 from decimal import Decimal
@@ -12,6 +13,30 @@ from ..metrics import clip_jobs_queued_total
 
 router = APIRouter()
 
+# Local development mode detection
+import os
+LOCAL_DEV_MODE = os.getenv("ENVIRONMENT", "development") == "development"
+
+async def simulate_job_processing(job_id: str):
+    """Simulate job processing for local development"""
+    if not LOCAL_DEV_MODE:
+        return
+    
+    # Wait 2 seconds, then mark job as done with a mock URL
+    await asyncio.sleep(2)
+    
+    try:
+        job_key = f"job:{job_id}"
+        redis.hset(job_key, mapping={
+            "status": JobStatus.done.value,
+            "progress": 100,
+            "url": f"https://example.com/clips/demo-clip-{job_id}.mp4",
+            "completed_at": datetime.utcnow().isoformat()
+        })
+        redis.expire(job_key, 3600)
+        print(f"✅ Simulated job {job_id} completion")
+    except Exception as e:
+        print(f"❌ Failed to simulate job completion: {e}")
 
 @router.post("/jobs", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
 async def create_job(job_data: JobCreate) -> JobResponse:
@@ -57,14 +82,20 @@ async def create_job(job_data: JobCreate) -> JobResponse:
     
     # Enqueue RQ job with new process_clip function
     try:
-        q.enqueue(
-            "worker.process_clip.process_clip",
-            job_id,
-            str(job_data.url),
-            float(job.in_ts),
-            float(job.out_ts),
-            job_timeout="5m"
-        )
+        if LOCAL_DEV_MODE:
+            # In local dev mode, simulate job processing
+            print(f"🔧 Local dev mode: Simulating job processing for {job_id}")
+            asyncio.create_task(simulate_job_processing(job_id))
+        else:
+            # In production, use real worker
+            q.enqueue(
+                "worker.process_clip.process_clip",
+                job_id,
+                str(job_data.url),
+                float(job.in_ts),
+                float(job.out_ts),
+                job_timeout="5m"
+            )
         
         # Increment queued jobs counter
         clip_jobs_queued_total.inc()

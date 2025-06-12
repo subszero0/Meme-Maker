@@ -25,6 +25,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "frame-ancestors 'none'; "
             "base-uri 'self'"
         )
+        
+        # Development-friendly CSP that allows localhost HTTP connections
+        self.dev_csp_header = (
+            "default-src 'self'; "
+            "img-src 'self' data: https: http://localhost:*; "
+            "style-src 'self' 'unsafe-inline' https: http://localhost:*; "
+            "script-src 'self' 'unsafe-inline' https: http://localhost:*; "
+            "font-src 'self' https: http://localhost:*; "
+            "connect-src 'self' https: http://localhost:* ws://localhost:*; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self'"
+        )
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Add security headers to response"""
@@ -57,6 +69,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def _add_security_headers(self, response: Response, request: Request) -> None:
         """Add all security headers to the response"""
         
+        # Import settings here to avoid circular imports and get current values
+        from ..config import settings
+        
         # Skip ALL security headers for Swagger UI, ReDoc and OpenAPI endpoints
         swagger_paths = ["/docs", "/redoc", "/openapi.json"]
         if any(request.url.path.startswith(path) for path in swagger_paths):
@@ -66,8 +81,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if "/swagger-ui" in request.url.path or "/redoc" in request.url.path:
             return
         
-        # More lenient CSP for development docs endpoints
-        csp_header = self.csp_header
+        # Use development-friendly CSP for local development
+        csp_header = self.dev_csp_header if settings.debug else self.csp_header
         
         security_headers = {
             "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",

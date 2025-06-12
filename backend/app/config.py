@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     ffmpeg_path: str = "/usr/local/bin/ffmpeg"
     
     # Security
-    cors_origins: Union[str, list[str]] = ["https://clip.yourdomain.com"]
+    cors_origins: Union[str, list[str]] = ["http://localhost:3000", "http://localhost:3001", "http://localhost:8000", "https://clip.yourdomain.com"]
     
     @validator("cors_origins", pre=True)
     def validate_cors_origins(cls, v):

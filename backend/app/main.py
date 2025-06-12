@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -58,4 +59,17 @@ async def root() -> dict[str, str]:
         "version": "0.1.0",
         "docs": "/docs",
         "redoc": "/redoc"
+    }
+
+@app.get("/debug/cors", tags=["debug"])
+async def debug_cors() -> dict:
+    """Debug endpoint to check CORS configuration"""
+    from .config import settings
+    return {
+        "cors_origins": settings.cors_origins,
+        "debug": settings.debug,
+        "environment_variables": {
+            "CORS_ORIGINS": os.getenv("CORS_ORIGINS", "Not set"),
+            "DEBUG": os.getenv("DEBUG", "Not set")
+        }
     }
