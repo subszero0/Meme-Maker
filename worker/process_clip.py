@@ -117,42 +117,56 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
         
         # Multiple yt-dlp configurations to try in order
         config_attempts = [
-            # Attempt 1: Most conservative approach
+            # Attempt 1: Android client with specific video format
             {
                 'outtmpl': str(source_file),
-                'format': 'worst[height<=720]',  # Try lower quality first
+                'format': 'best[ext=mp4][height<=720]/best[height<=720]/best[ext=mp4]/best',
                 'quiet': True,
                 'no_warnings': True,
                 'writesubtitles': False,
                 'writeautomaticsub': False,
                 'extractor_args': {
                     'youtube': {
-                        'player_client': ['android'],  # Use mobile client
+                        'player_client': ['android'],
                         'skip': ['dash', 'hls']
                     }
                 },
                 'http_headers': {
                     'User-Agent': 'com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip'
-                }
+                },
+                'postprocessors': [{
+                    'key': 'FFmpegVideoConvertor',
+                    'preferedformat': 'mp4',
+                }]
             },
-            # Attempt 2: Different format selection
+            # Attempt 2: Web client with video-only format
             {
                 'outtmpl': str(source_file),
-                'format': 'best[height<=480]',  # Even lower quality
+                'format': 'best[ext=mp4][height<=480]/best[height<=480]/worst[ext=mp4]/worst',
                 'quiet': True,
                 'no_warnings': True,
                 'writesubtitles': False,
                 'writeautomaticsub': False,
                 'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                 }
             },
-            # Attempt 3: Simple fallback
+            # Attempt 3: iOS client fallback
             {
                 'outtmpl': str(source_file),
-                'format': 'worst',
+                'format': 'worst[ext=mp4]/worst',
                 'quiet': True,
                 'no_warnings': True,
+                'writesubtitles': False,
+                'writeautomaticsub': False,
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['ios']
+                    }
+                },
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15'
+                }
             }
         ]
         
@@ -192,6 +206,20 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
         
         source_file = downloaded_files[0]
         logger.info(f"Downloaded: {source_file}")
+        
+        # Validate that we got a video file, not HTML
+        if source_file.suffix.lower() in ['.html', '.mhtml', '.htm']:
+            raise Exception("YTDLP_FAIL: Downloaded HTML page instead of video - URL may be unavailable")
+        
+        # Ensure file has video-like extension or is recognizable by FFmpeg
+        valid_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.webm', '.flv', '.m4v']
+        if source_file.suffix.lower() not in valid_extensions:
+            logger.warning(f"⚠️ Unexpected file extension: {source_file.suffix}. Proceeding with FFmpeg validation.")
+        
+        # Check if file has reasonable size (not just a small HTML file)
+        file_size = source_file.stat().st_size
+        if file_size < 1024:  # Less than 1KB is suspicious for video
+            raise Exception(f"YTDLP_FAIL: Downloaded file is too small ({file_size} bytes) - likely not a video")
         
         # Step 2: Probe for nearest key-frame
         update_job_progress(job_id, 20)
@@ -333,13 +361,15 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
         
         # Step 5: Mark as done
         job_key = f"job:{job_id}"
-        redis.hset(job_key, mapping={
-            "status": JobStatus.done.value,
-            "progress": 100,
-            "url": presigned_url,
-            "completed_at": datetime.utcnow().isoformat()
-        })
+        completion_data = {
+            "status": str(JobStatus.done.value),
+            "progress": "100",
+            "url": str(presigned_url),
+            "completed_at": str(datetime.utcnow().isoformat())
+        }
+        redis.hset(job_key, mapping=completion_data)
         redis.expire(job_key, 3600)
+        logger.info(f"✅ Job {job_id} marked as completed with download URL")
         
         job_status = "done"  # Update status for metrics
         logger.info(f"Job {job_id} completed successfully")
