@@ -16,7 +16,8 @@ from botocore.exceptions import ClientError
 sys.path.append('/app/backend')
 from app import redis, settings
 from app.models import JobStatus
-from app.metrics import clip_job_latency_seconds, clip_jobs_inflight
+# Simplified metrics - avoid Prometheus import issues in worker
+# from app.metrics import clip_job_latency_seconds, clip_jobs_inflight
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ def update_job_error(job_id: str, error_code: str, error_message: str):
             "status": JobStatus.error.value,
             "error_code": error_code,
             "error_message": error_message[:500],  # Truncate long error messages
-            "progress": None
+            "progress": "null"  # Use string instead of None for Redis
         })
         redis.expire(job_key, 3600)
     except Exception as e:
@@ -90,9 +91,9 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
     3. Upload to S3 with content-disposition attachment
     4. Update Redis job hash with progress & final URL
     """
-    # Start timing and increment inflight gauge
+    # Start timing 
     start_time = time.monotonic()
-    clip_jobs_inflight.inc()
+    # clip_jobs_inflight.inc()  # Disabled for worker
     
     temp_dir = None
     source_file = None
@@ -114,6 +115,19 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
             'format': 'best[height<=1080]',
             'quiet': True,
             'no_warnings': True,
+            # Better YouTube compatibility
+            'writesubtitles': False,
+            'writeautomaticsub': False,
+            'extractor_args': {
+                'youtube': {
+                    'skip': ['dash', 'hls']
+                }
+            },
+            # Use cookies if available and add user agent
+            'cookiefile': None,
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -240,6 +254,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
         
         s3_client = boto3.client(
             's3',
+            endpoint_url=settings.s3_endpoint_url,
             region_name=settings.aws_region,
             aws_access_key_id=settings.aws_access_key_id,
             aws_secret_access_key=settings.aws_secret_access_key
@@ -308,7 +323,8 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
         
         # Calculate job latency and update metrics
         job_latency = time.monotonic() - start_time
-        clip_job_latency_seconds.labels(status=job_status).observe(job_latency)
+        logger.info(f"Job {job_id} took {job_latency:.2f}s (status: {job_status})")
+        # clip_job_latency_seconds.labels(status=job_status).observe(job_latency)  # Disabled for worker
         
-        # Decrement inflight gauge
-        clip_jobs_inflight.dec() 
+        # Decrement inflight gauge  
+        # clip_jobs_inflight.dec()  # Disabled for worker 
