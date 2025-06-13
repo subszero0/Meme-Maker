@@ -25,6 +25,7 @@ class Job(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     download_url: Optional[str] = None  # Presigned S3 URL when done - no validation needed
     stage: Optional[str] = None  # Current processing stage description
+    format_id: Optional[str] = None  # Selected video format/resolution
     
     @validator('download_url', 'stage', pre=True)
     def validate_optional_fields(cls, v):
@@ -39,6 +40,7 @@ class JobCreate(BaseModel):
     url: HttpUrl
     in_ts: float  # seconds
     out_ts: float  # seconds
+    format_id: Optional[str] = None  # Selected video format/resolution
 
 
 class JobResponse(BaseModel):
@@ -50,6 +52,7 @@ class JobResponse(BaseModel):
     download_url: Optional[str] = None  # presigned S3 URL when done
     error_code: Optional[str] = None
     stage: Optional[str] = None  # Current processing stage description
+    format_id: Optional[str] = None  # Selected video format/resolution
 
 
 class MetadataRequest(BaseModel):

@@ -74,7 +74,7 @@ export default function Home() {
     }
   };
 
-  const handleTrimSubmit = async (params: { in: number; out: number; rights: boolean }) => {
+  const handleTrimSubmit = async (params: { in: number; out: number; rights: boolean; formatId?: string }) => {
     if (state.phase !== 'trim') return;
 
     try {
@@ -83,6 +83,7 @@ export default function Home() {
         in: params.in,
         out: params.out,
         rights: params.rights,
+        formatId: params.formatId,
       });
       
       setState({

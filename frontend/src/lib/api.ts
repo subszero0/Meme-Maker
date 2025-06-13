@@ -12,6 +12,7 @@ export interface JobRequest {
   url: string;
   in_ts: number;
   out_ts: number;
+  format_id?: string;
 }
 
 export interface JobResponse {
@@ -68,7 +69,7 @@ export async function fetchVideoMetadata(url: string): Promise<VideoMetadata> {
   }
 }
 
-export async function createJob(request: { url: string; in: number; out: number; rights: boolean }): Promise<{ jobId: string }> {
+export async function createJob(request: { url: string; in: number; out: number; rights: boolean; formatId?: string }): Promise<{ jobId: string }> {
   console.log('API: Creating job with payload:', request);
   
   // Transform frontend format to backend format
@@ -76,6 +77,7 @@ export async function createJob(request: { url: string; in: number; out: number;
     url: request.url,
     in_ts: request.in,    // Map 'in' to 'in_ts'
     out_ts: request.out,  // Map 'out' to 'out_ts'
+    format_id: request.formatId,  // Include format_id if provided
     // Don't send 'rights' field to backend
   };
   

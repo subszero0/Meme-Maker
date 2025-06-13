@@ -89,7 +89,7 @@ def find_nearest_keyframe(video_path: str, timestamp: float) -> float:
         return timestamp
 
 
-def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
+def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: Optional[str] = None) -> None:
     """
     Process a video clipping job:
     1. Download source with yt-dlp
@@ -107,7 +107,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
     job_status = "error"  # Default to error, will be updated to "done" on success
     
     try:
-        logger.info(f"Starting job {job_id}: {url} [{in_ts}s - {out_ts}s]")
+        logger.info(f"Starting job {job_id}: {url} [{in_ts}s - {out_ts}s] format: {format_id}")
         
         # Create temporary directory
         temp_dir = Path(tempfile.mkdtemp(prefix=f"clip_{job_id}_"))
@@ -117,12 +117,20 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
         
         source_file = temp_dir / f"{job_id}.%(ext)s"
         
+        # Build format selector based on user choice or default
+        if format_id:
+            format_selector = f'{format_id}+bestaudio/best[format_id={format_id}]'
+            logger.info(f"Using selected format: {format_id}")
+        else:
+            format_selector = 'best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best'
+            logger.info("Using default format selection")
+        
         # Multiple yt-dlp configurations to try in order
         config_attempts = [
-            # Attempt 1: Default configuration (WORKING as of 2025-06-13)
+            # Attempt 1: Default configuration with user-selected format (WORKING as of 2025-06-13)
             {
                 'outtmpl': str(source_file),
-                'format': 'best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best',
+                'format': format_selector,
                 'quiet': True,
                 'no_warnings': True,
                 'writesubtitles': False,
@@ -306,13 +314,14 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
             first_gop_duration = min(2.0, out_ts - in_ts)  # Max 2 seconds for first GOP
             gop_end = in_ts + first_gop_duration
             
-            # First pass: re-encode the first GOP
+            # First pass: re-encode the first GOP with auto-rotation
             temp_gop_file = temp_dir / f"{job_id}_gop.mp4"
             cmd_gop = [
                 settings.ffmpeg_path.replace('/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg'),
                 '-i', str(source_file),
                 '-ss', str(in_ts),
                 '-to', str(gop_end),
+                '-vf', 'transpose=1',  # Auto-rotate based on metadata, then apply manual rotation fix
                 '-c:v', 'libx264',
                 '-preset', 'veryfast',
                 '-crf', '18',
@@ -336,7 +345,11 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
                     '-i', str(source_file),
                     '-ss', str(gop_end),
                     '-to', str(out_ts),
-                    '-c', 'copy',
+                    '-vf', 'transpose=1',  # Apply same rotation fix
+                    '-c:v', 'libx264',
+                    '-preset', 'veryfast', 
+                    '-crf', '18',
+                    '-c:a', 'copy',
                     '-avoid_negative_ts', 'make_zero',
                     str(temp_rest_file),
                     '-y'
@@ -367,13 +380,17 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
                 # Only first GOP needed
                 output_file = temp_gop_file
         else:
-            # Simple copy without re-encoding
+            # Simple copy with auto-rotation
             cmd_copy = [
                 settings.ffmpeg_path.replace('/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg'),
                 '-i', str(source_file),
                 '-ss', str(in_ts),
                 '-to', str(out_ts),
-                '-c', 'copy',
+                '-vf', 'transpose=1',  # Auto-rotate based on metadata, then apply manual rotation fix  
+                '-c:v', 'libx264',
+                '-preset', 'veryfast',
+                '-crf', '18',
+                '-c:a', 'copy',
                 '-avoid_negative_ts', 'make_zero',
                 str(output_file),
                 '-y'

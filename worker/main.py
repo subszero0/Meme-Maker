@@ -110,7 +110,8 @@ def main():
                                 job_id=job_id,
                                 url=job['url'],
                                 in_ts=job['in_ts'],
-                                out_ts=job['out_ts']
+                                out_ts=job['out_ts'],
+                                format_id=job.get('format_id')  # Pass format_id if provided
                             )
                             logger.info(f"✅ Job {job_id} completed successfully")
                             

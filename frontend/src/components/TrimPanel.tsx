@@ -6,23 +6,26 @@ import { Range, getTrackBackground } from 'react-range';
 import { useDebouncedCallback } from 'use-debounce';
 import { formatTime, parseTime } from '@/lib/formatTime';
 import { useToast } from './ToastProvider';
+import ResolutionSelector from './ResolutionSelector';
 
 interface TrimPanelProps {
   jobMeta: { url: string; title: string; duration: number }; // duration in seconds
-  onSubmit(params: { in: number; out: number; rights: boolean }): void;
+  onSubmit(params: { in: number; out: number; rights: boolean; formatId?: string }): void;
 }
 
 interface TrimState {
   in: number;
   out: number;
   rights: boolean;
+  formatId?: string;
 }
 
 type TrimAction =
   | { type: 'SET_IN'; payload: number }
   | { type: 'SET_OUT'; payload: number }
   | { type: 'SET_RIGHTS'; payload: boolean }
-  | { type: 'SET_RANGE'; payload: { in: number; out: number } };
+  | { type: 'SET_RANGE'; payload: { in: number; out: number } }
+  | { type: 'SET_FORMAT_ID'; payload: string | undefined };
 
 function trimReducer(state: TrimState, action: TrimAction): TrimState {
   switch (action.type) {
@@ -34,6 +37,8 @@ function trimReducer(state: TrimState, action: TrimAction): TrimState {
       return { ...state, rights: action.payload };
     case 'SET_RANGE':
       return { ...state, in: action.payload.in, out: action.payload.out };
+    case 'SET_FORMAT_ID':
+      return { ...state, formatId: action.payload };
     default:
       return state;
   }
@@ -45,6 +50,7 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
     in: 0,
     out: Math.min(jobMeta.duration, 180), // Cap at 3 minutes
     rights: false,
+    formatId: undefined,
   });
 
   const [inTimeInput, setInTimeInput] = useState(formatTime(state.in));
@@ -102,15 +108,24 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
     debouncedOutChange(value);
   }, [debouncedOutChange]);
 
+  const handleFormatChange = useCallback((formatId: string | undefined) => {
+    dispatch({ type: 'SET_FORMAT_ID', payload: formatId });
+  }, []);
+
   const handleSubmit = useCallback(() => {
     if (!canSubmit) return;
     
     try {
-      onSubmit({ in: state.in, out: state.out, rights: true });
+      onSubmit({ 
+        in: state.in, 
+        out: state.out, 
+        rights: true, 
+        formatId: state.formatId 
+      });
     } catch (error) {
       pushToast({ type: 'error', message: 'Failed to submit clip request' });
     }
-  }, [canSubmit, state.in, state.out, onSubmit, pushToast]);
+  }, [canSubmit, state.in, state.out, state.formatId, onSubmit, pushToast]);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-6">
@@ -226,6 +241,13 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
           End time must be after start time.
         </div>
       )}
+
+      {/* Resolution Selector */}
+      <ResolutionSelector
+        url={jobMeta.url}
+        selectedFormatId={state.formatId}
+        onFormatChange={handleFormatChange}
+      />
 
       {/* Rights Checkbox */}
       <div className="flex items-start space-x-3">
