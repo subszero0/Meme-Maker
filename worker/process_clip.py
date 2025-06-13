@@ -4,13 +4,12 @@ import subprocess
 import tempfile
 import logging
 import time
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-import boto3
 import yt_dlp
-from botocore.exceptions import ClientError
 
 # Import from backend app
 sys.path.append('/app/backend')
@@ -22,16 +21,19 @@ from app.models import JobStatus
 logger = logging.getLogger(__name__)
 
 
-def update_job_progress(job_id: str, progress: int, status: Optional[str] = None):
+def update_job_progress(job_id: str, progress: int, status: Optional[str] = None, stage: Optional[str] = None):
     """Update job progress and status in Redis"""
     try:
         job_key = f"job:{job_id}"
         update_data = {"progress": str(progress)}  # Convert to string
         if status:
             update_data["status"] = str(status)  # Convert to string
+        if stage:
+            update_data["stage"] = str(stage)  # Add processing stage
         redis.hset(job_key, mapping=update_data)
         redis.expire(job_key, 3600)  # 1 hour expiry
-        logger.info(f"📊 Job {job_id} progress: {progress}% {f'({status})' if status else ''}")
+        stage_msg = f" - {stage}" if stage else ""
+        logger.info(f"📊 Job {job_id} progress: {progress}% {f'({status})' if status else ''}{stage_msg}")
     except Exception as e:
         logger.error(f"❌ Failed to update job progress for {job_id}: {e}")
 
@@ -111,47 +113,104 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
         temp_dir = Path(tempfile.mkdtemp(prefix=f"clip_{job_id}_"))
         
         # Step 1: Download source with yt-dlp
-        update_job_progress(job_id, 10, JobStatus.working.value)
+        update_job_progress(job_id, 10, JobStatus.working.value, "Downloading video...")
         
         source_file = temp_dir / f"{job_id}.%(ext)s"
         
         # Multiple yt-dlp configurations to try in order
         config_attempts = [
-            # Attempt 1: Android client with specific video format
+            # Attempt 1: Default configuration (WORKING as of 2025-06-13)
             {
                 'outtmpl': str(source_file),
-                'format': 'best[ext=mp4][height<=720]/best[height<=720]/best[ext=mp4]/best',
+                'format': 'best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best',
                 'quiet': True,
                 'no_warnings': True,
                 'writesubtitles': False,
                 'writeautomaticsub': False,
+                'extract_flat': False,
+            },
+            # Attempt 2: Updated Android client configuration (2024) - FALLBACK
+            {
+                'outtmpl': str(source_file),
+                'format': 'best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best',
+                'quiet': True,
+                'no_warnings': True,
+                'writesubtitles': False,
+                'writeautomaticsub': False,
+                'extract_flat': False,
                 'extractor_args': {
                     'youtube': {
-                        'player_client': ['android'],
+                        'player_client': ['android_creator'],
+                        'skip': ['dash']
+                    }
+                },
+                'http_headers': {
+                    'User-Agent': 'com.google.android.apps.youtube.creator/24.47.100 (Linux; U; Android 14; SM-S918B) gzip',
+                    'Accept': '*/*',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1'
+                }
+            },
+            # Attempt 3: Web client with modern headers - FALLBACK
+            {
+                'outtmpl': str(source_file),
+                'format': 'best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best',
+                'quiet': True,
+                'no_warnings': True,
+                'writesubtitles': False,
+                'writeautomaticsub': False,
+                'extract_flat': False,
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['web'],
                         'skip': ['dash', 'hls']
                     }
                 },
                 'http_headers': {
-                    'User-Agent': 'com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip'
-                },
-                'postprocessors': [{
-                    'key': 'FFmpegVideoConvertor',
-                    'preferedformat': 'mp4',
-                }]
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                    'Sec-Fetch-Dest': 'document',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-User': '?1',
+                    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                    'sec-ch-ua-mobile': '?0',
+                    'sec-ch-ua-platform': '"Windows"'
+                }
             },
-            # Attempt 2: Web client with video-only format
+            # Attempt 4: iOS client fallback (most reliable for blocked regions) - FALLBACK
             {
                 'outtmpl': str(source_file),
-                'format': 'best[ext=mp4][height<=480]/best[height<=480]/worst[ext=mp4]/worst',
+                'format': 'best[height<=480][ext=mp4]/best[height<=480]/worst[ext=mp4]/worst',
                 'quiet': True,
                 'no_warnings': True,
                 'writesubtitles': False,
                 'writeautomaticsub': False,
+                'extract_flat': False,
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['ios']
+                    }
+                },
                 'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1'
                 }
             },
-            # Attempt 3: iOS client fallback
+            # Attempt 5: Age-gate bypass attempt with embedded player - FALLBACK
             {
                 'outtmpl': str(source_file),
                 'format': 'worst[ext=mp4]/worst',
@@ -159,13 +218,21 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
                 'no_warnings': True,
                 'writesubtitles': False,
                 'writeautomaticsub': False,
+                'extract_flat': False,
                 'extractor_args': {
                     'youtube': {
-                        'player_client': ['ios']
+                        'player_client': ['web_embedded'],
+                        'skip': ['dash', 'hls']
                     }
                 },
                 'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': 'https://www.youtube.com/',
+                    'Accept': '*/*',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'DNT': '1',
+                    'Connection': 'keep-alive'
                 }
             }
         ]
@@ -222,7 +289,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
             raise Exception(f"YTDLP_FAIL: Downloaded file is too small ({file_size} bytes) - likely not a video")
         
         # Step 2: Probe for nearest key-frame
-        update_job_progress(job_id, 20)
+        update_job_progress(job_id, 20, stage="Analyzing video...")
         
         nearest_keyframe = find_nearest_keyframe(str(source_file), in_ts)
         needs_reencode = abs(nearest_keyframe - in_ts) > 0.1  # 100ms tolerance
@@ -230,7 +297,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
         logger.info(f"Key-frame check: in_ts={in_ts}, nearest={nearest_keyframe}, needs_reencode={needs_reencode}")
         
         # Step 3: Clip video with FFmpeg
-        update_job_progress(job_id, 30)
+        update_job_progress(job_id, 30, stage="Trimming video...")
         
         output_file = temp_dir / f"{job_id}_output.mp4"
         
@@ -259,7 +326,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
             if result.returncode != 0:
                 raise Exception(f"FFMPEG_FAIL: GOP re-encode failed: {result.stderr}")
             
-            update_job_progress(job_id, 50)
+            update_job_progress(job_id, 50, stage="Processing video...")
             
             # Second pass: copy the rest if needed
             if gop_end < out_ts:
@@ -316,55 +383,39 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
             if result.returncode != 0:
                 raise Exception(f"FFMPEG_FAIL: Copy failed: {result.stderr}")
         
-        update_job_progress(job_id, 70)
+        update_job_progress(job_id, 70, stage="Finalizing clip...")
         
         if not output_file.exists() or output_file.stat().st_size == 0:
             raise Exception("FFMPEG_FAIL: Output file is empty or missing")
         
         logger.info(f"Clipped video: {output_file} ({output_file.stat().st_size} bytes)")
         
-        # Step 4: Upload to S3
-        update_job_progress(job_id, 90)
+        # Step 4: Save to local storage for HTTP serving
+        update_job_progress(job_id, 90, stage="Preparing download...")
         
-        s3_client = boto3.client(
-            's3',
-            endpoint_url=settings.s3_endpoint_url,
-            region_name=settings.aws_region,
-            aws_access_key_id=settings.aws_access_key_id,
-            aws_secret_access_key=settings.aws_secret_access_key
-        )
+        # Create clips directory if it doesn't exist
+        clips_dir = Path("/app/clips")
+        clips_dir.mkdir(exist_ok=True)
         
-        s3_key = f"{job_id}.mp4"
+        # Move file to clips directory with job ID name
+        final_clip_path = clips_dir / f"{job_id}.mp4"
         
         try:
-            s3_client.upload_file(
-                str(output_file),
-                settings.s3_bucket,
-                s3_key,
-                ExtraArgs={
-                    'ContentDisposition': 'attachment',
-                    'ContentType': 'video/mp4'
-                }
-            )
-        except ClientError as e:
-            raise Exception(f"UPLOAD_FAIL: S3 upload failed: {str(e)}")
+            # Copy the processed file to the clips directory (use copy instead of rename for cross-device compatibility)
+            shutil.copy2(output_file, final_clip_path)
+            logger.info(f"Copied clip to: {final_clip_path} ({final_clip_path.stat().st_size} bytes)")
+        except Exception as e:
+            raise Exception(f"STORAGE_FAIL: Failed to save clip: {str(e)}")
         
-        # Generate presigned URL (24 hour expiry)
-        try:
-            presigned_url = s3_client.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': settings.s3_bucket, 'Key': s3_key},
-                ExpiresIn=86400  # 24 hours
-            )
-        except ClientError as e:
-            raise Exception(f"UPLOAD_FAIL: Presigned URL generation failed: {str(e)}")
+        # Generate download URL (served by backend via localhost for frontend access)
+        download_url = f"http://localhost:8000/clips/{job_id}.mp4"
         
         # Step 5: Mark as done
         job_key = f"job:{job_id}"
         completion_data = {
             "status": str(JobStatus.done.value),
             "progress": "100",
-            "url": str(presigned_url),
+            "download_url": str(download_url),
             "completed_at": str(datetime.utcnow().isoformat())
         }
         redis.hset(job_key, mapping=completion_data)
@@ -391,7 +442,6 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float) -> None:
         # Cleanup temporary files
         if temp_dir and temp_dir.exists():
             try:
-                import shutil
                 shutil.rmtree(temp_dir)
                 logger.info(f"Cleaned up temp directory: {temp_dir}")
             except Exception as e:

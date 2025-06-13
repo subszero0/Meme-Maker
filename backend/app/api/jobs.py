@@ -13,30 +13,8 @@ from ..metrics import clip_jobs_queued_total
 
 router = APIRouter()
 
-# Local development mode detection
-import os
-LOCAL_DEV_MODE = os.getenv("ENVIRONMENT", "development") == "development"
-
-async def simulate_job_processing(job_id: str):
-    """Simulate job processing for local development"""
-    if not LOCAL_DEV_MODE:
-        return
-    
-    # Wait 2 seconds, then mark job as done with a mock URL
-    await asyncio.sleep(2)
-    
-    try:
-        job_key = f"job:{job_id}"
-        redis.hset(job_key, mapping={
-            "status": JobStatus.done.value,
-            "progress": 100,
-            "url": f"https://example.com/clips/demo-clip-{job_id}.mp4",
-            "completed_at": datetime.utcnow().isoformat()
-        })
-        redis.expire(job_key, 3600)
-        print(f"✅ Simulated job {job_id} completion")
-    except Exception as e:
-        print(f"❌ Failed to simulate job completion: {e}")
+# NOTE: Job simulation disabled - always use real worker for proper testing
+# Real worker processing provides actual video files and tests the full pipeline
 
 @router.post("/jobs", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
 async def create_job(job_data: JobCreate) -> JobResponse:
@@ -80,22 +58,18 @@ async def create_job(job_data: JobCreate) -> JobResponse:
             job_dict[key] = "None"
     redis.hset(f"job:{job_id}", mapping=job_dict)
     
-    # Enqueue RQ job with new process_clip function
+    # Enqueue RQ job with real worker processing
     try:
-        if LOCAL_DEV_MODE:
-            # In local dev mode, simulate job processing
-            print(f"🔧 Local dev mode: Simulating job processing for {job_id}")
-            asyncio.create_task(simulate_job_processing(job_id))
-        else:
-            # In production, use real worker
-            q.enqueue(
-                "worker.process_clip.process_clip",
-                job_id,
-                str(job_data.url),
-                float(job.in_ts),
-                float(job.out_ts),
-                job_timeout="5m"
-            )
+        # Always use real worker for proper testing and functionality
+        print(f"🚀 Enqueueing job {job_id} to worker for processing")
+        q.enqueue(
+            "worker.process_clip.process_clip",
+            job_id,
+            str(job_data.url),
+            float(job.in_ts),
+            float(job.out_ts),
+            job_timeout="5m"
+        )
         
         # Increment queued jobs counter
         clip_jobs_queued_total.inc()
@@ -139,7 +113,7 @@ async def get_job(job_id: str) -> JobResponse:
                 parsed_data[key] = Decimal(value)
             elif key == 'created_at':
                 parsed_data[key] = datetime.fromisoformat(value.replace('Z', '+00:00'))
-            elif key in ['progress', 'error_code']:
+            elif key in ['progress', 'error_code', 'download_url', 'stage']:
                 parsed_data[key] = None if value == 'None' else (int(value) if key == 'progress' and value else value)
             else:
                 parsed_data[key] = value
@@ -158,14 +132,15 @@ async def get_job(job_id: str) -> JobResponse:
         created_at=job.created_at,
     )
     
-    # Include progress for queued/working jobs
+    # Include progress and stage for queued/working jobs
     if job.status in {JobStatus.queued, JobStatus.working}:
         response.progress = job.progress
+        response.stage = job.stage
     
     # Include download URL for completed jobs
     if job.status == JobStatus.done:
         # Get presigned URL from job data
-        response.url = decoded_data.get('url')
+        response.download_url = job.download_url
         
         # Set TTL for job cleanup (1 hour)
         redis.expire(f"job:{job_id}", 3600)

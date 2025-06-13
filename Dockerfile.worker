@@ -24,6 +24,9 @@ COPY worker/ ./worker/
 # Update yt-dlp on startup
 RUN yt-dlp -U || true
 
+# Create clips directory with proper permissions
+RUN mkdir -p /app/clips
+
 # Create non-root user
 RUN adduser -D -s /bin/sh app && \
     chown -R app:app /app
@@ -33,5 +36,5 @@ USER app
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
     CMD python -c "import redis; redis.Redis.from_url('$REDIS_URL').ping()" || exit 1
 
-# Run the worker
-CMD ["sh", "-c", "python -m rq.worker clips --url $REDIS_URL --name dev"]
+# Run the custom worker
+CMD ["python", "/app/worker/main.py"]

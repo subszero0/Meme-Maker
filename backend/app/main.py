@@ -10,7 +10,7 @@ except ImportError:
     PROMETHEUS_AVAILABLE = False
     print("Warning: prometheus_fastapi_instrumentator not available, metrics disabled")
 
-from .api import jobs, metadata
+from .api import jobs, metadata, clips
 from .config import settings
 from .middleware.security_headers import SecurityHeadersMiddleware
 from . import metrics  # Import to register custom metrics
@@ -45,6 +45,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 # Include routers with proper tags and prefixes
 app.include_router(jobs.router, prefix="/api/v1", tags=["jobs"])
 app.include_router(metadata.router, prefix="/api/v1", tags=["metadata"])
+app.include_router(clips.router, tags=["clips"])  # No prefix for direct /clips access
 
 @app.get("/health", tags=["health"])
 async def health_check() -> dict[str, str]:

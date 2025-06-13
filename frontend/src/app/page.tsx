@@ -150,8 +150,9 @@ export default function Home() {
               </p>
               <ProgressBar progress={pollerResult.progress} />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                {pollerResult.status === 'queued' && 'Waiting in queue...'}
-                {pollerResult.status === 'working' && 'Trimming video...'}
+                {pollerResult.stage || 
+                  (pollerResult.status === 'queued' && 'Waiting in queue...') ||
+                  (pollerResult.status === 'working' && 'Processing...')}
               </p>
             </div>
             <div className="text-center">

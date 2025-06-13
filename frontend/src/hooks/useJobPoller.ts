@@ -9,6 +9,7 @@ interface PollResult {
   progress?: number;
   url?: string;
   errorCode?: string;
+  stage?: string;
 }
 
 const DEFAULT_POLL_INTERVAL = 2000;
@@ -61,7 +62,8 @@ export default function useJobPoller(
         status: jobData.status,
         progress: jobData.progress,
         url: jobData.download_url,
-        errorCode: jobData.error_code
+        errorCode: jobData.error_code,
+        stage: jobData.stage
       };
 
       setResult(newResult);

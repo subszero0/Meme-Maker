@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     debug: bool = False
     
     # Redis Configuration
-    redis_url: str = "redis://localhost:6379"
+    redis_url: str = "redis://redis:6379"  # Default to docker service name
     redis_db: int = 0
     
     # AWS S3 Configuration

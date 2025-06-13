@@ -17,12 +17,8 @@ except Exception as e:
         redis = fakeredis.FakeRedis()
         print(f"⚠️  Using FakeRedis for local development (Redis unavailable: {e})")
     except ImportError:
-        print("❌ Both Redis and FakeRedis unavailable. Installing FakeRedis...")
-        import subprocess
-        subprocess.run(["poetry", "add", "--group", "dev", "fakeredis"], check=True)
-        import fakeredis
-        redis = fakeredis.FakeRedis()
-        print("✅ Installed and using FakeRedis for local development")
+        print("❌ Both Redis and FakeRedis unavailable")
+        raise Exception("Redis connection failed and FakeRedis not available. Please install FakeRedis or ensure Redis is running.")
 
 # Initialize RQ queue for video clipping jobs
 q = Queue("clips", connection=redis)

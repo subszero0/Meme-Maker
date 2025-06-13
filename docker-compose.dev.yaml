@@ -7,19 +7,6 @@ services:
       - "6379:6379"
     command: ["redis-server"]
 
-  minio:
-    image: minio/minio
-    container_name: meme-maker-minio-dev
-    environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: admin12345
-    ports:
-      - "9002:9000"
-      - "9003:9001"
-    command: server /data --console-address ":9001"
-    volumes:
-      - minio-data:/data
-
   backend:
     build:
       context: .
@@ -27,17 +14,14 @@ services:
     container_name: meme-maker-backend-dev
     depends_on:
       - redis
-      - minio
     environment:
       - REDIS_URL=redis://redis:6379
-      - AWS_ACCESS_KEY_ID=admin
-      - AWS_SECRET_ACCESS_KEY=admin12345
-      - AWS_ENDPOINT_URL=http://minio:9000
-      - S3_BUCKET=clips
       - DEBUG=true
       - ENVIRONMENT=development
     ports:
       - "8000:8000"
+    volumes:
+      - clips-storage:/app/clips
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
   frontend:
@@ -62,14 +46,11 @@ services:
     container_name: meme-maker-worker-dev
     depends_on:
       - redis
-      - minio
     environment:
       - REDIS_URL=redis://redis:6379
-      - AWS_ACCESS_KEY_ID=admin
-      - AWS_SECRET_ACCESS_KEY=admin12345
-      - AWS_ENDPOINT_URL=http://minio:9000
-      - S3_BUCKET=clips
+    volumes:
+      - clips-storage:/app/clips
     command: ["python", "/app/worker/main.py"]
 
 volumes:
-  minio-data: 
+  clips-storage: 

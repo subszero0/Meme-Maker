@@ -7,19 +7,6 @@ services:
       - "6379:6379"
     command: ["redis-server"]
 
-  minio:
-    image: minio/minio
-    container_name: meme-maker-minio
-    environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: admin12345
-    ports:
-      - "9002:9000"  # Changed to avoid port conflicts
-      - "9003:9001"  # Changed to avoid port conflicts
-    command: server /data --console-address ":9001"
-    volumes:
-      - minio-data:/data
-
   backend:
     build:
       context: .
@@ -27,13 +14,10 @@ services:
     container_name: meme-maker-backend
     depends_on:
       - redis
-      - minio
-    environment:
-      - AWS_ACCESS_KEY_ID=admin
-      - AWS_SECRET_ACCESS_KEY=admin12345
-      - AWS_ENDPOINT_URL=http://minio:9000
     ports:
       - "8000:8000"
+    volumes:
+      - clips-storage:/app/clips
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
   worker:
@@ -44,6 +28,8 @@ services:
     depends_on:
       - redis
       - backend
+    volumes:
+      - clips-storage:/app/clips
 
   prometheus:
     image: prom/prometheus
@@ -65,6 +51,6 @@ services:
       - grafana-data:/var/lib/grafana
 
 volumes:
-  minio-data:
+  clips-storage:
   prometheus-data:
   grafana-data:
