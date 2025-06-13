@@ -8,6 +8,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+import json
 
 import yt_dlp
 
@@ -87,6 +88,61 @@ def find_nearest_keyframe(video_path: str, timestamp: float) -> float:
     except Exception as e:
         logger.warning(f"Failed to find keyframe, using original timestamp: {e}")
         return timestamp
+
+
+def detect_video_rotation(video_path: Path) -> Optional[str]:
+    """
+    Detect if video has rotation metadata that needs correction.
+    Returns FFmpeg filter string if rotation correction is needed, None otherwise.
+    """
+    try:
+        cmd = [
+            'ffprobe',
+            '-v', 'quiet',
+            '-print_format', 'json',
+            '-show_streams',
+            str(video_path)
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        metadata = json.loads(result.stdout)
+        
+        for stream in metadata.get('streams', []):
+            if stream.get('codec_type') == 'video':
+                # Check for rotation in side data
+                side_data = stream.get('side_data_list', [])
+                for data in side_data:
+                    if data.get('side_data_type') == 'Display Matrix':
+                        rotation = data.get('rotation', 0)
+                        if rotation:
+                            logger.info(f"Found rotation metadata: {rotation}°")
+                            # Convert rotation to appropriate transpose filter
+                            if rotation == 90 or rotation == -270:
+                                return 'transpose=2'  # 90° counterclockwise
+                            elif rotation == -90 or rotation == 270:
+                                return 'transpose=1'  # 90° clockwise
+                            elif rotation == 180 or rotation == -180:
+                                return 'transpose=1,transpose=1'  # 180°
+                
+                # Check for rotation in stream tags
+                tags = stream.get('tags', {})
+                if 'rotate' in tags:
+                    rotation = int(tags['rotate'])
+                    logger.info(f"Found rotation tag: {rotation}°")
+                    if rotation == 90:
+                        return 'transpose=2'  # 90° counterclockwise
+                    elif rotation == -90 or rotation == 270:
+                        return 'transpose=1'  # 90° clockwise
+                    elif rotation == 180:
+                        return 'transpose=1,transpose=1'  # 180°
+        
+        # No rotation metadata found
+        logger.info("No rotation metadata detected - preserving original orientation")
+        return None
+        
+    except Exception as e:
+        logger.warning(f"Failed to detect rotation metadata: {e}")
+        return None
 
 
 def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: Optional[str] = None) -> None:
@@ -296,16 +352,23 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
         if file_size < 1024:  # Less than 1KB is suspicious for video
             raise Exception(f"YTDLP_FAIL: Downloaded file is too small ({file_size} bytes) - likely not a video")
         
-        # Step 2: Probe for nearest key-frame
-        update_job_progress(job_id, 20, stage="Analyzing video...")
-        
-        nearest_keyframe = find_nearest_keyframe(str(source_file), in_ts)
-        needs_reencode = abs(nearest_keyframe - in_ts) > 0.1  # 100ms tolerance
-        
-        logger.info(f"Key-frame check: in_ts={in_ts}, nearest={nearest_keyframe}, needs_reencode={needs_reencode}")
-        
-        # Step 3: Clip video with FFmpeg
+        # Step 3: Analyze keyframes and decide encoding strategy
         update_job_progress(job_id, 30, stage="Trimming video...")
+        
+        # Detect if rotation correction is needed
+        rotation_filter = detect_video_rotation(source_file.with_suffix('.mp4'))
+        if rotation_filter:
+            logger.info(f"Applying rotation correction: {rotation_filter}")
+        else:
+            logger.info("No rotation correction needed")
+        
+        keyframe_ts = find_nearest_keyframe(str(source_file.with_suffix('.mp4')), in_ts)
+        needs_reencode = abs(keyframe_ts - in_ts) > 1.0  # Re-encode if >1s from keyframe
+        
+        logger.info(f"Key-frame check: in_ts={in_ts}, nearest={keyframe_ts}, needs_reencode={needs_reencode}")
+        
+        # Step 4: Clip video with FFmpeg
+        update_job_progress(job_id, 40, stage="Trimming video...")
         
         output_file = temp_dir / f"{job_id}_output.mp4"
         
@@ -314,14 +377,20 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
             first_gop_duration = min(2.0, out_ts - in_ts)  # Max 2 seconds for first GOP
             gop_end = in_ts + first_gop_duration
             
-            # First pass: re-encode the first GOP with auto-rotation
+            # First pass: re-encode the first GOP
             temp_gop_file = temp_dir / f"{job_id}_gop.mp4"
             cmd_gop = [
                 settings.ffmpeg_path.replace('/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg'),
                 '-i', str(source_file),
                 '-ss', str(in_ts),
                 '-to', str(gop_end),
-                '-vf', 'transpose=1',  # Auto-rotate based on metadata, then apply manual rotation fix
+            ]
+            
+            # Add rotation filter if needed
+            if rotation_filter:
+                cmd_gop.extend(['-vf', rotation_filter])
+                
+            cmd_gop.extend([
                 '-c:v', 'libx264',
                 '-preset', 'veryfast',
                 '-crf', '18',
@@ -329,7 +398,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                 '-avoid_negative_ts', 'make_zero',
                 str(temp_gop_file),
                 '-y'
-            ]
+            ])
             
             result = subprocess.run(cmd_gop, capture_output=True, text=True)
             if result.returncode != 0:
@@ -345,7 +414,13 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                     '-i', str(source_file),
                     '-ss', str(gop_end),
                     '-to', str(out_ts),
-                    '-vf', 'transpose=1',  # Apply same rotation fix
+                ]
+                
+                # Add rotation filter if needed
+                if rotation_filter:
+                    cmd_rest.extend(['-vf', rotation_filter])
+                    
+                cmd_rest.extend([
                     '-c:v', 'libx264',
                     '-preset', 'veryfast', 
                     '-crf', '18',
@@ -353,7 +428,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                     '-avoid_negative_ts', 'make_zero',
                     str(temp_rest_file),
                     '-y'
-                ]
+                ])
                 
                 result = subprocess.run(cmd_rest, capture_output=True, text=True)
                 if result.returncode != 0:
@@ -380,13 +455,19 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                 # Only first GOP needed
                 output_file = temp_gop_file
         else:
-            # Simple copy with auto-rotation
+            # Simple copy with optional rotation correction
             cmd_copy = [
                 settings.ffmpeg_path.replace('/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg'),
                 '-i', str(source_file),
                 '-ss', str(in_ts),
                 '-to', str(out_ts),
-                '-vf', 'transpose=1',  # Auto-rotate based on metadata, then apply manual rotation fix  
+            ]
+            
+            # Add rotation filter if needed
+            if rotation_filter:
+                cmd_copy.extend(['-vf', rotation_filter])
+                
+            cmd_copy.extend([
                 '-c:v', 'libx264',
                 '-preset', 'veryfast',
                 '-crf', '18',
@@ -394,7 +475,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                 '-avoid_negative_ts', 'make_zero',
                 str(output_file),
                 '-y'
-            ]
+            ])
             
             result = subprocess.run(cmd_copy, capture_output=True, text=True)
             if result.returncode != 0:
@@ -407,7 +488,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
         
         logger.info(f"Clipped video: {output_file} ({output_file.stat().st_size} bytes)")
         
-        # Step 4: Save to local storage for HTTP serving
+        # Step 5: Save to local storage for HTTP serving
         update_job_progress(job_id, 90, stage="Preparing download...")
         
         # Create clips directory if it doesn't exist
@@ -427,7 +508,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
         # Generate download URL (served by backend via localhost for frontend access)
         download_url = f"http://localhost:8000/clips/{job_id}.mp4"
         
-        # Step 5: Mark as done
+        # Step 6: Mark as done
         job_key = f"job:{job_id}"
         completion_data = {
             "status": str(JobStatus.done.value),
