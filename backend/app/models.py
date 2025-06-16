@@ -26,10 +26,11 @@ class Job(BaseModel):
     download_url: Optional[str] = None  # Presigned S3 URL when done - no validation needed
     stage: Optional[str] = None  # Current processing stage description
     format_id: Optional[str] = None  # Selected video format/resolution
+    video_title: Optional[str] = None  # Video title for filename
     
-    @validator('download_url', 'stage', pre=True)
+    @validator('download_url', 'stage', 'video_title', pre=True)
     def validate_optional_fields(cls, v):
-        # Allow any string for download URLs and stages (including localhost, minio, etc.)
+        # Allow any string for download URLs, stages, and video titles (including localhost, minio, etc.)
         if v == "None":
             return None
         return v
@@ -53,6 +54,7 @@ class JobResponse(BaseModel):
     error_code: Optional[str] = None
     stage: Optional[str] = None  # Current processing stage description
     format_id: Optional[str] = None  # Selected video format/resolution
+    video_title: Optional[str] = None  # Video title for filename
 
 
 class MetadataRequest(BaseModel):

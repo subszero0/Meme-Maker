@@ -897,6 +897,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
             "status": str(JobStatus.done.value),
             "progress": "100",
             "download_url": str(download_url),
+            "video_title": str(video_title),
             "completed_at": str(datetime.utcnow().isoformat())
         }
         redis.hset(job_key, mapping=completion_data)

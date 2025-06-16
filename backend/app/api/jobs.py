@@ -134,7 +134,7 @@ async def get_job(job_id: str) -> JobResponse:
                 parsed_data[key] = Decimal(value)
             elif key == 'created_at':
                 parsed_data[key] = datetime.fromisoformat(value.replace('Z', '+00:00'))
-            elif key in ['progress', 'error_code', 'download_url', 'stage', 'format_id']:
+            elif key in ['progress', 'error_code', 'download_url', 'stage', 'format_id', 'video_title']:
                 parsed_data[key] = None if value == 'None' else (int(value) if key == 'progress' and value else value)
             else:
                 parsed_data[key] = value
@@ -154,7 +154,8 @@ async def get_job(job_id: str) -> JobResponse:
         id=job.id,
         status=job.status,
         created_at=job.created_at,
-        format_id=job.format_id
+        format_id=job.format_id,
+        video_title=job.video_title
     )
     
     print(f"🔍 Backend: Building response for status: {job.status}")
