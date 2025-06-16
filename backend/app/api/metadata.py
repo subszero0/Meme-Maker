@@ -137,44 +137,46 @@ async def extract_video_metadata(request: UrlRequest):
             
             # Extract and filter video formats
             formats = []
-            seen_resolutions = set()
+            seen_format_ids = set()
             
             for fmt in info.get('formats', []):
-                # Only include formats that have both video and audio or video-only with good quality
+                # Only include formats that have video streams (exclude audio-only)
                 if (fmt.get('vcodec') != 'none' and 
                     fmt.get('height') and 
-                    fmt.get('width')):
+                    fmt.get('width') and
+                    fmt.get('format_id') not in seen_format_ids):
                     
                     resolution = f"{fmt.get('width')}x{fmt.get('height')}"
+                    format_id = fmt.get('format_id', '')
                     
-                    # Avoid duplicate resolutions, prefer better quality
-                    if resolution not in seen_resolutions:
-                        seen_resolutions.add(resolution)
-                        
-                        format_obj = VideoFormat(
-                            format_id=fmt.get('format_id', ''),
-                            ext=fmt.get('ext', 'mp4'),
-                            resolution=resolution,
-                            filesize=fmt.get('filesize'),
-                            fps=fmt.get('fps'),
-                            vcodec=fmt.get('vcodec', 'unknown'),
-                            acodec=fmt.get('acodec', 'unknown'),
-                            format_note=fmt.get('format_note', '')
-                        )
-                        formats.append(format_obj)
+                    # Avoid duplicate format IDs but allow multiple formats per resolution
+                    seen_format_ids.add(format_id)
+                    
+                    format_obj = VideoFormat(
+                        format_id=format_id,
+                        ext=fmt.get('ext', 'mp4'),
+                        resolution=resolution,
+                        filesize=fmt.get('filesize'),
+                        fps=fmt.get('fps'),
+                        vcodec=fmt.get('vcodec', 'unknown'),
+                        acodec=fmt.get('acodec', 'unknown'),
+                        format_note=fmt.get('format_note', '')
+                    )
+                    formats.append(format_obj)
             
-            # Sort formats by resolution (descending)
+            # Sort formats by resolution (descending), then by filesize (descending)
             def resolution_sort_key(fmt):
                 try:
                     width, height = map(int, fmt.resolution.split('x'))
-                    return width * height
+                    filesize = fmt.filesize or 0
+                    return (width * height, filesize)
                 except:
-                    return 0
+                    return (0, 0)
             
             formats.sort(key=resolution_sort_key, reverse=True)
             
-            # Limit to top 10 formats to avoid overwhelming UI
-            formats = formats[:10]
+            # Increase limit to show more available formats
+            formats = formats[:20]
             
             metadata = VideoMetadata(
                 title=title,
