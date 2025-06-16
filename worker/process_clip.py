@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 import json
+import re
 
 import yt_dlp
 
@@ -168,6 +169,65 @@ def detect_video_rotation(video_path: Path) -> Optional[str]:
         return None
 
 
+def sanitize_filename(title: str, max_length: int = 100) -> str:
+    """
+    Sanitize a video title for use as a filename.
+    Removes/replaces problematic characters and limits length.
+    """
+    if not title or title.strip() == '':
+        return 'video'
+    
+    # Remove or replace problematic characters
+    sanitized = re.sub(r'[<>:"/\\|?*]', '_', title)  # Replace invalid filename chars
+    sanitized = re.sub(r'[^\w\s\-_\.\(\)\[\]]', '', sanitized)  # Keep only safe chars
+    sanitized = re.sub(r'\s+', '_', sanitized)  # Replace spaces with underscores
+    sanitized = re.sub(r'_{2,}', '_', sanitized)  # Replace multiple underscores with single
+    sanitized = sanitized.strip('_')  # Remove leading/trailing underscores
+    
+    # Limit length and ensure it's not empty
+    if len(sanitized) > max_length:
+        sanitized = sanitized[:max_length].rstrip('_')
+    
+    if not sanitized:
+        sanitized = 'video'
+    
+    return sanitized
+
+
+def extract_video_title(url: str) -> str:
+    """
+    Extract video title from URL using yt-dlp.
+    Returns sanitized title suitable for filename.
+    """
+    try:
+        logger.info(f"🎬 Worker: Extracting video title from: {url}")
+        
+        ydl_opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'extract_flat': False,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            
+            # Handle playlist URLs - take first video
+            if 'entries' in info and info['entries']:
+                info = info['entries'][0]
+            
+            title = info.get('title', 'Unknown Video')
+            sanitized_title = sanitize_filename(title)
+            
+            logger.info(f"🎬 Worker: Video title: '{title}'")
+            logger.info(f"🎬 Worker: Sanitized filename: '{sanitized_title}'")
+            
+            return sanitized_title
+            
+    except Exception as e:
+        logger.warning(f"🎬 Worker: Failed to extract video title: {e}")
+        return 'video'
+
+
 def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: Optional[str] = None) -> None:
     """
     Process a video clipping job:
@@ -189,6 +249,10 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
         logger.info(f"🎬 Worker: Starting job {job_id}: {url} [{in_ts}s - {out_ts}s] format: {format_id}")
         logger.info(f"🎬 Worker: Received format_id type: {type(format_id)}, value: {repr(format_id)}")
         logger.info(f"🎬 Worker: Clip duration requested: {out_ts - in_ts:.2f} seconds")
+        
+        # Extract video title for filename
+        video_title = extract_video_title(url)
+        logger.info(f"🎬 Worker: Using video title for filename: '{video_title}'")
         
         # Check if format_id is actually provided
         if format_id is None:
@@ -714,6 +778,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
             
             # Run FFmpeg and capture timing
             logger.info(f"🎬 Worker: Starting FFmpeg processing...")
+            update_job_progress(job_id, 60, stage="Processing video with FFmpeg...")
             ffmpeg_start = time.time()
             result = subprocess.run(cmd_process, capture_output=True, text=True)
             ffmpeg_duration = time.time() - ffmpeg_start
@@ -808,8 +873,13 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
         clips_dir = Path("/app/clips")
         clips_dir.mkdir(exist_ok=True)
         
-        # Move file to clips directory with job ID name
-        final_clip_path = clips_dir / f"{job_id}.mp4"
+        # Move file to clips directory with video title as filename
+        final_clip_path = clips_dir / f"{video_title}.mp4"
+        
+        # If file already exists, append job_id to make it unique
+        if final_clip_path.exists():
+            final_clip_path = clips_dir / f"{video_title}_{job_id}.mp4"
+            logger.info(f"🎬 Worker: File exists, using unique name: {final_clip_path.name}")
         
         try:
             # Copy the processed file to the clips directory (use copy instead of rename for cross-device compatibility)
@@ -819,7 +889,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
             raise Exception(f"STORAGE_FAIL: Failed to save clip: {str(e)}")
         
         # Generate download URL (served by backend via localhost for frontend access)
-        download_url = f"http://localhost:8000/clips/{job_id}.mp4"
+        download_url = f"http://localhost:8000/clips/{final_clip_path.name}"
         
         # Step 6: Mark as done
         job_key = f"job:{job_id}"
