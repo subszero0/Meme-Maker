@@ -8,10 +8,12 @@ import sys
 import time
 import logging
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Add backend to path for imports
-sys.path.append('/app/backend')
+import os
+backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+sys.path.append(backend_path)
 
 # Import backend dependencies
 from app import redis, settings
@@ -45,7 +47,8 @@ def get_queued_jobs():
                         'url': decoded_job['url'],
                         'in_ts': float(decoded_job['in_ts']),
                         'out_ts': float(decoded_job['out_ts']),
-                        'created_at': decoded_job['created_at']
+                        'created_at': decoded_job['created_at'],
+                        'format_id': decoded_job.get('format_id') if decoded_job.get('format_id') != 'None' else None
                     })
             if cursor == 0:
                 break
@@ -65,7 +68,7 @@ def mark_job_as_working(job_id: str):
         redis.hset(job_key, mapping={
             "status": JobStatus.working.value,
             "progress": 0,
-            "started_at": datetime.utcnow().isoformat() + "Z"
+                            "started_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         })
         redis.expire(job_key, 3600)  # 1 hour expiry
         return True

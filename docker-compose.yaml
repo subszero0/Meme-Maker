@@ -6,14 +6,25 @@ services:
     ports:
       - "6379:6379"
     command: ["redis-server"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
     container_name: meme-maker-backend
+    restart: unless-stopped
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - ENVIRONMENT=production
     ports:
       - "8000:8000"
     volumes:
@@ -25,15 +36,21 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     container_name: meme-maker-worker
+    restart: unless-stopped
     depends_on:
-      - redis
-      - backend
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis://redis:6379
     volumes:
       - clips-storage:/app/clips
 
   prometheus:
     image: prom/prometheus
     container_name: meme-maker-prometheus
+    restart: unless-stopped
     volumes:
       - prometheus-data:/prometheus
       - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
@@ -43,6 +60,7 @@ services:
   grafana:
     image: grafana/grafana
     container_name: meme-maker-grafana
+    restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     ports:

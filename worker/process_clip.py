@@ -92,7 +92,7 @@ def find_nearest_keyframe(video_path: str, timestamp: float) -> float:
 
 def detect_video_rotation(video_path: Path) -> Optional[str]:
     """
-    Detect if video has rotation metadata that needs correction.
+    Detect if video has rotation metadata or visual rotation that needs correction.
     Returns FFmpeg filter string if rotation correction is needed, None otherwise.
     """
     try:
@@ -109,13 +109,16 @@ def detect_video_rotation(video_path: Path) -> Optional[str]:
         
         for stream in metadata.get('streams', []):
             if stream.get('codec_type') == 'video':
-                # Check for rotation in side data
+                width = stream.get('width', 0)
+                height = stream.get('height', 0)
+                
+                # Check for rotation in side data (Display Matrix)
                 side_data = stream.get('side_data_list', [])
                 for data in side_data:
                     if data.get('side_data_type') == 'Display Matrix':
                         rotation = data.get('rotation', 0)
                         if rotation:
-                            logger.info(f"Found rotation metadata: {rotation}°")
+                            logger.info(f"Found rotation metadata in Display Matrix: {rotation}°")
                             # Convert rotation to appropriate transpose filter
                             if rotation == 90 or rotation == -270:
                                 return 'transpose=2'  # 90° counterclockwise
@@ -130,18 +133,38 @@ def detect_video_rotation(video_path: Path) -> Optional[str]:
                     rotation = int(tags['rotate'])
                     logger.info(f"Found rotation tag: {rotation}°")
                     if rotation == 90:
-                        return 'transpose=2'  # 90° counterclockwise
+                        return 'transpose=2'  # 90° counterclockwise  
                     elif rotation == -90 or rotation == 270:
                         return 'transpose=1'  # 90° clockwise
                     elif rotation == 180:
                         return 'transpose=1,transpose=1'  # 180°
-        
-        # No rotation metadata found
-        logger.info("No rotation metadata detected - preserving original orientation")
-        return None
+                
+                # ENHANCED: Check for visual rotation based on aspect ratio and encoding patterns
+                # If video is portrait (height > width) but appears rotated from mobile source
+                if height > width and width > 0 and height > 0:
+                    aspect_ratio = height / width
+                    
+                    # Check if this looks like a rotated landscape video
+                    # Common mobile video resolutions when rotated incorrectly:
+                    # 360x640 (should be 640x360), 480x854 (should be 854x480), etc.
+                    if aspect_ratio > 1.5:  # Very tall aspect ratio suggests rotation issue
+                        # Check encoding signature for mobile/YouTube sources that often have rotation issues
+                        encoder = tags.get('encoder', '').lower()
+                        handler = tags.get('handler_name', '').lower()
+                        
+                        # YouTube and mobile encoders often produce rotated content
+                        if ('google' in handler or 'youtube' in handler or 'android' in handler or 
+                            'lavc' in encoder or 'x264' in encoder):
+                            logger.info(f"Detected visually rotated content: {width}x{height} from {handler}")
+                            logger.info("Applying 90° counter-clockwise correction for mobile video")
+                            return 'transpose=2'  # 90° counter-clockwise to fix mobile rotation
+                
+                # No rotation correction needed
+                logger.info(f"No rotation correction needed for {width}x{height} video")
+                return None
         
     except Exception as e:
-        logger.warning(f"Failed to detect rotation metadata: {e}")
+        logger.warning(f"Failed to detect rotation: {e}")
         return None
 
 
@@ -163,7 +186,32 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
     job_status = "error"  # Default to error, will be updated to "done" on success
     
     try:
-        logger.info(f"Starting job {job_id}: {url} [{in_ts}s - {out_ts}s] format: {format_id}")
+        logger.info(f"🎬 Worker: Starting job {job_id}: {url} [{in_ts}s - {out_ts}s] format: {format_id}")
+        logger.info(f"🎬 Worker: Received format_id type: {type(format_id)}, value: {repr(format_id)}")
+        logger.info(f"🎬 Worker: Clip duration requested: {out_ts - in_ts:.2f} seconds")
+        
+        # Check if format_id is actually provided
+        if format_id is None:
+            logger.warning("🎬 Worker: format_id is None - resolution picker not working!")
+        elif format_id == "None":
+            logger.warning("🎬 Worker: format_id is string 'None' - check serialization!")
+        else:
+            logger.info(f"🎬 Worker: Using user-selected format: {format_id}")
+            
+        # Log timing details
+        logger.info(f"🎬 Worker: TIMING ANALYSIS:")
+        logger.info(f"🎬 Worker: - Start timestamp: {in_ts}s")
+        logger.info(f"🎬 Worker: - End timestamp: {out_ts}s") 
+        logger.info(f"🎬 Worker: - Expected duration: {out_ts - in_ts:.3f}s")
+        
+        # Validate input timestamps
+        if in_ts < 0:
+            logger.warning(f"🎬 Worker: ⚠️  Negative start timestamp: {in_ts}s")
+        if out_ts <= in_ts:
+            logger.error(f"🎬 Worker: ❌ Invalid timestamps: end ({out_ts}s) <= start ({in_ts}s)")
+            raise Exception(f"INVALID_TIMESTAMPS: end ({out_ts}s) must be greater than start ({in_ts}s)")
+        if (out_ts - in_ts) < 0.1:
+            logger.warning(f"🎬 Worker: ⚠️  Very short clip duration: {out_ts - in_ts:.3f}s")
         
         # Create temporary directory
         temp_dir = Path(tempfile.mkdtemp(prefix=f"clip_{job_id}_"))
@@ -173,15 +221,21 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
         
         source_file = temp_dir / f"{job_id}.%(ext)s"
         
-        # Build format selector based on user choice or default
-        if format_id:
-            format_selector = f'{format_id}+bestaudio/best[format_id={format_id}]'
-            logger.info(f"Using selected format: {format_id}")
+        # Enhanced format selector with robust fallback for better compatibility
+        if format_id and format_id != "None":
+            # Build a comprehensive fallback chain for user-selected format
+            format_selector = f'{format_id}+bestaudio/{format_id}/best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best'
+            logger.info(f"🎬 Worker: Using selected format: {format_id} with robust fallback")
+            logger.info(f"🎬 Worker: Format selector: {format_selector}")
+            logger.info(f"🎬 Worker: Fallback chain: {format_id} -> 720p MP4 -> 720p any -> MP4 -> best available")
         else:
             format_selector = 'best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best'
-            logger.info("Using default format selection")
+            logger.warning(f"🎬 Worker: No format_id provided (got: {repr(format_id)}), using default format selection")
+            logger.warning(f"🎬 Worker: Default selector: {format_selector}")
+            logger.warning("🎬 Worker: This indicates the resolution picker may not be working properly!")
         
         # Multiple yt-dlp configurations to try in order
+        # Always respect user-selected format in first 3 attempts, fallback gracefully
         config_attempts = [
             # Attempt 1: Default configuration with user-selected format (WORKING as of 2025-06-13)
             {
@@ -193,10 +247,10 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                 'writeautomaticsub': False,
                 'extract_flat': False,
             },
-            # Attempt 2: Updated Android client configuration (2024) - FALLBACK
+            # Attempt 2: Updated Android client configuration (2024) - ALWAYS RESPECTS USER FORMAT
             {
                 'outtmpl': str(source_file),
-                'format': 'best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best',
+                'format': format_selector,  # Always use user-selected format
                 'quiet': True,
                 'no_warnings': True,
                 'writesubtitles': False,
@@ -218,10 +272,10 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                     'Upgrade-Insecure-Requests': '1'
                 }
             },
-            # Attempt 3: Web client with modern headers - FALLBACK
+            # Attempt 3: Web client with modern headers - ALWAYS RESPECTS USER FORMAT
             {
                 'outtmpl': str(source_file),
-                'format': 'best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best',
+                'format': format_selector,  # Always use user-selected format
                 'quiet': True,
                 'no_warnings': True,
                 'writesubtitles': False,
@@ -250,10 +304,10 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                     'sec-ch-ua-platform': '"Windows"'
                 }
             },
-            # Attempt 4: iOS client fallback (most reliable for blocked regions) - FALLBACK
+            # Attempt 4: iOS client - PREFER USER FORMAT, FALLBACK IF NEEDED
             {
                 'outtmpl': str(source_file),
-                'format': 'best[height<=480][ext=mp4]/best[height<=480]/worst[ext=mp4]/worst',
+                'format': format_selector if format_id else 'best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best',
                 'quiet': True,
                 'no_warnings': True,
                 'writesubtitles': False,
@@ -274,10 +328,10 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                     'Upgrade-Insecure-Requests': '1'
                 }
             },
-            # Attempt 5: Age-gate bypass attempt with embedded player - FALLBACK
+            # Attempt 5: Age-gate bypass attempt with embedded player - RESPECT USER FORMAT
             {
                 'outtmpl': str(source_file),
-                'format': 'worst[ext=mp4]/worst',
+                'format': format_selector if format_id else 'worst[ext=mp4]/worst',  # Respect user format, worst only if no preference
                 'quiet': True,
                 'no_warnings': True,
                 'writesubtitles': False,
@@ -301,24 +355,78 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
             }
         ]
         
+        # Pre-validate format availability if user selected a specific format
+        if format_id and format_id != "None":
+            logger.info(f"🎬 Worker: Validating format {format_id} availability...")
+            try:
+                # Quick format validation without downloading
+                validate_opts = {
+                    'quiet': True,
+                    'no_warnings': True,
+                    'extract_flat': False,
+                }
+                with yt_dlp.YoutubeDL(validate_opts) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                    if 'entries' in info and info['entries']:
+                        info = info['entries'][0]
+                    
+                    available_formats = [f.get('format_id') for f in info.get('formats', [])]
+                    logger.info(f"🎬 Worker: Available formats: {available_formats[:10]}...")  # Show first 10
+                    
+                    if format_id in available_formats:
+                        logger.info(f"✅ Worker: Format {format_id} is available")
+                    else:
+                        logger.warning(f"⚠️ Worker: Format {format_id} NOT available! Backend provided incorrect format.")
+                        logger.warning(f"🎬 Worker: This indicates backend metadata is stale or incorrect")
+                        logger.warning(f"🎬 Worker: Will fall back to best available format")
+                        # Override format selector to use fallback
+                        format_selector = 'best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best'
+                        logger.info(f"🎬 Worker: Updated format selector: {format_selector}")
+                        
+            except Exception as e:
+                logger.warning(f"⚠️ Worker: Format validation failed: {e}")
+                logger.warning(f"🎬 Worker: Proceeding with original format selector")
+        
         # Try each configuration
         download_success = False
         last_error = None
+        actual_format_used = None
         
         for i, ydl_opts in enumerate(config_attempts):
             try:
-                logger.info(f"Attempt {i+1}: Trying download with config {i+1}")
+                logger.info(f"🎬 Worker: Attempt {i+1}: Trying download with config {i+1}")
+                logger.info(f"🎬 Worker: Config {i+1} format selector: {ydl_opts.get('format', 'default')}")
+                
+                # Update format selector in case it was changed during validation
+                ydl_opts['format'] = format_selector
+                
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
                     # Handle playlist URLs
                     if 'entries' in info and info['entries']:
                         info = info['entries'][0]
+                    
+                    # Log the actual format that was downloaded
+                    actual_format_used = info.get('format_id', 'unknown')
+                    actual_resolution = f"{info.get('width', 'unknown')}x{info.get('height', 'unknown')}"
+                    requested_format = format_id if format_id and format_id != "None" else "auto"
+                    
+                    logger.info(f"🎬 Worker: Downloaded format: {actual_format_used}, resolution: {actual_resolution}")
+                    logger.info(f"🎬 Worker: Requested: {requested_format}, Got: {actual_format_used}")
+                    
+                    if format_id and format_id != "None" and actual_format_used != format_id:
+                        logger.warning(f"⚠️ Worker: Format mismatch! Requested {format_id}, got {actual_format_used}")
+                        logger.warning(f"🎬 Worker: This confirms backend provided incorrect format data")
+                    
                 download_success = True
-                logger.info(f"✅ Download successful with config {i+1}")
+                logger.info(f"✅ Worker: Download successful with config {i+1}")
                 break
             except Exception as e:
                 last_error = e
                 logger.warning(f"❌ Config {i+1} failed: {str(e)}")
+                # Special handling for format not available errors
+                if "Requested format is not available" in str(e):
+                    logger.warning(f"🎬 Worker: Format {format_id} confirmed unavailable - backend metadata was wrong")
                 # Clean up any partial files
                 for f in temp_dir.glob(f"{job_id}.*"):
                     try:
@@ -336,7 +444,9 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
             raise Exception("YTDLP_FAIL: No file downloaded")
         
         source_file = downloaded_files[0]
-        logger.info(f"Downloaded: {source_file}")
+        logger.info(f"🎬 Worker: Downloaded: {source_file}")
+        logger.info(f"🎬 Worker: File extension: {source_file.suffix}")
+        logger.info(f"🎬 Worker: File size: {source_file.stat().st_size} bytes")
         
         # Validate that we got a video file, not HTML
         if source_file.suffix.lower() in ['.html', '.mhtml', '.htm']:
@@ -352,20 +462,80 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
         if file_size < 1024:  # Less than 1KB is suspicious for video
             raise Exception(f"YTDLP_FAIL: Downloaded file is too small ({file_size} bytes) - likely not a video")
         
-        # Step 3: Analyze keyframes and decide encoding strategy
-        update_job_progress(job_id, 30, stage="Trimming video...")
+        # Step 3: Analyze downloaded video and decide encoding strategy
+        update_job_progress(job_id, 30, stage="Analyzing video...")
         
-        # Detect if rotation correction is needed
-        rotation_filter = detect_video_rotation(source_file.with_suffix('.mp4'))
+        # First, analyze the actual downloaded file structure
+        try:
+            cmd = [
+                'ffprobe',
+                '-v', 'quiet',
+                '-print_format', 'json', 
+                '-show_streams',
+                '-show_format',
+                str(source_file)  # Use actual downloaded file
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            video_info = json.loads(result.stdout)
+            
+            # Log stream information
+            video_streams = [s for s in video_info.get('streams', []) if s.get('codec_type') == 'video']
+            audio_streams = [s for s in video_info.get('streams', []) if s.get('codec_type') == 'audio']
+            
+            logger.info(f"🎬 Worker: Source analysis:")
+            logger.info(f"🎬 Worker: - Video streams: {len(video_streams)}")
+            logger.info(f"🎬 Worker: - Audio streams: {len(audio_streams)}")
+            
+            if video_streams:
+                vs = video_streams[0]
+                logger.info(f"🎬 Worker: - Video codec: {vs.get('codec_name', 'unknown')}")
+                logger.info(f"🎬 Worker: - Resolution: {vs.get('width', '?')}x{vs.get('height', '?')}")
+                logger.info(f"🎬 Worker: - Frame rate: {vs.get('avg_frame_rate', 'unknown')}")
+                logger.info(f"🎬 Worker: - Pixel format: {vs.get('pix_fmt', 'unknown')}")
+                
+                # Check if we actually have video content
+                if vs.get('codec_name') == 'none' or vs.get('width', 0) == 0:
+                    logger.warning("🎬 Worker: ⚠️  Video stream appears to be empty or invalid!")
+            else:
+                logger.error("🎬 Worker: ❌ No video streams found in downloaded file!")
+                raise Exception("VIDEO_FAIL: Downloaded file contains no video streams")
+                
+            if audio_streams:
+                aud = audio_streams[0]
+                logger.info(f"🎬 Worker: - Audio codec: {aud.get('codec_name', 'unknown')}")
+                logger.info(f"🎬 Worker: - Sample rate: {aud.get('sample_rate', 'unknown')}")
+            
+        except subprocess.CalledProcessError as e:
+            logger.error(f"🎬 Worker: Failed to analyze source video: {e}")
+            raise Exception(f"VIDEO_FAIL: Cannot analyze downloaded video file: {e}")
+        except Exception as e:
+            logger.warning(f"🎬 Worker: Video analysis warning: {e}")
+        
+        update_job_progress(job_id, 35, stage="Trimming video...")
+        
+        # Detect if rotation correction is needed (use actual source file)
+        rotation_filter = detect_video_rotation(source_file)
         if rotation_filter:
-            logger.info(f"Applying rotation correction: {rotation_filter}")
+            logger.info(f"🎬 Worker: Applying rotation correction: {rotation_filter}")
         else:
-            logger.info("No rotation correction needed")
+            logger.info("🎬 Worker: No rotation correction needed")
         
-        keyframe_ts = find_nearest_keyframe(str(source_file.with_suffix('.mp4')), in_ts)
+        # Find keyframes using the actual source file
+        logger.info(f"🎬 Worker: KEYFRAME ANALYSIS:")
+        keyframe_ts = find_nearest_keyframe(str(source_file), in_ts)
         needs_reencode = abs(keyframe_ts - in_ts) > 1.0  # Re-encode if >1s from keyframe
         
-        logger.info(f"Key-frame check: in_ts={in_ts}, nearest={keyframe_ts}, needs_reencode={needs_reencode}")
+        logger.info(f"🎬 Worker: - Requested start: {in_ts}s")
+        logger.info(f"🎬 Worker: - Nearest keyframe: {keyframe_ts}s")
+        logger.info(f"🎬 Worker: - Keyframe offset: {abs(keyframe_ts - in_ts):.3f}s")
+        logger.info(f"🎬 Worker: - Needs re-encode: {needs_reencode}")
+        
+        # Log which FFmpeg strategy will be used
+        if needs_reencode:
+            logger.info(f"🎬 Worker: STRATEGY: Two-pass processing (re-encode + copy)")
+        else:
+            logger.info(f"🎬 Worker: STRATEGY: Single-pass stream copy")
         
         # Step 4: Clip video with FFmpeg
         update_job_progress(job_id, 40, stage="Trimming video...")
@@ -386,15 +556,27 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                 '-to', str(gop_end),
             ]
             
-            # Add rotation filter if needed
+            # Add rotation filter if needed, otherwise use copy
             if rotation_filter:
                 cmd_gop.extend(['-vf', rotation_filter])
+                cmd_gop.extend([
+                    '-c:v', 'libx264',
+                    '-preset', 'veryfast',
+                    '-crf', '18',
+                    '-c:a', 'aac',  # Ensure audio compatibility
+                    '-b:a', '128k',
+                ])
+            else:
+                # CRITICAL FIX: Use re-encoding for accurate timestamps (same as single-pass fix)
+                cmd_gop.extend([
+                    '-c:v', 'libx264',  # Re-encode video for accurate timestamps
+                    '-preset', 'veryfast',  # Fast encoding preset
+                    '-crf', '18',  # High quality constant rate factor
+                    '-c:a', 'aac',  # Re-encode audio for compatibility
+                    '-b:a', '128k',  # Audio bitrate
+                ])
                 
             cmd_gop.extend([
-                '-c:v', 'libx264',
-                '-preset', 'veryfast',
-                '-crf', '18',
-                '-c:a', 'copy',
                 '-avoid_negative_ts', 'make_zero',
                 str(temp_gop_file),
                 '-y'
@@ -416,15 +598,27 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                     '-to', str(out_ts),
                 ]
                 
-                # Add rotation filter if needed
+                # Add rotation filter if needed, otherwise use copy
                 if rotation_filter:
                     cmd_rest.extend(['-vf', rotation_filter])
+                    cmd_rest.extend([
+                        '-c:v', 'libx264',
+                        '-preset', 'veryfast', 
+                        '-crf', '18',
+                        '-c:a', 'aac',  # Ensure audio compatibility
+                        '-b:a', '128k',
+                    ])
+                else:
+                    # CRITICAL FIX: Use re-encoding for accurate timestamps (same as single-pass fix)
+                    cmd_rest.extend([
+                        '-c:v', 'libx264',  # Re-encode video for accurate timestamps
+                        '-preset', 'veryfast',  # Fast encoding preset
+                        '-crf', '18',  # High quality constant rate factor
+                        '-c:a', 'aac',  # Re-encode audio for compatibility
+                        '-b:a', '128k',  # Audio bitrate
+                    ])
                     
                 cmd_rest.extend([
-                    '-c:v', 'libx264',
-                    '-preset', 'veryfast', 
-                    '-crf', '18',
-                    '-c:a', 'copy',
                     '-avoid_negative_ts', 'make_zero',
                     str(temp_rest_file),
                     '-y'
@@ -455,38 +649,157 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                 # Only first GOP needed
                 output_file = temp_gop_file
         else:
-            # Simple copy with optional rotation correction
-            cmd_copy = [
+            # Simple processing - use stream copy when no rotation needed
+            logger.info(f"🎬 Worker: SINGLE-PASS PROCESSING:")
+            logger.info(f"🎬 Worker: - Input file: {source_file}")
+            logger.info(f"🎬 Worker: - Start time: {in_ts}s")
+            logger.info(f"🎬 Worker: - End time: {out_ts}s")
+            logger.info(f"🎬 Worker: - Duration: {out_ts - in_ts:.3f}s")
+            
+            # Use precise timestamp formatting for FFmpeg
+            # FFmpeg can be sensitive to timestamp precision
+            start_time_str = f"{in_ts:.6f}"  # 6 decimal places for microsecond precision
+            end_time_str = f"{out_ts:.6f}"
+            duration_str = f"{out_ts - in_ts:.6f}"
+            
+            logger.info(f"🎬 Worker: PRECISE TIMESTAMPS:")
+            logger.info(f"🎬 Worker: - Start: {start_time_str}s")
+            logger.info(f"🎬 Worker: - End: {end_time_str}s")
+            logger.info(f"🎬 Worker: - Duration: {duration_str}s")
+            
+            # Use -ss (seek start) and -t (duration) instead of -to (end time)
+            # This is more reliable for accurate duration clipping
+            cmd_process = [
                 settings.ffmpeg_path.replace('/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg'),
                 '-i', str(source_file),
-                '-ss', str(in_ts),
-                '-to', str(out_ts),
+                '-ss', start_time_str,
+                '-t', duration_str,  # Use duration instead of end time for better accuracy
             ]
             
-            # Add rotation filter if needed
+            logger.info(f"🎬 Worker: Using -ss (start) + -t (duration) method for accuracy")
+            
             if rotation_filter:
-                cmd_copy.extend(['-vf', rotation_filter])
+                # Need to re-encode for rotation correction
+                cmd_process.extend(['-vf', rotation_filter])
+                cmd_process.extend([
+                    '-c:v', 'libx264',
+                    '-preset', 'veryfast',
+                    '-crf', '18',
+                    '-c:a', 'aac',  # Ensure audio compatibility
+                    '-b:a', '128k',
+                ])
+                logger.info("🎬 Worker: ENCODING MODE: Re-encoding for rotation correction")
+            else:
+                # CRITICAL FIX: Use re-encoding instead of stream copy for accurate timestamps
+                # Stream copy (-c copy) cannot handle non-keyframe start times accurately
+                # See: https://ericswpark.com/blog/2022/2022-12-03-ffmpeg-cut-videos-to-the-exact-frame/
+                cmd_process.extend([
+                    '-c:v', 'libx264',  # Re-encode video for accurate timestamps
+                    '-preset', 'veryfast',  # Fast encoding preset
+                    '-crf', '18',  # High quality constant rate factor
+                    '-c:a', 'aac',  # Re-encode audio for compatibility
+                    '-b:a', '128k',  # Audio bitrate
+                ])
+                logger.info("🎬 Worker: ENCODING MODE: Re-encoding for accurate timestamp cutting")
                 
-            cmd_copy.extend([
-                '-c:v', 'libx264',
-                '-preset', 'veryfast',
-                '-crf', '18',
-                '-c:a', 'copy',
+            cmd_process.extend([
                 '-avoid_negative_ts', 'make_zero',
                 str(output_file),
                 '-y'
             ])
             
-            result = subprocess.run(cmd_copy, capture_output=True, text=True)
+            logger.info(f"🎬 Worker: FFMPEG COMMAND:")
+            logger.info(f"🎬 Worker: {' '.join(cmd_process)}")
+            logger.info(f"🎬 Worker: Expected output: {output_file}")
+            
+            # Run FFmpeg and capture timing
+            logger.info(f"🎬 Worker: Starting FFmpeg processing...")
+            ffmpeg_start = time.time()
+            result = subprocess.run(cmd_process, capture_output=True, text=True)
+            ffmpeg_duration = time.time() - ffmpeg_start
+            
+            logger.info(f"🎬 Worker: FFmpeg completed in {ffmpeg_duration:.2f}s")
+            
             if result.returncode != 0:
-                raise Exception(f"FFMPEG_FAIL: Copy failed: {result.stderr}")
+                logger.error(f"🎬 Worker: FFmpeg failed with return code: {result.returncode}")
+                logger.error(f"🎬 Worker: FFmpeg stderr: {result.stderr}")
+                logger.error(f"🎬 Worker: FFmpeg stdout: {result.stdout}")
+                raise Exception(f"FFMPEG_FAIL: Processing failed: {result.stderr}")
+            else:
+                logger.info("🎬 Worker: FFmpeg processing completed successfully")
+                if result.stderr:  # FFmpeg often outputs info to stderr even on success
+                    logger.info(f"🎬 Worker: FFmpeg info: {result.stderr[-500:]}")  # Last 500 chars
         
         update_job_progress(job_id, 70, stage="Finalizing clip...")
         
-        if not output_file.exists() or output_file.stat().st_size == 0:
-            raise Exception("FFMPEG_FAIL: Output file is empty or missing")
+        logger.info(f"🎬 Worker: OUTPUT FILE VALIDATION:")
         
-        logger.info(f"Clipped video: {output_file} ({output_file.stat().st_size} bytes)")
+        if not output_file.exists():
+            logger.error(f"🎬 Worker: ❌ Output file does not exist: {output_file}")
+            raise Exception("FFMPEG_FAIL: Output file was not created")
+        
+        output_size = output_file.stat().st_size
+        logger.info(f"🎬 Worker: - File exists: ✅")
+        logger.info(f"🎬 Worker: - File size: {output_size:,} bytes ({output_size/1024/1024:.2f} MB)")
+        
+        if output_size == 0:
+            logger.error(f"🎬 Worker: ❌ Output file is empty!")
+            raise Exception("FFMPEG_FAIL: Output file is empty")
+        
+        # Check for reasonable file size (at least 1KB for video)
+        if output_size < 1024:
+            logger.warning(f"🎬 Worker: ⚠️  Output file is very small: {output_size} bytes")
+            
+        logger.info(f"🎬 Worker: Clipped video created successfully")
+        
+        # Validate the output file has video content
+        try:
+            cmd_validate = [
+                'ffprobe',
+                '-v', 'quiet',
+                '-print_format', 'json',
+                '-show_streams',
+                str(output_file)
+            ]
+            
+            result = subprocess.run(cmd_validate, capture_output=True, text=True, check=True)
+            output_info = json.loads(result.stdout)
+            
+            output_video_streams = [s for s in output_info.get('streams', []) if s.get('codec_type') == 'video']
+            output_audio_streams = [s for s in output_info.get('streams', []) if s.get('codec_type') == 'audio']
+            
+            logger.info(f"🎬 Worker: Output validation:")
+            logger.info(f"🎬 Worker: - Video streams: {len(output_video_streams)}")
+            logger.info(f"🎬 Worker: - Audio streams: {len(output_audio_streams)}")
+            
+            if not output_video_streams:
+                logger.error("🎬 Worker: ❌ Output file has no video streams!")
+                raise Exception("VIDEO_FAIL: Output file contains no video content")
+            
+            if output_video_streams:
+                vs = output_video_streams[0]
+                actual_duration = float(vs.get('duration', 0))
+                expected_duration = out_ts - in_ts
+                
+                logger.info(f"🎬 Worker: - Output resolution: {vs.get('width', '?')}x{vs.get('height', '?')}")
+                logger.info(f"🎬 Worker: - Output codec: {vs.get('codec_name', 'unknown')}")
+                logger.info(f"🎬 Worker: - Output duration: {actual_duration:.3f}s")
+                logger.info(f"🎬 Worker: - Expected duration: {expected_duration:.3f}s")
+                
+                # CRITICAL: Check for duration mismatch
+                duration_diff = abs(actual_duration - expected_duration)
+                if duration_diff > 0.5:  # More than 0.5 second difference
+                    logger.error(f"🎬 Worker: ❌ DURATION MISMATCH!")
+                    logger.error(f"🎬 Worker: - Expected: {expected_duration:.3f}s")
+                    logger.error(f"🎬 Worker: - Actual: {actual_duration:.3f}s")
+                    logger.error(f"🎬 Worker: - Difference: {duration_diff:.3f}s")
+                    logger.error(f"🎬 Worker: This explains the user's complaint about short video!")
+                else:
+                    logger.info(f"🎬 Worker: ✅ Duration matches expected ({duration_diff:.3f}s difference)")
+                
+        except Exception as e:
+            logger.warning(f"🎬 Worker: Could not validate output file: {e}")
+            # Don't fail the job for validation issues, just warn
         
         # Step 5: Save to local storage for HTTP serving
         update_job_progress(job_id, 90, stage="Preparing download...")

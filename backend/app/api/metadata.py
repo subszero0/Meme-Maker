@@ -96,17 +96,32 @@ async def extract_video_metadata(request: UrlRequest):
         url = str(request.url)
         logger.info(f"🔍 Extracting metadata for: {url}")
         
-        # Configure yt-dlp for metadata extraction only
+        # Configure yt-dlp for metadata extraction with minimal settings
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
-            # Don't specify format for metadata extraction
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # Extract metadata without downloading
-            info = await asyncio.to_thread(ydl.extract_info, url, download=False)
+            try:
+                info = await asyncio.to_thread(ydl.extract_info, url, download=False)
+            except Exception as extract_error:
+                logger.error(f"❌ yt-dlp extraction failed: {extract_error}")
+                # Try with different configuration if first attempt fails
+                ydl_opts_fallback = {
+                    'quiet': True,
+                    'no_warnings': True,
+                    'extract_flat': False,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['tv', 'web'],
+                        }
+                    }
+                }
+                with yt_dlp.YoutubeDL(ydl_opts_fallback) as ydl_fallback:
+                    info = await asyncio.to_thread(ydl_fallback.extract_info, url, download=False)
             
             # Handle playlists by taking first video
             if 'entries' in info and info['entries']:
@@ -172,6 +187,7 @@ async def extract_video_metadata(request: UrlRequest):
             )
             
             logger.info(f"✅ Extracted metadata: {title} - {len(formats)} formats")
+            logger.info(f"🔍 Backend: Format IDs extracted: {[f.format_id for f in formats[:10]]}")  # Log first 10 format IDs
             return metadata
             
     except Exception as e:

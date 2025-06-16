@@ -21,7 +21,40 @@ export const metadata: Metadata = {
 
 const AppShell: FC<PropsWithChildren> = ({ children }) => {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Suppress common browser extension errors
+              window.addEventListener('error', function(e) {
+                // Suppress RegisterClientLocalizationsError from browser extensions
+                if (e.error && e.error.name === 'RegisterClientLocalizationsError') {
+                  e.preventDefault();
+                  return false;
+                }
+                // Suppress connection errors from browser extensions
+                if (e.error && e.error.message && e.error.message.includes('Could not establish connection')) {
+                  e.preventDefault();
+                  return false;
+                }
+              });
+              
+              // Suppress unhandled promise rejections from browser extensions
+              window.addEventListener('unhandledrejection', function(e) {
+                if (e.reason && e.reason.name === 'RegisterClientLocalizationsError') {
+                  e.preventDefault();
+                  return false;
+                }
+                if (e.reason && e.reason.message && e.reason.message.includes('Could not establish connection')) {
+                  e.preventDefault();
+                  return false;
+                }
+              });
+            `
+          }}
+        />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {/* Fixed Header */}
         <header className="fixed top-0 left-0 right-0 z-50 bg-indigo-500 text-white shadow-lg">

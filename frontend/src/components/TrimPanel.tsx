@@ -109,11 +109,19 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
   }, [debouncedOutChange]);
 
   const handleFormatChange = useCallback((formatId: string | undefined) => {
+    console.log('🎭 TrimPanel: Format changed to:', formatId);
     dispatch({ type: 'SET_FORMAT_ID', payload: formatId });
   }, []);
 
   const handleSubmit = useCallback(() => {
     if (!canSubmit) return;
+    
+    console.log('🎭 TrimPanel: Submitting with state:', {
+      in: state.in,
+      out: state.out,
+      formatId: state.formatId,
+      rights: state.rights
+    });
     
     try {
       onSubmit({ 
@@ -123,6 +131,7 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
         formatId: state.formatId 
       });
     } catch (error) {
+      console.error('🎭 TrimPanel: Submit failed:', error);
       pushToast({ type: 'error', message: 'Failed to submit clip request' });
     }
   }, [canSubmit, state.in, state.out, state.formatId, onSubmit, pushToast]);

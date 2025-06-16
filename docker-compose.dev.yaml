@@ -2,18 +2,26 @@ services:
   redis:
     image: redis:7.2.5-alpine
     container_name: meme-maker-redis-dev
-    restart: always
+    restart: unless-stopped
     ports:
       - "6379:6379"
     command: ["redis-server"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
     container_name: meme-maker-backend-dev
+    restart: unless-stopped
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     environment:
       - REDIS_URL=redis://redis:6379
       - DEBUG=true
@@ -29,6 +37,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     container_name: meme-maker-frontend-dev
+    restart: unless-stopped
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     ports:
@@ -37,15 +46,18 @@ services:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
   worker:
     build:
       context: .
       dockerfile: Dockerfile.worker
     container_name: meme-maker-worker-dev
+    restart: unless-stopped
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     environment:
       - REDIS_URL=redis://redis:6379
     volumes:

@@ -70,7 +70,7 @@ export async function fetchVideoMetadata(url: string): Promise<VideoMetadata> {
 }
 
 export async function createJob(request: { url: string; in: number; out: number; rights: boolean; formatId?: string }): Promise<{ jobId: string }> {
-  console.log('API: Creating job with payload:', request);
+  console.log('🔌 API: Creating job with frontend request:', request);
   
   // Transform frontend format to backend format
   const backendRequest: JobRequest = {
@@ -81,7 +81,8 @@ export async function createJob(request: { url: string; in: number; out: number;
     // Don't send 'rights' field to backend
   };
   
-  console.log('API: Sending to backend:', backendRequest);
+  console.log('🔌 API: Transformed backend request:', backendRequest);
+  console.log('🔌 API: format_id value being sent:', backendRequest.format_id);
   
   try {
     const response = await axios.post(`${BASE_URL}/api/v1/jobs`, backendRequest, {
@@ -91,16 +92,17 @@ export async function createJob(request: { url: string; in: number; out: number;
       }
     });
     
-    console.log('API: Job creation response:', response.data);
+    console.log('🔌 API: Job creation response:', response.data);
+    console.log('🔌 API: Response format_id:', response.data.format_id);
     
     // Transform backend response to frontend format
     return {
       jobId: response.data.id  // Map 'id' to 'jobId'
     };
   } catch (error) {
-    console.error('API: Job creation failed:', error);
+    console.error('🔌 API: Job creation failed:', error);
     if (axios.isAxiosError(error)) {
-      console.error('API: Job creation error details:', {
+      console.error('🔌 API: Job creation error details:', {
         message: error.message,
         status: error.response?.status,
         data: error.response?.data,

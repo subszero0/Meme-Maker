@@ -21,8 +21,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy worker code
 COPY worker/ ./worker/
 
-# Update yt-dlp on startup
-RUN yt-dlp -U || true
+# Update yt-dlp to latest version for YouTube fixes
+RUN pip install --upgrade --force-reinstall yt-dlp
 
 # Create clips directory with proper permissions
 RUN mkdir -p /app/clips
@@ -32,9 +32,12 @@ RUN adduser -D -s /bin/sh app && \
     chown -R app:app /app
 USER app
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
-    CMD python -c "import redis; redis.Redis.from_url('$REDIS_URL').ping()" || exit 1
+# Set default Redis URL for health check
+ENV REDIS_URL=redis://redis:6379
+
+# Health check - improved Redis connection check
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=3 \
+    CMD python -c "import redis, os; redis.Redis.from_url(os.getenv('REDIS_URL', 'redis://redis:6379')).ping()" || exit 1
 
 # Run the custom worker
 CMD ["python", "/app/worker/main.py"]
