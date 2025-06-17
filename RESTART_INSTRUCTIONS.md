@@ -47,7 +47,7 @@ docker-compose up --build
 - ✅ Look for: "✅ Redis connection successful"  
 - ✅ Look for: "⏰ Starting job polling (interval: 2s)"
 - ✅ Look for: Backend server ready on port 8000
-- ✅ Look for: Frontend ready on port 3000
+- ✅ Look for: Frontend-New (React) ready on port 3000
 
 This usually takes 2-3 minutes for the first build.
 

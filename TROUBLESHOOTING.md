@@ -87,9 +87,9 @@ docker-compose -f docker-compose.dev.yaml up -d --build backend
    ```bash
    docker-compose -f docker-compose.dev.yaml up -d redis backend worker
    ```
-3. Start the frontend:
+3. Start the frontend (NEW React App):
    ```bash
-   cd frontend
+   cd frontend-new
    npm run dev
    ```
 
@@ -220,8 +220,8 @@ docker-compose -f docker-compose.dev.yaml up -d redis backend worker
 # Wait for healthy status
 docker ps --filter "health=healthy"
 
-# Terminal 2: Frontend
-cd frontend
+# Terminal 2: Frontend (NEW React App)
+cd frontend-new
 npm run dev
 ```
 
@@ -279,7 +279,13 @@ docker-compose -f docker-compose.dev.yaml logs -f backend
 
 Ensure these are set correctly:
 
-**Frontend (.env.local)**:
+**Frontend-New (.env.local)**:
+```
+VITE_API_BASE_URL=http://localhost:8000
+VITE_WS_BASE_URL=ws://localhost:8000
+```
+
+**Legacy Frontend (.env.local)**:
 ```
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```

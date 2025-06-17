@@ -34,20 +34,29 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ./frontend-new
       dockerfile: Dockerfile.dev
     container_name: meme-maker-frontend-dev
     restart: unless-stopped
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - VITE_API_BASE_URL=http://localhost:8000
+      - VITE_WS_BASE_URL=ws://localhost:8000
+      - NODE_ENV=development
     ports:
       - "3000:3000"
     volumes:
-      - ./frontend:/app
+      - ./frontend-new:/app
       - /app/node_modules
+      - /app/dist
     depends_on:
       backend:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   worker:
     build:

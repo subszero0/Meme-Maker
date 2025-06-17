@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "packageManager": "npm",
+  "reporters": ["html", "clear-text", "progress", "dashboard"],
+  "testRunner": "vitest",
+  "coverageAnalysis": "perTest",
+  "vitest": {
+    "configFile": "vite.config.ts"
+  },
+  "mutate": [
+    "src/components/**/*.{ts,tsx}",
+    "src/hooks/**/*.{ts,tsx}",
+    "src/lib/**/*.{ts,tsx}",
+    "!src/**/*.test.{ts,tsx}",
+    "!src/**/*.cy.{ts,tsx}",
+    "!src/test/**/*"
+  ],
+  "ignorePatterns": [
+    "src/components/ui/**/*",
+    "src/test/**/*",
+    "**/*.test.{ts,tsx}",
+    "**/*.cy.{ts,tsx}",
+    "**/node_modules/**/*"
+  ],
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": 50
+  },
+  "timeoutMS": 60000,
+  "timeoutFactor": 2,
+  "maxConcurrentTestRunners": 4,
+  "tempDirName": "stryker-tmp",
+  "cleanTempDir": true,
+  "dashboard": {
+    "project": "github.com/your-username/meme-maker",
+    "version": "main"
+  },
+  "htmlReporter": {
+    "fileName": "mutation-testing-report.html"
+  }
+} 
