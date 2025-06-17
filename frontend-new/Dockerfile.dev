@@ -1,0 +1,42 @@
+# Development Dockerfile for frontend-new
+FROM node:18-alpine AS base
+
+# Install security updates and essential packages
+RUN apk update && apk upgrade && \
+    apk add --no-cache \
+    tini \
+    && rm -rf /var/cache/apk/*
+
+# Create app user for security
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY bun.lockb ./
+
+# Install dependencies
+RUN npm ci --only=production --silent && \
+    npm cache clean --force
+
+# Copy source code
+COPY . .
+
+# Change ownership to app user
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+# Expose port
+EXPOSE 3000
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/ || exit 1
+
+# Use tini as init
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# Start development server
+CMD ["npm", "run", "dev:docker"]
