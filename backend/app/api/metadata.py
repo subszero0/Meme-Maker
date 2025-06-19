@@ -96,11 +96,27 @@ async def extract_video_metadata(request: UrlRequest):
         url = str(request.url)
         logger.info(f"🔍 Extracting metadata for: {url}")
         
-        # Configure yt-dlp for metadata extraction with minimal settings
+        # Configure yt-dlp for metadata extraction with robust format detection
+        # Match worker configuration for consistency
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android_creator', 'web'],
+                    'skip': ['dash']
+                }
+            },
+            'http_headers': {
+                'User-Agent': 'com.google.android.apps.youtube.creator/24.47.100 (Linux; U; Android 14; SM-S918B) gzip',
+                'Accept': '*/*',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1'
+            }
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -135,9 +151,11 @@ async def extract_video_metadata(request: UrlRequest):
             upload_date = info.get('upload_date', '')
             view_count = int(info.get('view_count', 0))
             
-            # Extract and filter video formats
+            # Extract and filter video formats with enhanced logging
             formats = []
             seen_format_ids = set()
+            
+            logger.info(f"🔍 Backend: Processing {len(info.get('formats', []))} total formats from yt-dlp")
             
             for fmt in info.get('formats', []):
                 # Only include formats that have video streams (exclude audio-only)
@@ -163,6 +181,10 @@ async def extract_video_metadata(request: UrlRequest):
                         format_note=fmt.get('format_note', '')
                     )
                     formats.append(format_obj)
+                    
+                    # Log first few formats for debugging
+                    if len(formats) <= 5:
+                        logger.info(f"🔍 Backend: Format {format_id}: {resolution} ({fmt.get('vcodec')}/{fmt.get('acodec')})")
             
             # Sort formats by resolution (descending), then by filesize (descending)
             def resolution_sort_key(fmt):

@@ -110,13 +110,17 @@ class StorageConfig:
 
 class RateLimits:
     """Rate limiting configuration"""
-    DEFAULT_RATE_LIMIT = 10  # requests per minute
-    BURST_RATE_LIMIT = 50    # burst limit
-    RATE_LIMIT_WINDOW = 60   # seconds
+    # Global limits (per IP)
+    REQUESTS_PER_MINUTE = 60
+    REQUESTS_PER_HOUR = 1000
     
-    # Per-endpoint limits
-    METADATA_RATE_LIMIT = 30
-    PROCESSING_RATE_LIMIT = 5
+    # Endpoint-specific limits
+    JOBS_PER_HOUR = 50
+    METADATA_REQUESTS_PER_MINUTE = 30
+    
+    # Rate limit windows
+    MINUTE_WINDOW = 60  # seconds
+    HOUR_WINDOW = 3600  # seconds
 
 
 class MetricsConfig:
@@ -183,4 +187,33 @@ class WorkerConfig:
     # Queue names
     DEFAULT_QUEUE = "default"
     HIGH_PRIORITY_QUEUE = "high"
-    LOW_PRIORITY_QUEUE = "low" 
+    LOW_PRIORITY_QUEUE = "low"
+
+
+class AsyncConfig:
+    """AsyncIO configuration constants"""
+    MAX_CONCURRENT_JOBS = 5
+    BATCH_SIZE = 10
+    PROCESSING_TIMEOUT = 300  # 5 minutes
+    EXECUTOR_WORKERS = 4
+    
+    # Connection pooling
+    MAX_CONNECTIONS = 100
+    CONNECTION_TIMEOUT = 30
+    
+    # Background tasks
+    CLEANUP_INTERVAL_HOURS = 6
+    CACHE_CLEANUP_INTERVAL_HOURS = 12
+
+
+class CacheConfig:
+    """Cache configuration constants"""
+    DEFAULT_TTL = 3600  # 1 hour
+    METADATA_TTL = 3600  # 1 hour for metadata
+    FORMAT_TTL = 7200    # 2 hours for format detection
+    THUMBNAIL_TTL = 86400  # 24 hours for thumbnails
+    
+    # Cache key prefixes
+    METADATA_PREFIX = "cache:metadata:"
+    FORMAT_PREFIX = "cache:format:"
+    THUMBNAIL_PREFIX = "cache:thumbnail:" 
