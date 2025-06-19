@@ -17,16 +17,22 @@ class Job(BaseModel):
     """Core job model for Redis storage"""
     id: str
     url: HttpUrl  # Original source URL (YouTube, etc.)
-    in_ts: Decimal = Field(gt=0)  # seconds
-    out_ts: Decimal = Field(gt=0)  # seconds
-    status: JobStatus = JobStatus.queued
+    in_ts: Optional[Decimal] = Field(default=None, gt=0)  # seconds (backward compatibility)
+    out_ts: Optional[Decimal] = Field(default=None, gt=0)  # seconds (backward compatibility)
+    start_time: Optional[float] = Field(default=None, ge=0)  # seconds (new field)
+    end_time: Optional[float] = Field(default=None, gt=0)  # seconds (new field)
+    status: JobStatus = JobStatus.queued  # Legacy field
+    state: Optional[str] = None  # New state field
     progress: Optional[int] = None
-    error_code: Optional[str] = None
+    error_code: Optional[str] = None  # Legacy field
+    error: Optional[str] = None  # New error field
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
     download_url: Optional[str] = None  # Presigned S3 URL when done - no validation needed
     stage: Optional[str] = None  # Current processing stage description
     format_id: Optional[str] = None  # Selected video format/resolution
     video_title: Optional[str] = None  # Video title for filename
+    result: Optional[dict] = None  # Processing result
     
     @validator('download_url', 'stage', 'video_title', pre=True)
     def validate_optional_fields(cls, v):
@@ -34,6 +40,19 @@ class Job(BaseModel):
         if v == "None":
             return None
         return v
+    
+    def to_dict(self) -> dict:
+        """Convert Job to dictionary for serialization"""
+        data = self.dict()
+        # Convert HttpUrl to string for JSON serialization
+        if isinstance(data.get('url'), HttpUrl):
+            data['url'] = str(data['url'])
+        return data
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'Job':
+        """Create Job from dictionary"""
+        return cls(**data)
 
 
 class JobCreate(BaseModel):
@@ -42,6 +61,30 @@ class JobCreate(BaseModel):
     in_ts: float  # seconds
     out_ts: float  # seconds
     format_id: Optional[str] = None  # Selected video format/resolution
+
+
+# Additional models for the service layer
+class JobCreateRequest(BaseModel):
+    """Enhanced request model for job creation with validation"""
+    url: HttpUrl
+    start_time: float = Field(ge=0, description="Start time in seconds")
+    end_time: float = Field(gt=0, description="End time in seconds") 
+    format_id: Optional[str] = None
+    
+    @validator('end_time')
+    def validate_end_time(cls, v, values):
+        start_time = values.get('start_time', 0)
+        if v <= start_time:
+            raise ValueError('end_time must be greater than start_time')
+        return v
+
+
+class JobStateUpdate(BaseModel):
+    """Model for updating job state and progress"""
+    state: str
+    progress: int = Field(ge=0, le=100)
+    stage: Optional[str] = None
+    error: Optional[str] = None
 
 
 class JobResponse(BaseModel):
