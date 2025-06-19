@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -24,6 +25,21 @@ app = FastAPI(
     redoc_url="/redoc",  # Enable ReDoc as well
     openapi_url="/openapi.json",  # Ensure OpenAPI spec is available
 )
+
+# Startup validation
+@app.on_event("startup")
+async def startup_event():
+    """Validate configuration and storage on startup"""
+    # Fail fast if clips directory isn't writable
+    clips_path = Path(settings.clips_dir)
+    clips_path.mkdir(parents=True, exist_ok=True)
+    
+    if not os.access(clips_path, os.W_OK):
+        raise RuntimeError(f"clips_dir not writable: {clips_path}")
+    
+    print(f"✅ Storage backend: {settings.storage_backend}")
+    print(f"✅ Clips directory: {clips_path} (writable)")
+    print(f"✅ Configuration validated successfully")
 
 # Add CORS middleware
 app.add_middleware(
@@ -74,3 +90,24 @@ async def debug_cors() -> dict:
             "DEBUG": os.getenv("DEBUG", "Not set")
         }
     }
+
+@app.get("/api/v1/storage/metrics", tags=["monitoring"])
+async def get_storage_metrics():
+    """Get storage usage metrics for monitoring"""
+    from .storage_factory import storage_manager
+    from .storage import LocalStorageManager
+    
+    if isinstance(storage_manager, LocalStorageManager):
+        stats = storage_manager.get_storage_stats()
+        return {
+            "storage_backend": settings.storage_backend,
+            "clips_disk_used_bytes": stats["total_size_bytes"],
+            "clips_disk_used_mb": stats["total_size_mb"],
+            "file_count": stats["file_count"],
+            "base_path": stats["base_path"]
+        }
+    else:
+        return {
+            "storage_backend": settings.storage_backend,
+            "message": "Storage metrics not available for S3 backend"
+        }

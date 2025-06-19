@@ -12,7 +12,14 @@ class Settings(BaseSettings):
     redis_url: str = "redis://redis:6379"  # Default to docker service name
     redis_db: int = 0
     
-    # AWS S3 Configuration
+    # Storage Configuration (Feature Flag)
+    storage_backend: str = "local"  # "s3" or "local"
+    base_url: str = "http://localhost:8000"
+    
+    # Local Storage Configuration
+    clips_dir: str = "/app/clips"  # Base directory for local storage
+    
+    # AWS S3 Configuration (Legacy - for backward compatibility)
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     aws_region: str = "ap-south-1"

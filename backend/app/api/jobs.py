@@ -4,183 +4,229 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 import asyncio
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, HttpUrl, validator
 from decimal import Decimal
+import redis as redis_client
+import os
+import logging
+from pathlib import Path
 
-from ..models import JobCreate, JobResponse, JobStatus, Job
-from .. import redis, q
-from ..metrics import clip_jobs_queued_total
+from app.models import JobResponse, JobStatus, Job
+from app import redis
+from app.dependencies import get_storage
+from app.storage import LocalStorageManager, S3StorageManager
+from app.config import settings
+from typing import Union
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # NOTE: Job simulation disabled - always use real worker for proper testing
 # Real worker processing provides actual video files and tests the full pipeline
 
+# Job creation request model
+class JobCreateRequest(BaseModel):
+    url: HttpUrl
+    in_ts: Decimal
+    out_ts: Decimal
+    format_id: Optional[str] = None
+    
+    @validator("in_ts", "out_ts")
+    def validate_timestamps(cls, v):
+        if v < 0:
+            raise ValueError("Timestamps must be non-negative")
+        return v
+    
+    @validator("out_ts")
+    def validate_duration(cls, v, values):
+        if "in_ts" in values and v <= values["in_ts"]:
+            raise ValueError("End time must be greater than start time")
+        if "in_ts" in values and (v - values["in_ts"]) > 180:  # 3 minutes max
+            raise ValueError("Clip duration cannot exceed 3 minutes")
+        return v
+
 @router.post("/jobs", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
-async def create_job(job_data: JobCreate) -> JobResponse:
-    """Create a new video clipping job"""
-    print(f"🏗️  Backend: Received job creation request: {job_data.dict()}")
-    print(f"🏗️  Backend: format_id received: {job_data.format_id}")
+async def create_job(request: JobCreateRequest):
+    """Create a new video processing job"""
     
-    # Validate clip duration (max 3 minutes = 180 seconds)
-    duration = job_data.out_ts - job_data.in_ts
-    if duration <= 0:
+    # Check queue capacity
+    queue_length = redis.llen("rq:queue:default")
+    if queue_length >= settings.max_concurrent_jobs:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="out_ts must be greater than in_ts"
-        )
-    
-    if duration > 180:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Clip duration cannot exceed 180 seconds (3 minutes)"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Queue is full. Try again later."
         )
     
     # Generate job ID
-    job_id = uuid.uuid4().hex
-    print(f"🏗️  Backend: Generated job ID: {job_id}")
+    job_id = str(uuid.uuid4())
     
-    # Create job object with format_id
+    # Create job object
     job = Job(
         id=job_id,
-        url=job_data.url,
-        in_ts=Decimal(str(job_data.in_ts)),
-        out_ts=Decimal(str(job_data.out_ts)),
-        status=JobStatus.queued,
-        created_at=datetime.utcnow(),
-        format_id=job_data.format_id  # Store the selected format ID
+        url=request.url,
+        in_ts=request.in_ts,
+        out_ts=request.out_ts,
+        format_id=request.format_id,
+        status=JobStatus.queued
     )
     
-    print(f"🏗️  Backend: Created job object with format_id: {job.format_id}")
+    # Store in Redis
+    job_key = f"job:{job_id}"
+    job_data = {
+        "id": job.id,
+        "url": str(job.url),
+        "in_ts": str(job.in_ts),
+        "out_ts": str(job.out_ts),
+        "status": job.status.value,
+        "created_at": job.created_at.isoformat(),
+        "format_id": job.format_id or "",
+    }
     
-    # Store job in Redis hash
-    job_dict = job.dict()
-    # Convert Decimal and datetime values to strings for Redis storage
-    for key, value in job_dict.items():
-        if isinstance(value, Decimal):
-            job_dict[key] = str(value)
-        elif isinstance(value, datetime):
-            job_dict[key] = value.isoformat() + "Z"
-        elif value is None:
-            job_dict[key] = "None"
+    redis.hset(job_key, mapping=job_data)
+    redis.expire(job_key, 3600)  # 1 hour TTL
     
-    print(f"🏗️  Backend: Storing job in Redis with format_id: {job_dict.get('format_id')}")
-    redis.hset(f"job:{job_id}", mapping=job_dict)
+    # Job is now queued in Redis with status 'queued'
+    # The worker will pick it up automatically from the polling loop
+    # No need to use RQ enqueue since we have custom worker polling
     
-    # Enqueue RQ job with real worker processing including format_id
-    try:
-        # Always use real worker for proper testing and functionality
-        print(f"🚀 Backend: Enqueueing job {job_id} to worker for processing with format: {job_data.format_id}")
-        print(f"🚀 Backend: Worker arguments: job_id={job_id}, url={job_data.url}, in_ts={float(job.in_ts)}, out_ts={float(job.out_ts)}, format_id={job_data.format_id}")
-        
-        q.enqueue(
-            "worker.process_clip.process_clip",
-            job_id,
-            str(job_data.url),
-            float(job.in_ts),
-            float(job.out_ts),
-            job_data.format_id,  # Pass format_id to worker
-            job_timeout="5m"
-        )
-        
-        # Increment queued jobs counter
-        clip_jobs_queued_total.inc()
-        
-    except Exception as e:
-        # Clean up job from Redis if enqueueing fails
-        redis.delete(f"job:{job_id}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to enqueue job: {str(e)}"
-        )
+    logger.info(f"Created job {job_id} for URL: {request.url}")
     
-    response = JobResponse(
-        id=job_id,
-        status=JobStatus.queued,
+    return JobResponse(
+        id=job.id,
+        status=job.status,
         created_at=job.created_at,
         format_id=job.format_id
     )
-    
-    print(f"🏗️  Backend: Returning response with format_id: {response.format_id}")
-    return response
-
 
 @router.get("/jobs/{job_id}", response_model=JobResponse)
-async def get_job(job_id: str) -> JobResponse:
-    """Get job status and download URL if ready"""
-    print(f"🔍 Backend: Getting job status for {job_id}")
-    
-    # Look up job in Redis
-    job_data = redis.hgetall(f"job:{job_id}")
+async def get_job(job_id: str):
+    """Get job status and details"""
+    job_key = f"job:{job_id}"
+    job_data = redis.hgetall(job_key)
     
     if not job_data:
-        print(f"❌ Backend: Job {job_id} not found in Redis")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job not found"
         )
     
-    print(f"🔍 Backend: Raw job data from Redis: {job_data}")
+    # Decode Redis bytes to strings
+    job_data = {k.decode(): v.decode() for k, v in job_data.items()}
     
-    # Parse job data from Redis
-    try:
-        # Redis returns bytes, need to decode
-        decoded_data = {k.decode(): v.decode() for k, v in job_data.items()}
-        
-        # Convert back to proper types for Job model
-        parsed_data = {}
-        for key, value in decoded_data.items():
-            if key in ['in_ts', 'out_ts']:
-                parsed_data[key] = Decimal(value)
-            elif key == 'created_at':
-                parsed_data[key] = datetime.fromisoformat(value.replace('Z', '+00:00'))
-            elif key in ['progress', 'error_code', 'download_url', 'stage', 'format_id', 'video_title']:
-                parsed_data[key] = None if value == 'None' else (int(value) if key == 'progress' and value else value)
-            else:
-                parsed_data[key] = value
-        
-        job = Job.parse_obj(parsed_data)
-        print(f"🔍 Backend: Parsed job object - Status: {job.status}, Progress: {job.progress}, Stage: {job.stage}")
-        print(f"🔍 Backend: Job format_id: {job.format_id}, Download URL: {job.download_url}")
-    except Exception as e:
-        print(f"❌ Backend: Failed to parse job data: {str(e)}")
+    return JobResponse(
+        id=job_data["id"],
+        status=JobStatus(job_data["status"]),
+        created_at=job_data["created_at"],
+        progress=int(job_data.get("progress", 0)),
+        download_url=job_data.get("download_url"),
+        error_code=job_data.get("error_code"),
+        stage=job_data.get("stage"),
+        format_id=job_data.get("format_id") if job_data.get("format_id") != "" else None,
+        video_title=job_data.get("video_title")
+    )
+
+@router.get("/jobs/{job_id}/download")
+async def download_job_file(
+    job_id: str, 
+    storage: Union[LocalStorageManager, S3StorageManager] = Depends(get_storage)
+):
+    """Download processed video file with integrity checks"""
+    
+    # Get job data from Redis
+    job_key = f"job:{job_id}"
+    job_data = redis.hgetall(job_key)
+    
+    if not job_data:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to parse job data: {str(e)}"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
         )
     
-    # Build response based on status
-    response = JobResponse(
-        id=job.id,
-        status=job.status,
-        created_at=job.created_at,
-        format_id=job.format_id,
-        video_title=job.video_title
-    )
+    # Decode Redis data
+    job_data = {k.decode(): v.decode() for k, v in job_data.items()}
     
-    print(f"🔍 Backend: Building response for status: {job.status}")
+    # Check if job is completed
+    if job_data.get("status") != JobStatus.done.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job not completed yet"
+        )
     
-    # Include progress and stage for queued/working jobs
-    if job.status in {JobStatus.queued, JobStatus.working}:
-        response.progress = job.progress
-        response.stage = job.stage
-        print(f"🔍 Backend: In-progress job - Progress: {response.progress}%, Stage: {response.stage}")
-    
-    # Include download URL for completed jobs
-    if job.status == JobStatus.done:
-        # Get presigned URL from job data
-        response.download_url = job.download_url
-        print(f"✅ Backend: Job completed - Download URL: {response.download_url}")
+    # Try local storage first, then fallback to S3 (backward compatibility)
+    try:
+        if isinstance(storage, LocalStorageManager):
+            file_path = await storage.get(job_id)
+            if file_path and file_path.exists():
+                # Size check before serving
+                expected_size = job_data.get("file_size")
+                if expected_size:
+                    actual_size = file_path.stat().st_size
+                    if actual_size != int(expected_size):
+                        logger.error(f"File size mismatch for {job_id}: expected {expected_size}, got {actual_size}")
+                        raise HTTPException(
+                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="File integrity check failed"
+                        )
+                
+                video_title = job_data.get("video_title", "video")
+                filename = f"{video_title}_{job_id}.mp4"
+                
+                return FileResponse(
+                    path=str(file_path),
+                    media_type="video/mp4",
+                    filename=filename,
+                    headers={
+                        "Content-Disposition": f"attachment; filename=\"{filename}\"",
+                        "Cache-Control": "no-cache, no-store, must-revalidate",
+                        "Pragma": "no-cache",
+                        "Expires": "0"
+                    }
+                )
         
-        # Set TTL for job cleanup (1 hour)
-        redis.expire(f"job:{job_id}", 3600)
+        # Legacy S3 fallback (during migration period)
+        elif isinstance(storage, S3StorageManager):
+            if await storage.exists(job_id):
+                download_url = await storage.get(job_id)
+                if download_url:
+                    from fastapi.responses import RedirectResponse
+                    return RedirectResponse(url=download_url)
     
-    # Include error code for failed jobs
-    if job.status == JobStatus.error:
-        response.error_code = job.error_code
-        print(f"❌ Backend: Job failed - Error code: {response.error_code}")
-        # Set TTL for error job cleanup (1 hour)
-        redis.expire(f"job:{job_id}", 3600)
+    except FileNotFoundError:
+        pass
     
-    print(f"🔍 Backend: Returning response for job {job_id}: {response.dict()}")
-    return response 
+    # If we get here, file wasn't found in either storage
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="File not found or expired"
+    )
+
+@router.delete("/jobs/{job_id}")
+async def cleanup_job(
+    job_id: str,
+    storage: Union[LocalStorageManager, S3StorageManager] = Depends(get_storage)
+):
+    """Clean up job data and associated files"""
+    
+    # Delete file from storage
+    deleted = await storage.delete(job_id)
+    
+    # Delete job data from Redis
+    job_key = f"job:{job_id}"
+    redis.delete(job_key)
+    
+    return {
+        "message": "Job cleaned up successfully",
+        "file_deleted": deleted
+    }
+
+@router.get("/storage/stats")
+async def get_storage_stats(
+    storage: Union[LocalStorageManager, S3StorageManager] = Depends(get_storage)
+):
+    """Get storage usage statistics (admin endpoint)"""
+    if isinstance(storage, LocalStorageManager):
+        return storage.get_storage_stats()
+    else:
+        return {"message": "Storage stats not available for S3 backend"} 

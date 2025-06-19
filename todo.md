@@ -112,4 +112,24 @@
 - [ ] Weekly cron job to rebuild worker image (gets latest yt-dlp).  
 - [ ] Rotate S3 bucket keys quarterly.  
 - [ ] Add cron Lambda → purge S3 objects older than 1 h as fallback to instant delete.  
-- [ ] Collect anonymised metrics (clip durations, sources) for future capacity planning. 
+- [ ] Collect anonymised metrics (clip durations, sources) for future capacity planning.  
+
+## High Priority
+
+### S3 to Lightsail Storage Migration ✅ COMPLETED
+- [x] **Phase 1**: Create local storage implementation (`backend/app/storage.py`)
+- [x] **Phase 2**: Update worker process and API endpoints
+- [x] **Phase 3**: Setup Docker infrastructure with volume mapping
+- [x] **Phase 4**: Create migration and cleanup scripts
+- [x] **Phase 5**: Comprehensive testing with fallback implementation
+- [x] **Phase 6**: Documentation and configuration updates
+- **Status**: ✅ **MIGRATION COMPLETE**
+- **Implementation**: Feature-flag based storage with ISO-8601 organization
+- **Benefits Achieved**: Cost optimization, simplified architecture, atomic operations
+- **Configuration**: `STORAGE_BACKEND=local` in environment variables
+
+### Frontend Testing Infrastructure ✅ COMPLETE
+- [x] Test suite execution (28 tests passing)
+- [x] Production readiness validation
+- [x] Documentation updates
+- [x] Performance optimization (~30 seconds test execution) 
