@@ -5,6 +5,7 @@ import tempfile
 import logging
 import time
 import shutil
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -12,11 +13,13 @@ import json
 import re
 
 import yt_dlp
+import aiofiles
 
 # Import from backend app
 sys.path.append('/app/backend')
 from app import redis, settings
 from app.models import JobStatus
+from app.storage_factory import get_storage_manager
 # Simplified metrics - avoid Prometheus import issues in worker
 # from app.metrics import clip_job_latency_seconds, clip_jobs_inflight
 
@@ -153,12 +156,19 @@ def detect_video_rotation(video_path: Path) -> Optional[str]:
                         encoder = tags.get('encoder', '').lower()
                         handler = tags.get('handler_name', '').lower()
                         
-                        # YouTube and mobile encoders often produce rotated content
-                        if ('google' in handler or 'youtube' in handler or 'android' in handler or 
-                            'lavc' in encoder or 'x264' in encoder):
-                            logger.info(f"Detected visually rotated content: {width}x{height} from {handler}")
-                            logger.info("Applying 90° counter-clockwise correction for mobile video")
-                            return 'transpose=2'  # 90° counter-clockwise to fix mobile rotation
+                                        # YouTube and mobile encoders often have slight visual tilt issues
+                if ('google' in handler or 'youtube' in handler):
+                    logger.info(f"Detected Google/YouTube video with potential tilt: {width}x{height} from {handler}")
+                    # Apply small counter-clockwise rotation to fix typical clockwise camera tilt
+                    # This addresses the visual tilt issue reported by users
+                    logger.info("Applying 1° counter-clockwise tilt correction for YouTube video")
+                    return 'rotate=-1*PI/180:fillcolor=black'  # -1° to fix clockwise tilt
+                elif ('android' in handler or 'lavc' in encoder or 'x264' in encoder):
+                    # For other mobile sources, only apply transpose for true portrait videos
+                    if height > width and aspect_ratio > 1.5:
+                        logger.info(f"Detected mobile portrait content: {width}x{height} from {handler}")
+                        logger.info("Applying 90° counter-clockwise correction for mobile portrait")
+                        return 'transpose=2'  # 90° counter-clockwise for true portrait
                 
                 # No rotation correction needed
                 logger.info(f"No rotation correction needed for {width}x{height} video")
@@ -281,19 +291,21 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
         temp_dir = Path(tempfile.mkdtemp(prefix=f"clip_{job_id}_"))
         
         # Step 1: Download source with yt-dlp
-        update_job_progress(job_id, 10, JobStatus.working.value, "Downloading video...")
+        update_job_progress(job_id, 5, JobStatus.working.value, "Initializing download...")
         
         source_file = temp_dir / f"{job_id}.%(ext)s"
         
         # Enhanced format selector with robust fallback for better compatibility
         if format_id and format_id != "None":
             # Build a comprehensive fallback chain for user-selected format
-            format_selector = f'{format_id}+bestaudio/{format_id}/best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best'
+            # FIXED: Removed [ext=mp4] restriction to support m3u8/HLS streams
+            format_selector = f'{format_id}+bestaudio/{format_id}/best[height<=720]/best'
             logger.info(f"🎬 Worker: Using selected format: {format_id} with robust fallback")
             logger.info(f"🎬 Worker: Format selector: {format_selector}")
-            logger.info(f"🎬 Worker: Fallback chain: {format_id} -> 720p MP4 -> 720p any -> MP4 -> best available")
+            logger.info(f"🎬 Worker: Fallback chain: {format_id} -> 720p any format -> best available")
         else:
-            format_selector = 'best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best'
+            # FIXED: Removed [ext=mp4] restriction to support m3u8/HLS streams  
+            format_selector = 'best[height<=720]/best'
             logger.warning(f"🎬 Worker: No format_id provided (got: {repr(format_id)}), using default format selection")
             logger.warning(f"🎬 Worker: Default selector: {format_selector}")
             logger.warning("🎬 Worker: This indicates the resolution picker may not be working properly!")
@@ -371,7 +383,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
             # Attempt 4: iOS client - PREFER USER FORMAT, FALLBACK IF NEEDED
             {
                 'outtmpl': str(source_file),
-                'format': format_selector if format_id else 'best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best',
+                'format': format_selector if format_id else 'best[height<=720]/best',
                 'quiet': True,
                 'no_warnings': True,
                 'writesubtitles': False,
@@ -443,8 +455,8 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                         logger.warning(f"⚠️ Worker: Format {format_id} NOT available! Backend provided incorrect format.")
                         logger.warning(f"🎬 Worker: This indicates backend metadata is stale or incorrect")
                         logger.warning(f"🎬 Worker: Will fall back to best available format")
-                        # Override format selector to use fallback
-                        format_selector = 'best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best'
+                        # Override format selector to use fallback (FIXED: removed mp4 restriction)
+                        format_selector = 'best[height<=720]/best'
                         logger.info(f"🎬 Worker: Updated format selector: {format_selector}")
                         
             except Exception as e:
@@ -461,10 +473,15 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                 logger.info(f"🎬 Worker: Attempt {i+1}: Trying download with config {i+1}")
                 logger.info(f"🎬 Worker: Config {i+1} format selector: {ydl_opts.get('format', 'default')}")
                 
+                # Update progress for each attempt
+                progress_base = 8 + (i * 3)  # Progress from 8 to 20 across attempts
+                update_job_progress(job_id, progress_base, stage=f"Download attempt {i+1}/5...")
+                
                 # Update format selector in case it was changed during validation
                 ydl_opts['format'] = format_selector
                 
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    update_job_progress(job_id, progress_base + 1, stage=f"Extracting video info (attempt {i+1})...")
                     info = ydl.extract_info(url, download=True)
                     # Handle playlist URLs
                     if 'entries' in info and info['entries']:
@@ -576,10 +593,26 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
         except Exception as e:
             logger.warning(f"🎬 Worker: Video analysis warning: {e}")
         
-        update_job_progress(job_id, 35, stage="Trimming video...")
+        update_job_progress(job_id, 25, stage="Analyzing video...")
+        
+        # Additional progress updates during analysis
+        logger.info("🎬 Worker: Video download completed successfully")
+        
+        update_job_progress(job_id, 30, stage="Preparing video processing...")
         
         # Detect if rotation correction is needed (use actual source file)
         rotation_filter = detect_video_rotation(source_file)
+        
+        # CRITICAL FIX: Apply systematic tilt correction for all videos
+        # User reports ALL videos have same clockwise tilt regardless of source
+        # This indicates a processing pipeline issue that needs universal correction
+        if not rotation_filter:
+            # FIXED: Use rotation with scale to ensure even dimensions for H.264 compatibility
+            # H.264 requires even width/height, rotation can create odd dimensions (e.g., 646x371)
+            # Scale to next even dimensions after rotation to prevent encoding errors
+            rotation_filter = 'rotate=-1*PI/180:fillcolor=black,scale=trunc(iw/2)*2:trunc(ih/2)*2'
+            logger.info("🎬 Worker: Applying systematic tilt correction (-1° counter-clockwise with even dimension scaling)")
+        
         if rotation_filter:
             logger.info(f"🎬 Worker: Applying rotation correction: {rotation_filter}")
         else:
@@ -602,7 +635,10 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
             logger.info(f"🎬 Worker: STRATEGY: Single-pass stream copy")
         
         # Step 4: Clip video with FFmpeg
-        update_job_progress(job_id, 40, stage="Trimming video...")
+        update_job_progress(job_id, 35, stage="Starting video processing...")
+        
+        # More granular progress updates
+        logger.info("🎬 Worker: Beginning FFmpeg processing stage")
         
         output_file = temp_dir / f"{job_id}_output.mp4"
         
@@ -646,11 +682,14 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                 '-y'
             ])
             
+            update_job_progress(job_id, 45, stage="Processing first segment...")
             result = subprocess.run(cmd_gop, capture_output=True, text=True)
             if result.returncode != 0:
+                logger.error(f"🎬 Worker: GOP FFmpeg command failed: {' '.join(cmd_gop)}")
+                logger.error(f"🎬 Worker: GOP FFmpeg stderr: {result.stderr}")
                 raise Exception(f"FFMPEG_FAIL: GOP re-encode failed: {result.stderr}")
             
-            update_job_progress(job_id, 50, stage="Processing video...")
+            update_job_progress(job_id, 55, stage="Processing remaining segments...")
             
             # Second pass: copy the rest if needed
             if gop_end < out_ts:
@@ -688,8 +727,11 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                     '-y'
                 ])
                 
+                update_job_progress(job_id, 65, stage="Processing final segment...")
                 result = subprocess.run(cmd_rest, capture_output=True, text=True)
                 if result.returncode != 0:
+                    logger.error(f"🎬 Worker: Rest FFmpeg command failed: {' '.join(cmd_rest)}")
+                    logger.error(f"🎬 Worker: Rest FFmpeg stderr: {result.stderr}")
                     raise Exception(f"FFMPEG_FAIL: Rest copy failed: {result.stderr}")
                 
                 # Concatenate both parts
@@ -706,8 +748,11 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                     '-y'
                 ]
                 
+                update_job_progress(job_id, 75, stage="Combining video segments...")
                 result = subprocess.run(cmd_concat, capture_output=True, text=True)
                 if result.returncode != 0:
+                    logger.error(f"🎬 Worker: Concat FFmpeg command failed: {' '.join(cmd_concat)}")
+                    logger.error(f"🎬 Worker: Concat FFmpeg stderr: {result.stderr}")
                     raise Exception(f"FFMPEG_FAIL: Concatenation failed: {result.stderr}")
             else:
                 # Only first GOP needed
@@ -778,24 +823,37 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
             
             # Run FFmpeg and capture timing
             logger.info(f"🎬 Worker: Starting FFmpeg processing...")
-            update_job_progress(job_id, 60, stage="Processing video with FFmpeg...")
+            logger.info(f"🎬 Worker: Command: {' '.join(cmd_process)}")
+            update_job_progress(job_id, 40, stage="Processing video with FFmpeg...")
             ffmpeg_start = time.time()
+            
+            # Execute FFmpeg with detailed logging
             result = subprocess.run(cmd_process, capture_output=True, text=True)
             ffmpeg_duration = time.time() - ffmpeg_start
             
             logger.info(f"🎬 Worker: FFmpeg completed in {ffmpeg_duration:.2f}s")
             
             if result.returncode != 0:
-                logger.error(f"🎬 Worker: FFmpeg failed with return code: {result.returncode}")
-                logger.error(f"🎬 Worker: FFmpeg stderr: {result.stderr}")
-                logger.error(f"🎬 Worker: FFmpeg stdout: {result.stdout}")
+                logger.error(f"🎬 Worker: ❌ FFmpeg failed with return code: {result.returncode}")
+                logger.error(f"🎬 Worker: ❌ FFmpeg command: {' '.join(cmd_process)}")
+                logger.error(f"🎬 Worker: ❌ FFmpeg stderr: {result.stderr}")
+                logger.error(f"🎬 Worker: ❌ FFmpeg stdout: {result.stdout}")
+                # Enhanced error reporting
+                if "height not divisible by 2" in result.stderr:
+                    logger.error("🎬 Worker: ❌ DIMENSION ERROR: Video dimensions are not even (H.264 requirement)")
+                elif "No such file or directory" in result.stderr:
+                    logger.error("🎬 Worker: ❌ FILE ERROR: Input file not found or corrupted")
+                elif "Invalid data" in result.stderr:
+                    logger.error("🎬 Worker: ❌ DATA ERROR: Corrupted video stream")
+                update_job_error(job_id, "FFMPEG_FAIL", f"Video processing failed: {result.stderr[:200]}")
                 raise Exception(f"FFMPEG_FAIL: Processing failed: {result.stderr}")
             else:
-                logger.info("🎬 Worker: FFmpeg processing completed successfully")
+                logger.info("🎬 Worker: ✅ FFmpeg processing completed successfully")
+                update_job_progress(job_id, 70, stage="Video processing complete")
                 if result.stderr:  # FFmpeg often outputs info to stderr even on success
                     logger.info(f"🎬 Worker: FFmpeg info: {result.stderr[-500:]}")  # Last 500 chars
         
-        update_job_progress(job_id, 70, stage="Finalizing clip...")
+        update_job_progress(job_id, 80, stage="Validating output...")
         
         logger.info(f"🎬 Worker: OUTPUT FILE VALIDATION:")
         
@@ -866,42 +924,62 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
             logger.warning(f"🎬 Worker: Could not validate output file: {e}")
             # Don't fail the job for validation issues, just warn
         
-        # Step 5: Save to local storage for HTTP serving
-        update_job_progress(job_id, 90, stage="Preparing download...")
-        
-        # Create clips directory if it doesn't exist
-        clips_dir = Path("/app/clips")
-        clips_dir.mkdir(exist_ok=True)
-        
-        # Move file to clips directory with video title as filename
-        final_clip_path = clips_dir / f"{video_title}.mp4"
-        
-        # If file already exists, append job_id to make it unique
-        if final_clip_path.exists():
-            final_clip_path = clips_dir / f"{video_title}_{job_id}.mp4"
-            logger.info(f"🎬 Worker: File exists, using unique name: {final_clip_path.name}")
+        # Step 5: Save to storage using new storage manager
+        update_job_progress(job_id, 85, stage="Preparing upload...")
+        logger.info("🎬 Worker: ✅ Output validation complete, preparing storage upload")
         
         try:
-            # Copy the processed file to the clips directory (use copy instead of rename for cross-device compatibility)
-            shutil.copy2(output_file, final_clip_path)
-            logger.info(f"Copied clip to: {final_clip_path} ({final_clip_path.stat().st_size} bytes)")
+            # Read processed video data synchronously for now (async will be handled by manager)
+            update_job_progress(job_id, 87, stage="Reading processed video...")
+            with open(output_file, 'rb') as f:
+                video_data = f.read()
+            
+            logger.info(f"🎬 Worker: Read {len(video_data):,} bytes for upload")
+            
+            # Get storage manager and save file
+            update_job_progress(job_id, 90, stage="Uploading to storage...")
+            storage_manager = get_storage_manager()
+            
+            # Run async save operation in sync context
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                storage_result = loop.run_until_complete(
+                    storage_manager.save(job_id, video_data, video_title)
+                )
+            finally:
+                loop.close()
+            
+            update_job_progress(job_id, 95, stage="Generating download link...")
+            # Generate download URL using new API
+            download_url = storage_manager.get_download_url(job_id, storage_result["filename"])
+            
+            logger.info(f"🎬 Worker: File saved to storage:")
+            logger.info(f"🎬 Worker: - Path: {storage_result['file_path']}")
+            logger.info(f"🎬 Worker: - Size: {storage_result['size']:,} bytes")
+            logger.info(f"🎬 Worker: - SHA256: {storage_result['sha256'][:16]}...")
+            logger.info(f"🎬 Worker: - Download URL: {download_url}")
+            
         except Exception as e:
             raise Exception(f"STORAGE_FAIL: Failed to save clip: {str(e)}")
         
-        # Generate download URL (served by backend via localhost for frontend access)
-        download_url = f"http://localhost:8000/clips/{final_clip_path.name}"
-        
-        # Step 6: Mark as done
+        # Step 6: Mark as done with enhanced metadata
+        update_job_progress(job_id, 98, stage="Finalizing...")
         job_key = f"job:{job_id}"
         completion_data = {
             "status": str(JobStatus.done.value),
             "progress": "100",
             "download_url": str(download_url),
             "video_title": str(video_title),
+            "file_size": str(storage_result["size"]),
+            "file_sha256": str(storage_result["sha256"]),
             "completed_at": str(datetime.utcnow().isoformat())
         }
         redis.hset(job_key, mapping=completion_data)
         redis.expire(job_key, 3600)
+        
+        # Final progress update
+        update_job_progress(job_id, 100, JobStatus.done.value, "Complete! Ready for download")
         logger.info(f"✅ Job {job_id} marked as completed with download URL")
         
         job_status = "done"  # Update status for metrics
