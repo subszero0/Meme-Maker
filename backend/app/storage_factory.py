@@ -1,10 +1,9 @@
-from typing import Union
-from app.storage import LocalStorageManager, S3StorageManager
+from app.storage import LocalStorageManager
 
-def get_storage_manager() -> Union[LocalStorageManager, S3StorageManager]:
+def get_storage_manager() -> LocalStorageManager:
     """
-    Factory function to get storage manager based on configuration
-    Guards the swap behind STORAGE_BACKEND feature flag
+    Factory function to get storage manager
+    Now only supports local storage - S3 migration complete
     """
     # Import settings using the new configuration module
     from app.config.configuration import get_settings
@@ -12,10 +11,9 @@ def get_storage_manager() -> Union[LocalStorageManager, S3StorageManager]:
     
     if settings.storage_backend == "local":
         return LocalStorageManager()
-    elif settings.storage_backend == "s3":
-        return S3StorageManager()
     else:
-        raise ValueError(f"Unknown storage backend: {settings.storage_backend}")
+        # Force local storage if invalid backend specified
+        return LocalStorageManager()
 
 
 # Singleton instance for dependency injection - initialize when first accessed

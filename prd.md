@@ -114,6 +114,6 @@ Extra CPU cost ≈ 0.3 s per job; quality and file size remain virtually unchang
 | **Back-end** | FastAPI (Python) ✅ |
 | **Download engine** | yt-dlp + FFmpeg ✅ |
 | **Queue** | Redis + RQ ✅ |
-| **Storage** | AWS S3 + presigned URLs ✅ |
+| **Storage** | AWS Lightsail + presigned URLs ✅ |
 | **CDN & TLS** | Cloudflare ✅ |
 | **Observability** | Prometheus + Grafana ✅ | 
