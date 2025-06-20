@@ -17,9 +17,12 @@ import aiofiles
 
 # Import from backend app
 sys.path.append('/app/backend')
-from app import redis, settings
+from app import settings
 from app.models import JobStatus
 from app.storage_factory import get_storage_manager
+
+# Redis will be passed as parameter from main worker
+worker_redis = None
 # Simplified metrics - avoid Prometheus import issues in worker
 # from app.metrics import clip_job_latency_seconds, clip_jobs_inflight
 
@@ -29,14 +32,18 @@ logger = logging.getLogger(__name__)
 def update_job_progress(job_id: str, progress: int, status: Optional[str] = None, stage: Optional[str] = None):
     """Update job progress and status in Redis"""
     try:
+        if not worker_redis:
+            logger.warning(f"⚠️ Redis not available, cannot update job {job_id} progress")
+            return
+            
         job_key = f"job:{job_id}"
         update_data = {"progress": str(progress)}  # Convert to string
         if status:
             update_data["status"] = str(status)  # Convert to string
         if stage:
             update_data["stage"] = str(stage)  # Add processing stage
-        redis.hset(job_key, mapping=update_data)
-        redis.expire(job_key, 3600)  # 1 hour expiry
+        worker_redis.hset(job_key, mapping=update_data)
+        worker_redis.expire(job_key, 3600)  # 1 hour expiry
         stage_msg = f" - {stage}" if stage else ""
         logger.info(f"📊 Job {job_id} progress: {progress}% {f'({status})' if status else ''}{stage_msg}")
     except Exception as e:
@@ -46,6 +53,10 @@ def update_job_progress(job_id: str, progress: int, status: Optional[str] = None
 def update_job_error(job_id: str, error_code: str, error_message: str):
     """Update job with error status and details"""
     try:
+        if not worker_redis:
+            logger.warning(f"⚠️ Redis not available, cannot update job {job_id} error")
+            return
+            
         job_key = f"job:{job_id}"
         # Convert all values to strings to avoid Redis type errors
         mapping_data = {
@@ -54,8 +65,8 @@ def update_job_error(job_id: str, error_code: str, error_message: str):
             "error_message": str(error_message[:500]),  # Truncate long error messages
             "progress": "0"  # Use "0" instead of null for error state
         }
-        redis.hset(job_key, mapping=mapping_data)
-        redis.expire(job_key, 3600)
+        worker_redis.hset(job_key, mapping=mapping_data)
+        worker_redis.expire(job_key, 3600)
         logger.info(f"✅ Updated job {job_id} with error status: {error_code}")
     except Exception as e:
         logger.error(f"❌ Failed to update job error for {job_id}: {e}")
@@ -238,7 +249,7 @@ def extract_video_title(url: str) -> str:
         return 'video'
 
 
-def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: Optional[str] = None) -> None:
+def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: Optional[str] = None, redis_connection=None) -> None:
     """
     Process a video clipping job:
     1. Download source with yt-dlp
@@ -246,6 +257,10 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
     3. Upload to S3 with content-disposition attachment
     4. Update Redis job hash with progress & final URL
     """
+    # Set up Redis connection for progress updates
+    global worker_redis
+    worker_redis = redis_connection
+    
     # Start timing 
     start_time = time.monotonic()
     # clip_jobs_inflight.inc()  # Disabled for worker
@@ -975,8 +990,8 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
             "file_sha256": str(storage_result["sha256"]),
             "completed_at": str(datetime.utcnow().isoformat())
         }
-        redis.hset(job_key, mapping=completion_data)
-        redis.expire(job_key, 3600)
+        redis_connection.hset(job_key, mapping=completion_data)
+        redis_connection.expire(job_key, 3600)
         
         # Final progress update
         update_job_progress(job_id, 100, JobStatus.done.value, "Complete! Ready for download")
