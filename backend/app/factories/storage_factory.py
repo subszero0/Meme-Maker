@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, Union
 from pathlib import Path
 from enum import Enum
 
-from ..config.settings import get_settings
+from ..config.configuration import get_settings
 from ..constants import StorageConfig
 from ..logging.config import get_logger
 from ..exceptions import ProcessingError

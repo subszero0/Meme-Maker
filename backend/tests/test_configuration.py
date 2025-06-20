@@ -6,7 +6,7 @@ import tempfile
 import os
 from unittest.mock import patch, MagicMock
 
-from app.config.settings import (
+from app.config.configuration import (
     VideoProcessingSettings,
     LoggingSettings,
     MetricsSettings,

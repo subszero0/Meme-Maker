@@ -12,8 +12,11 @@ except ImportError:
     print("Warning: prometheus_fastapi_instrumentator not available, metrics disabled")
 
 from .api import jobs, metadata, clips
-from .config import settings
+from .config import get_settings
 from .middleware.security_headers import SecurityHeadersMiddleware
+
+# Get settings instance
+settings = get_settings()
 from . import metrics  # Import to register custom metrics
 
 # Create FastAPI app with proper configuration
@@ -30,6 +33,22 @@ app = FastAPI(
 @app.on_event("startup")
 async def startup_event():
     """Validate configuration and storage on startup"""
+    # Initialize Redis connection synchronously
+    from . import init_redis, redis
+    
+    print("🔍 Initializing Redis connection...")
+    try:
+        result = init_redis()
+        # Test Redis connection immediately if it was initialized
+        if redis is not None:
+            redis.ping()
+            print("✅ Redis connected and tested successfully")
+        else:
+            print("⚠️ Redis not available - running without cache")
+    except Exception as e:
+        print(f"❌ Redis initialization/test failed: {e}")
+        # Don't fail startup, but log the issue
+    
     # Fail fast if clips directory isn't writable
     clips_path = Path(settings.clips_dir)
     clips_path.mkdir(parents=True, exist_ok=True)
@@ -41,13 +60,14 @@ async def startup_event():
     print(f"✅ Clips directory: {clips_path} (writable)")
     print(f"✅ Configuration validated successfully")
 
-# Add CORS middleware
+# Add CORS middleware with explicit configuration for development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=settings.cors_origins + ["*"],  # Add wildcard as fallback for development  
+    allow_credentials=False,  # Set to False for development to avoid credentials issues
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Initialize Prometheus instrumentator if available
@@ -81,15 +101,54 @@ async def root() -> dict[str, str]:
 @app.get("/debug/cors", tags=["debug"])
 async def debug_cors() -> dict:
     """Debug endpoint to check CORS configuration"""
-    from .config import settings
     return {
         "cors_origins": settings.cors_origins,
         "debug": settings.debug,
         "environment_variables": {
             "CORS_ORIGINS": os.getenv("CORS_ORIGINS", "Not set"),
             "DEBUG": os.getenv("DEBUG", "Not set")
-        }
+        },
+        "middleware_info": "CORS middleware should allow requests from configured origins"
     }
+
+@app.get("/debug/redis", tags=["debug"])
+async def debug_redis() -> dict:
+    """Debug endpoint to check Redis connection status"""
+    from . import redis, init_redis
+    
+    # Try to initialize Redis if not already done
+    if redis is None:
+        try:
+            init_redis()
+        except Exception as e:
+            return {
+                "redis_status": "initialization_failed",
+                "error": str(e),
+                "redis_object": str(type(redis))
+            }
+    
+    # Test Redis connection
+    try:
+        if redis is not None:
+            redis.ping()
+            return {
+                "redis_status": "connected",
+                "redis_object": str(type(redis)),
+                "ping_successful": True
+            }
+        else:
+            return {
+                "redis_status": "not_initialized", 
+                "redis_object": str(type(redis)),
+                "ping_successful": False
+            }
+    except Exception as e:
+        return {
+            "redis_status": "connection_failed",
+            "redis_object": str(type(redis)),
+            "ping_successful": False,
+            "error": str(e)
+        }
 
 @app.get("/api/v1/storage/metrics", tags=["monitoring"])
 async def get_storage_metrics():

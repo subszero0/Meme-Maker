@@ -17,7 +17,7 @@ class Job(BaseModel):
     """Core job model for Redis storage"""
     id: str
     url: HttpUrl  # Original source URL (YouTube, etc.)
-    in_ts: Optional[Decimal] = Field(default=None, gt=0)  # seconds (backward compatibility)
+    in_ts: Optional[Decimal] = Field(default=None, ge=0)  # seconds (backward compatibility) - allow 0 for start of video
     out_ts: Optional[Decimal] = Field(default=None, gt=0)  # seconds (backward compatibility)
     start_time: Optional[float] = Field(default=None, ge=0)  # seconds (new field)
     end_time: Optional[float] = Field(default=None, gt=0)  # seconds (new field)
@@ -58,9 +58,16 @@ class Job(BaseModel):
 class JobCreate(BaseModel):
     """Request model for creating a new job"""
     url: HttpUrl
-    in_ts: float  # seconds
-    out_ts: float  # seconds
+    in_ts: float = Field(ge=0)  # seconds - allow 0 for start of video
+    out_ts: float = Field(gt=0)  # seconds - must be greater than 0
     format_id: Optional[str] = None  # Selected video format/resolution
+    
+    @validator('out_ts')
+    def validate_out_ts(cls, v, values):
+        in_ts = values.get('in_ts', 0)
+        if v <= in_ts:
+            raise ValueError('out_ts must be greater than in_ts')
+        return v
 
 
 # Additional models for the service layer

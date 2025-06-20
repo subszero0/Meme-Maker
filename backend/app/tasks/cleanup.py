@@ -11,7 +11,7 @@ import shutil
 import os
 
 from fastapi import BackgroundTasks
-from ..config.settings import get_settings
+from ..config.configuration import get_settings
 from ..constants import StorageConfig, JobStates
 from ..repositories.job_repository import JobRepository
 from ..logging.config import get_logger

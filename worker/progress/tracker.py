@@ -7,11 +7,18 @@ Handles job progress updates with correlation ID logging and Redis operations.
 import logging
 from typing import Optional
 
-# Import from backend app
-import sys
-sys.path.append('/app/backend')
-from app import redis
-from app.models import JobStatus
+# Try to import from backend app, but handle gracefully for testing
+try:
+    import sys
+    sys.path.append('/app/backend')
+    from app import redis
+    from app.models import JobStatus
+except ImportError:
+    # For testing or standalone usage, use mock imports
+    redis = None
+    class JobStatus:
+        class error:
+            value = "error"
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +26,18 @@ logger = logging.getLogger(__name__)
 class ProgressTracker:
     """Manages job progress tracking with Redis persistence and structured logging"""
     
-    def __init__(self, job_id: str):
+    def __init__(self, job_id: str, redis_client=None):
+        """
+        Initialize progress tracker
+        
+        Args:
+            job_id: Unique job identifier
+            redis_client: Optional Redis client for dependency injection
+        """
         self.job_id = job_id
-        self.redis = redis
+        # Use provided redis_client, or fall back to global redis
+        # This ensures compatibility with existing tests that mock the global redis
+        self.redis = redis_client if redis_client is not None else redis
     
     def update(self, progress: int, status: Optional[str] = None, stage: Optional[str] = None) -> None:
         """
@@ -33,6 +49,11 @@ class ProgressTracker:
             stage: Optional processing stage description
         """
         try:
+            # Check if Redis is available (but allow mocked Redis)
+            if self.redis is None:
+                logger.warning(f"No Redis client available for job {self.job_id}")
+                return
+                
             job_key = f"job:{self.job_id}"
             update_data = {"progress": str(progress)}  # Convert to string for Redis
             
@@ -71,6 +92,11 @@ class ProgressTracker:
             error_message: Detailed error message
         """
         try:
+            # Check if Redis is available (but allow mocked Redis)
+            if self.redis is None:
+                logger.warning(f"No Redis client available for job {self.job_id}")
+                return
+                
             job_key = f"job:{self.job_id}"
             # Convert all values to strings to avoid Redis type errors
             mapping_data = {

@@ -13,7 +13,9 @@ try:
 except ImportError:
     AIOFILES_AVAILABLE = False
 
-from app.config import settings
+# Import settings from the new configuration module
+from app.config.configuration import get_settings
+settings = get_settings()
 
 
 class LocalStorageManager:

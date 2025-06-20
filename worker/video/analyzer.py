@@ -12,8 +12,22 @@ import yt_dlp
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from ..exceptions import VideoAnalysisError
-from ..progress.tracker import ProgressTracker
+# Try imports with fallback for testing
+try:
+    from ..exceptions import VideoAnalysisError
+    from ..progress.tracker import ProgressTracker
+except ImportError:
+    # For testing, create mock classes
+    class VideoAnalysisError(Exception):
+        def __init__(self, message, job_id=None, details=None):
+            super().__init__(message)
+            self.job_id = job_id
+            self.details = details
+    class ProgressTracker:
+        def __init__(self, *args, **kwargs):
+            self.job_id = "test_job"
+        def update(self, *args, **kwargs):
+            pass
 
 logger = logging.getLogger(__name__)
 

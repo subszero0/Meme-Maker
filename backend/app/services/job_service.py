@@ -17,7 +17,7 @@ from ..exceptions import (
     RepositoryError,
     VideoProcessingError
 )
-from ..config.settings import get_settings
+from ..config.configuration import get_settings
 
 
 class JobService:
