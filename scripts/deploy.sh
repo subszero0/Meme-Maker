@@ -1,52 +1,76 @@
 #!/bin/bash
+# Deployment Script for Meme Maker
+# Run this after production-setup.sh and configuring .env
 
-set -euo pipefail
+set -e
 
-# Graceful error handling
-trap 'echo "⚠️ Deploy aborted"; exit 1' ERR
+echo "🚀 Deploying Meme Maker..."
 
-# Check required environment variables
-if [[ -z "${API:-}" ]]; then
-    echo "❌ Error: API environment variable is required"
+# Check if .env exists
+if [ ! -f .env ]; then
+    echo "❌ .env file not found! Please create it from env.template first."
     exit 1
 fi
 
-if [[ -z "${CF_DIST_ID:-}" ]]; then
-    echo "❌ Error: CF_DIST_ID environment variable is required"
+# Check if we're in the right directory
+if [ ! -f docker-compose.yaml ]; then
+    echo "❌ docker-compose.yaml not found! Please run from the project root."
     exit 1
 fi
 
-# Functions for AWS operations
-sync_site() {
-    echo "📤 Syncing site to S3..."
-    aws s3 sync frontend/out/ s3://clip-downloader-web --delete \
-        --profile "${AWS_PROFILE:-default}"
-    echo "✅ Site sync complete"
-}
+# Pull latest changes if this is an update
+if [ -d .git ]; then
+    echo "📥 Pulling latest changes..."
+    git pull origin main || echo "⚠️  Could not pull latest changes (maybe no internet or not a git repo)"
+fi
 
-invalidate_cache() {
-    echo "🔄 Invalidating CloudFront cache..."
-    local invalidation_id
-    invalidation_id=$(aws cloudfront create-invalidation \
-        --distribution-id "$CF_DIST_ID" \
-        --paths "/*" \
-        --profile "${AWS_PROFILE:-default}" \
-        --query 'Invalidation.Id' \
-        --output text)
-    echo "✅ CloudFront invalidation created: $invalidation_id"
-}
+# Create storage directory if it doesn't exist
+echo "📁 Ensuring storage directory exists..."
+sudo mkdir -p /opt/meme-maker/storage
+sudo chown $USER:$USER /opt/meme-maker/storage
 
-# Main deployment process
-echo "🚀 Starting deployment at $(date '+%F %T')"
+# Stop existing containers
+echo "🛑 Stopping existing containers..."
+docker-compose down || echo "No containers to stop"
 
-echo "🏗️ Building frontend..."
-cd frontend
-NEXT_PUBLIC_API_URL="$API" npm run build
-echo "✅ Frontend build complete"
+# Build and start containers
+echo "🔨 Building and starting containers..."
+docker-compose build --no-cache
+docker-compose up -d
 
-cd ..
+# Wait for services to be healthy
+echo "⏳ Waiting for services to be healthy..."
+sleep 30
 
-sync_site
-invalidate_cache
+# Check container status
+echo "📊 Container status:"
+docker-compose ps
 
-echo "🎉 Deployment completed at $(date '+%F %T')" 
+# Test health endpoint
+echo "🏥 Testing health endpoint..."
+if curl -f http://localhost:8000/health &> /dev/null; then
+    echo "✅ Backend health check passed!"
+else
+    echo "⚠️  Backend health check failed. Check logs with: docker-compose logs backend"
+fi
+
+# Test frontend
+echo "🌐 Testing frontend..."
+if curl -f http://localhost:80/ &> /dev/null; then
+    echo "✅ Frontend is responding!"
+else
+    echo "⚠️  Frontend not responding. Check logs with: docker-compose logs frontend"
+fi
+
+echo ""
+echo "🎉 Deployment complete!"
+echo ""
+echo "📝 Next steps:"
+echo "1. Check all services: docker-compose ps"
+echo "2. View logs: docker-compose logs -f"
+echo "3. Test in browser: http://your-lightsail-ip"
+echo ""
+echo "🔧 Optional configuration:"
+echo "- Set up Nginx reverse proxy for domain access"
+echo "- Configure SSL with certbot"
+echo "- Set up monitoring and alerts" 

@@ -254,7 +254,7 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
     Process a video clipping job:
     1. Download source with yt-dlp
     2. Slice clip with FFmpeg (smart key-frame fallback)  
-    3. Upload to S3 with content-disposition attachment
+    3. Save to local storage
     4. Update Redis job hash with progress & final URL
     """
     # Set up Redis connection for progress updates

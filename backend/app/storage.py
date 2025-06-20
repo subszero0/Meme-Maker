@@ -168,40 +168,4 @@ class LocalStorageManager:
         }
 
 
-class S3StorageManager:
-    """S3 storage manager for backward compatibility (legacy)"""
-    
-    def __init__(self):
-        # Import boto3 only if S3 backend is used
-        try:
-            import boto3
-            self.s3_client = boto3.client(
-                's3',
-                aws_access_key_id=settings.aws_access_key_id,
-                aws_secret_access_key=settings.aws_secret_access_key,
-                region_name=settings.aws_region,
-                endpoint_url=settings.aws_endpoint_url
-            )
-            self.bucket = settings.s3_bucket
-        except ImportError:
-            raise RuntimeError("boto3 not available for S3 storage backend")
-    
-    async def save(self, job_id: str, video_data: bytes, video_title: str) -> Dict[str, Any]:
-        """Save to S3 (legacy implementation)"""
-        # Legacy S3 implementation would go here
-        raise NotImplementedError("S3 storage not implemented in this migration")
-    
-    async def get(self, job_id: str) -> Optional[str]:
-        """Get S3 download URL (legacy implementation)"""
-        # Legacy S3 implementation would go here
-        raise NotImplementedError("S3 storage not implemented in this migration")
-    
-    async def exists(self, job_id: str) -> bool:
-        """Check if file exists in S3 (legacy implementation)"""
-        # Legacy S3 implementation would go here
-        return False
-    
-    async def delete(self, job_id: str) -> bool:
-        """Delete from S3 (legacy implementation)"""
-        # Legacy S3 implementation would go here
-        return False 
+# S3StorageManager removed - migration to local storage complete 
