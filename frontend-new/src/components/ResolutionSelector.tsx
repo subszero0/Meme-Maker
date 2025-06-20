@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Settings, Zap, Monitor, Smartphone, Download, AlertCircle, Loader } from 'lucide-react';
-import { VideoFormat, metadataApi } from '@/lib/api';
+import { Settings, Zap, Monitor, Smartphone, Download, AlertCircle, Loader, Clock } from 'lucide-react';
+import { VideoFormat } from '@/lib/api';
+import { useDetailedVideoMetadata } from '@/hooks/useApi';
 
 interface ResolutionSelectorProps {
   videoUrl: string;
@@ -13,9 +14,37 @@ export const ResolutionSelector: React.FC<ResolutionSelectorProps> = ({
   selectedFormatId,
   onFormatChange,
 }) => {
-  const [formats, setFormats] = useState<VideoFormat[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Use React Query hook instead of direct API calls
+  const {
+    data: metadata,
+    isLoading: loading,
+    error: queryError,
+    refetch
+  } = useDetailedVideoMetadata(videoUrl, !!videoUrl);
+
+  const [loadingStartTime, setLoadingStartTime] = useState<number | null>(null);
+
+  // Track loading start time for duration calculation
+  useEffect(() => {
+    if (loading && !loadingStartTime) {
+      setLoadingStartTime(Date.now());
+    } else if (!loading && loadingStartTime) {
+      const duration = (Date.now() - loadingStartTime) / 1000;
+      console.log(`🎬 ResolutionSelector: Loaded formats in ${duration.toFixed(2)}s`);
+      setLoadingStartTime(null);
+    }
+  }, [loading, loadingStartTime]);
+
+  // Extract formats from metadata
+  const formats = useMemo(() => {
+    return metadata?.formats || [];
+  }, [metadata]);
+
+  // Convert error to string for display
+  const error = useMemo(() => {
+    if (!queryError) return null;
+    return queryError instanceof Error ? queryError.message : 'Failed to load resolutions';
+  }, [queryError]);
 
   // Helper functions
   const formatFileSize = useCallback((bytes?: number) => {
@@ -58,73 +87,21 @@ export const ResolutionSelector: React.FC<ResolutionSelectorProps> = ({
     return 'Basic quality';
   }, []);
 
-  // Fetch formats from API
+  // Auto-select best format when formats are loaded
   useEffect(() => {
-    const fetchFormats = async () => {
-      if (!videoUrl) return;
-
-      console.log('🎬 ResolutionSelector: Fetching formats for:', videoUrl);
-      setLoading(true);
-      setError(null);
-
-      try {
-        const metadata = await metadataApi.getDetailedMetadata(videoUrl);
-        console.log('🎬 ResolutionSelector: Got metadata with', metadata.formats.length, 'formats');
-        
-        setFormats(metadata.formats);
-
-        // Auto-select best format if none selected
-        if (!selectedFormatId && metadata.formats.length > 0) {
-          // Prefer 1080p, then 720p, then highest available
-          const preferredFormat = 
-            metadata.formats.find(f => f.resolution.includes('1080')) ||
-            metadata.formats.find(f => f.resolution.includes('720')) ||
-            metadata.formats[0];
-          
-          if (preferredFormat) {
-            console.log('🎬 ResolutionSelector: Auto-selecting format:', preferredFormat.format_id);
-            onFormatChange(preferredFormat.format_id);
-          }
-        }
-      } catch (err) {
-        console.error('🎬 ResolutionSelector: Error fetching formats:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load resolutions');
-        
-        // Fallback to default formats
-        const fallbackFormats: VideoFormat[] = [
-          {
-            format_id: '18',
-            ext: 'mp4',
-            resolution: '640x360',
-            fps: 25,
-            vcodec: 'avc1.42001E',
-            acodec: 'mp4a.40.2',
-            format_note: '360p'
-          },
-          {
-            format_id: '22',
-            ext: 'mp4',
-            resolution: '1280x720',
-            fps: 25,
-            vcodec: 'avc1.64001F',
-            acodec: 'mp4a.40.2',
-            format_note: '720p'
-          }
-        ];
-        
-        setFormats(fallbackFormats);
-        
-        // Auto-select 720p fallback
-        if (!selectedFormatId) {
-          onFormatChange('22');
-        }
-      } finally {
-        setLoading(false);
+    if (formats.length > 0 && !selectedFormatId) {
+      // Prefer 1080p, then 720p, then highest available
+      const preferredFormat = 
+        formats.find(f => f.resolution.includes('1920x1080')) ||
+        formats.find(f => f.resolution.includes('1280x720')) ||
+        formats[0];
+      
+      if (preferredFormat) {
+        console.log('🎬 ResolutionSelector: Auto-selecting format:', preferredFormat.format_id);
+        onFormatChange(preferredFormat.format_id);
       }
-    };
-
-    fetchFormats();
-  }, [videoUrl, selectedFormatId, onFormatChange]);
+    }
+  }, [formats, selectedFormatId, onFormatChange]);
 
   // Group formats by quality for better organization
   const groupedFormats = useMemo(() => {
@@ -152,8 +129,16 @@ export const ResolutionSelector: React.FC<ResolutionSelectorProps> = ({
 
   const selectedFormat = formats.find(f => f.format_id === selectedFormatId);
 
-  // Loading state
+  // Retry handler for failed requests
+  const handleRetry = useCallback(() => {
+    console.log('🔄 ResolutionSelector: Retrying format fetch...');
+    refetch();
+  }, [refetch]);
+
+  // Loading state with progress indication
   if (loading) {
+    const elapsed = loadingStartTime ? (Date.now() - loadingStartTime) / 1000 : 0;
+    
     return (
       <div className="space-y-4">
         <div className="text-center">
@@ -164,18 +149,31 @@ export const ResolutionSelector: React.FC<ResolutionSelectorProps> = ({
           <p className="text-gray-600">Loading available resolutions...</p>
         </div>
         
-        <div className="flex items-center justify-center p-8">
+        <div className="flex flex-col items-center justify-center p-8 space-y-4">
           <div className="flex items-center space-x-3">
             <Loader className="w-6 h-6 animate-spin text-orange-500" />
             <span className="text-gray-600">Analyzing video formats...</span>
           </div>
+          
+          {elapsed > 2 && (
+            <div className="flex items-center space-x-2 text-sm text-gray-500">
+              <Clock className="w-4 h-4" />
+              <span>{Math.floor(elapsed)}s elapsed</span>
+            </div>
+          )}
+          
+          {elapsed > 10 && (
+            <div className="text-center text-sm text-gray-500 max-w-md">
+              <p>This is taking longer than usual. The video might be large or the source might be slow.</p>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
-  // Error state
-  if (error && formats.length === 0) {
+  // Error state with retry option
+  if (error) {
     return (
       <div className="space-y-4">
         <div className="text-center">
@@ -183,14 +181,69 @@ export const ResolutionSelector: React.FC<ResolutionSelectorProps> = ({
             <Settings className="w-5 h-5 mr-2 text-orange-500" />
             Output Quality
           </h3>
-          <p className="text-gray-600">Choose your preferred resolution</p>
         </div>
         
-        <div className="flex items-center gap-3 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <div>
-            <p className="font-medium">Unable to load video formats</p>
-            <p className="text-sm text-red-500">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h4 className="font-medium text-red-800 mb-1">
+                Failed to Load Video Formats
+              </h4>
+              <p className="text-sm text-red-600 mb-3">
+                {error}
+              </p>
+              <button
+                onClick={handleRetry}
+                className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 text-sm rounded-md transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Provide fallback options */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <h4 className="font-medium text-yellow-800 mb-2">Using Fallback Options</h4>
+          <div className="space-y-2">
+            <button
+              onClick={() => onFormatChange('22')}
+              className={`w-full p-3 border rounded-lg text-left transition-colors ${
+                selectedFormatId === '22'
+                  ? 'border-orange-500 bg-orange-50'
+                  : 'border-gray-300 hover:border-gray-400'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Monitor className="w-4 h-4 text-gray-600" />
+                  <div>
+                    <div className="font-medium">720p HD</div>
+                    <div className="text-sm text-gray-600">Standard quality fallback</div>
+                  </div>
+                </div>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => onFormatChange('18')}
+              className={`w-full p-3 border rounded-lg text-left transition-colors ${
+                selectedFormatId === '18'
+                  ? 'border-orange-500 bg-orange-50'
+                  : 'border-gray-300 hover:border-gray-400'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Smartphone className="w-4 h-4 text-gray-600" />
+                  <div>
+                    <div className="font-medium">360p SD</div>
+                    <div className="text-sm text-gray-600">Lower quality, smaller file</div>
+                  </div>
+                </div>
+              </div>
+            </button>
           </div>
         </div>
       </div>
@@ -207,6 +260,11 @@ export const ResolutionSelector: React.FC<ResolutionSelectorProps> = ({
         <p className="text-gray-600">Choose your preferred resolution</p>
         {error && (
           <p className="text-sm text-yellow-600 mt-1">Using fallback formats</p>
+        )}
+        {!loading && formats.length > 0 && (
+          <p className="text-xs text-gray-500 mt-1">
+            {formats.length} formats available
+          </p>
         )}
       </div>
 
@@ -230,7 +288,7 @@ export const ResolutionSelector: React.FC<ResolutionSelectorProps> = ({
                 {formatFileSize(selectedFormat.filesize)}
               </p>
               <p className="text-xs text-gray-500">
-                {selectedFormat.fps}fps
+                {selectedFormat.fps ? `${selectedFormat.fps}fps` : 'Variable fps'}
               </p>
             </div>
           </div>
@@ -247,74 +305,56 @@ export const ResolutionSelector: React.FC<ResolutionSelectorProps> = ({
               <div className="flex-1 border-t border-gray-200"></div>
             </div>
             
-            {/* Formats in this quality group */}
-            {qualityFormats.map((format) => (
-              <button
-                key={format.format_id}
-                onClick={() => onFormatChange(format.format_id)}
-                className={`w-full p-4 rounded-2xl border-2 transition-all duration-200 text-left hover:scale-[1.02] ${
-                  selectedFormatId === format.format_id
-                    ? 'border-orange-400 bg-gradient-to-r from-orange-50 to-red-50 shadow-lg'
-                    : 'border-gray-200 bg-white hover:border-orange-200 hover:shadow-md'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-3 h-3 rounded-full ${
-                      selectedFormatId === format.format_id
-                        ? 'bg-gradient-to-r from-orange-400 to-red-400'
-                        : 'bg-gray-300'
-                    }`} />
-                    
-                    <div className="flex items-center space-x-2">
+            {/* Format Options */}
+            <div className="space-y-1">
+              {qualityFormats.map((format) => (
+                <button
+                  key={format.format_id}
+                  onClick={() => {
+                    console.log('🎬 Format selected:', format.format_id);
+                    onFormatChange(format.format_id);
+                  }}
+                  className={`w-full p-3 rounded-xl border transition-all duration-200 text-left ${
+                    selectedFormatId === format.format_id
+                      ? 'border-orange-300 bg-orange-50 ring-2 ring-orange-200'
+                      : 'border-gray-200 bg-white hover:border-orange-200 hover:bg-orange-25'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
                       {getQualityIcon(format.resolution)}
                       <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-bold text-gray-800">
-                            {getQualityLabel(format.resolution)}
-                          </span>
-                          {quality === '1080p' && (
-                            <div className="flex items-center text-yellow-600">
-                              <Zap className="w-4 h-4 mr-1" />
-                              <span className="text-xs font-medium">Recommended</span>
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          {getQualityDescription(format.resolution)}
+                        <p className="font-medium text-gray-800">
+                          {format.resolution}
                         </p>
-                        <p className="text-xs text-gray-500">
-                          {format.resolution} • {format.ext.toUpperCase()} • {format.fps}fps
+                        <p className="text-sm text-gray-500">
+                          {format.vcodec} / {format.acodec}
                         </p>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="flex items-center text-gray-600 mb-1">
-                      <Download className="w-4 h-4 mr-1" />
-                      <span className="text-sm font-medium">
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-600">
                         {formatFileSize(format.filesize)}
-                      </span>
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {format.fps ? `${format.fps}fps` : ''} {format.ext}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-500">
-                      {format.vcodec?.split('.')[0] || 'H.264'}
-                    </p>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              ))}
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Format Info */}
-      <div className="text-center">
-        <p className="text-xs text-gray-500">
-          {formats.length} format{formats.length !== 1 ? 's' : ''} available • 
-          Format ID: {selectedFormatId || 'None selected'}
-        </p>
-      </div>
+      {formats.length > 0 && (
+        <div className="text-center">
+          <p className="text-xs text-gray-500">
+            Found {formats.length} available format{formats.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
