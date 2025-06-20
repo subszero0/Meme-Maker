@@ -14,12 +14,11 @@ RUN apk update && apk upgrade && \
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files (npm only)
 COPY package*.json ./
-COPY bun.lockb ./
 
 # Install all dependencies including devDependencies for build
-RUN npm ci --silent && \
+RUN npm ci --silent --ignore-scripts && \
     npm cache clean --force
 
 # Copy source code

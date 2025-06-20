@@ -17,10 +17,17 @@
 ssh -i your-key.pem ubuntu@your-lightsail-ip
 ```
 
-### Step 2: Clone and Setup
+### Step 2: Get Latest Code and Setup
 ```bash
-git clone https://github.com/subszero0/Meme-Maker.git
+# If directory already exists, pull latest changes
 cd Meme-Maker
+git pull origin master
+
+# If directory doesn't exist, clone it
+# git clone https://github.com/subszero0/Meme-Maker.git
+# cd Meme-Maker
+
+# Make scripts executable and run setup
 chmod +x scripts/*.sh
 ./scripts/production-setup.sh
 ```
