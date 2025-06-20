@@ -25,10 +25,11 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - ENVIRONMENT=production
+      - CLIPS_DIR=/app/clips
     ports:
       - "8000:8000"
     volumes:
-      - clips-storage:/app/clips
+      - /opt/meme-maker/storage:/app/clips
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -72,8 +73,9 @@ services:
         condition: service_healthy
     environment:
       - REDIS_URL=redis://redis:6379
+      - CLIPS_DIR=/app/clips
     volumes:
-      - clips-storage:/app/clips
+      - /opt/meme-maker/storage:/app/clips
 
   prometheus:
     image: prom/prometheus
@@ -97,6 +99,5 @@ services:
       - grafana-data:/var/lib/grafana
 
 volumes:
-  clips-storage:
   prometheus-data:
   grafana-data:
