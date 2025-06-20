@@ -12,7 +12,7 @@ from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from ..config.settings import get_settings
+from ..config.configuration import get_settings
 from ..constants import RateLimits, HTTPStatusCodes
 from ..logging.config import get_logger
 

@@ -14,9 +14,9 @@ sys.path.insert(0, str(worker_dir))
 class TestProgressTracker:
     """Test ProgressTracker functionality with mocked dependencies"""
     
-    @patch('progress.tracker.redis')
     @patch('progress.tracker.JobStatus')
-    def test_progress_tracker_creation(self, mock_job_status, mock_redis):
+    @patch('progress.tracker.redis')
+    def test_progress_tracker_creation(self, mock_redis, mock_job_status):
         """Test creating a ProgressTracker instance"""
         from progress.tracker import ProgressTracker
         
@@ -24,9 +24,9 @@ class TestProgressTracker:
         assert tracker.job_id == "test_job_123"
         assert tracker.redis == mock_redis
     
-    @patch('progress.tracker.redis')
     @patch('progress.tracker.logger')
-    def test_update_progress_success(self, mock_logger, mock_redis):
+    @patch('progress.tracker.redis')
+    def test_update_progress_success(self, mock_redis, mock_logger):
         """Test successful progress update"""
         from progress.tracker import ProgressTracker
         
@@ -48,9 +48,9 @@ class TestProgressTracker:
         assert "test_job_123" in log_call_args
         assert "50%" in log_call_args
     
-    @patch('progress.tracker.redis')
     @patch('progress.tracker.logger')
-    def test_update_progress_with_status_and_stage(self, mock_logger, mock_redis):
+    @patch('progress.tracker.redis')
+    def test_update_progress_with_status_and_stage(self, mock_redis, mock_logger):
         """Test progress update with status and stage"""
         from progress.tracker import ProgressTracker
         
@@ -70,9 +70,9 @@ class TestProgressTracker:
         )
         mock_redis.expire.assert_called_once_with("job:test_job_123", 3600)
     
-    @patch('progress.tracker.redis')
     @patch('progress.tracker.logger')
-    def test_update_progress_redis_failure(self, mock_logger, mock_redis):
+    @patch('progress.tracker.redis')
+    def test_update_progress_redis_failure(self, mock_redis, mock_logger):
         """Test handling Redis failure during progress update"""
         from progress.tracker import ProgressTracker
         
@@ -90,10 +90,10 @@ class TestProgressTracker:
         assert "test_job_123" in error_log
         assert "Failed to update job progress" in error_log
     
-    @patch('progress.tracker.redis')
-    @patch('progress.tracker.JobStatus')
     @patch('progress.tracker.logger')
-    def test_update_error_success(self, mock_logger, mock_redis, mock_job_status):
+    @patch('progress.tracker.JobStatus')
+    @patch('progress.tracker.redis')
+    def test_update_error_success(self, mock_redis, mock_job_status, mock_logger):
         """Test successful error update"""
         from progress.tracker import ProgressTracker
         
@@ -121,10 +121,10 @@ class TestProgressTracker:
         assert "test_job_123" in log_call_args
         assert "DOWNLOAD_FAILED" in log_call_args
     
-    @patch('progress.tracker.redis')
-    @patch('progress.tracker.JobStatus')
     @patch('progress.tracker.logger')
-    def test_update_error_truncates_long_message(self, mock_logger, mock_redis, mock_job_status):
+    @patch('progress.tracker.JobStatus')
+    @patch('progress.tracker.redis')
+    def test_update_error_truncates_long_message(self, mock_redis, mock_job_status, mock_logger):
         """Test that long error messages are truncated"""
         from progress.tracker import ProgressTracker
         
@@ -142,10 +142,10 @@ class TestProgressTracker:
         assert len(call_args['error_message']) == 500
         assert call_args['error_message'] == "A" * 500
     
-    @patch('progress.tracker.redis')
-    @patch('progress.tracker.JobStatus')
     @patch('progress.tracker.logger')
-    def test_update_error_redis_failure(self, mock_logger, mock_redis, mock_job_status):
+    @patch('progress.tracker.JobStatus')
+    @patch('progress.tracker.redis')
+    def test_update_error_redis_failure(self, mock_redis, mock_job_status, mock_logger):
         """Test handling Redis failure during error update"""
         from progress.tracker import ProgressTracker
         
@@ -165,9 +165,9 @@ class TestProgressTracker:
         assert "test_job_123" in error_log
         assert "Failed to update job error" in error_log
     
-    @patch('progress.tracker.redis')
     @patch('progress.tracker.logger')
-    def test_structured_logging_extra_data(self, mock_logger, mock_redis):
+    @patch('progress.tracker.redis')
+    def test_structured_logging_extra_data(self, mock_redis, mock_logger):
         """Test that structured logging includes extra data"""
         from progress.tracker import ProgressTracker
         

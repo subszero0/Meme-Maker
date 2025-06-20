@@ -3,7 +3,7 @@ Configuration package.
 Contains centralized configuration management with validation.
 """
 
-from .settings import (
+from .configuration import (
     get_settings,
     get_logging_settings,
     get_metrics_settings,

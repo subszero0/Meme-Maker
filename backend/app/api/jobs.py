@@ -14,10 +14,12 @@ import logging
 from pathlib import Path
 
 from app.models import JobResponse, JobStatus, Job
-from app import redis
-from app.dependencies import get_storage
+from app.dependencies import get_storage, get_redis
 from app.storage import LocalStorageManager, S3StorageManager
-from app.config import settings
+# Import settings using direct file path to avoid package/module conflict
+# Import settings from the new configuration module
+from app.config.configuration import get_settings
+settings = get_settings()
 from typing import Union
 
 router = APIRouter()
@@ -48,8 +50,14 @@ class JobCreateRequest(BaseModel):
         return v
 
 @router.post("/jobs", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
-async def create_job(request: JobCreateRequest):
+async def create_job(request: JobCreateRequest, redis=Depends(get_redis)):
     """Create a new video processing job"""
+    
+    if not redis:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Redis service unavailable"
+        )
     
     # Check queue capacity
     queue_length = redis.llen("rq:queue:default")
@@ -101,8 +109,15 @@ async def create_job(request: JobCreateRequest):
     )
 
 @router.get("/jobs/{job_id}", response_model=JobResponse)
-async def get_job(job_id: str):
+async def get_job(job_id: str, redis=Depends(get_redis)):
     """Get job status and details"""
+    
+    if not redis:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Redis service unavailable"
+        )
+    
     job_key = f"job:{job_id}"
     job_data = redis.hgetall(job_key)
     
@@ -112,8 +127,12 @@ async def get_job(job_id: str):
             detail="Job not found"
         )
     
-    # Decode Redis bytes to strings
-    job_data = {k.decode(): v.decode() for k, v in job_data.items()}
+    # Decode Redis bytes to strings if needed
+    job_data = {
+        (k.decode() if isinstance(k, bytes) else k): 
+        (v.decode() if isinstance(v, bytes) else v) 
+        for k, v in job_data.items()
+    }
     
     return JobResponse(
         id=job_data["id"],
@@ -130,9 +149,16 @@ async def get_job(job_id: str):
 @router.get("/jobs/{job_id}/download")
 async def download_job_file(
     job_id: str, 
-    storage: Union[LocalStorageManager, S3StorageManager] = Depends(get_storage)
+    storage: Union[LocalStorageManager, S3StorageManager] = Depends(get_storage),
+    redis=Depends(get_redis)
 ):
     """Download processed video file with integrity checks"""
+    
+    if not redis:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Redis service unavailable"
+        )
     
     # Get job data from Redis
     job_key = f"job:{job_id}"
@@ -144,8 +170,12 @@ async def download_job_file(
             detail="Job not found"
         )
     
-    # Decode Redis data
-    job_data = {k.decode(): v.decode() for k, v in job_data.items()}
+    # Decode Redis data if needed
+    job_data = {
+        (k.decode() if isinstance(k, bytes) else k): 
+        (v.decode() if isinstance(v, bytes) else v) 
+        for k, v in job_data.items()
+    }
     
     # Check if job is completed
     if job_data.get("status") != JobStatus.done.value:

@@ -1,40 +1,50 @@
 """
-Metadata caching system for video information and format detection.
-Improves performance by caching expensive metadata operations.
+Cache module for storing video metadata to reduce repeated extraction calls.
 """
 import json
-import hashlib
-from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
+import logging
 import asyncio
+import hashlib
+from datetime import datetime, timedelta
+from typing import Optional, Dict, Any, Union, List
+from urllib.parse import quote
 
-from ..config.settings import get_settings
-from ..constants import RedisKeys, MetricsConfig
-from ..logging.config import get_logger
-from ..exceptions import RepositoryError
-
-
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class MetadataCache:
-    """
-    Redis-based metadata cache for video information.
-    Caches video metadata, format detection, and processing results.
-    """
+    """Cache for video metadata to avoid repeated API calls"""
     
-    def __init__(self, redis_client):
+    def __init__(self, redis_client=None):
+        """
+        Initialize metadata cache
+        
+        Args:
+            redis_client: Redis client instance (sync or async)
+        """
         self.redis = redis_client
-        self.settings = get_settings()
+        self.metadata_prefix = "metadata"
+        self.format_prefix = "format_metadata"
+        self.metadata_ttl = 3600  # 1 hour
+        self.format_ttl = 7200    # 2 hours (format metadata is more expensive)
+        
+        # Debug: log the type of Redis client being used
+        if redis_client is not None:
+            logger.info(f"🔍 Cache initialized with Redis client type: {type(redis_client)}")
+            logger.info(f"🔍 Redis client attributes: {dir(redis_client)[:10]}...")
+            
+            # Check if it's an async client by looking for async methods
+            if hasattr(redis_client, '__aenter__') or 'aioredis' in str(type(redis_client)) or 'asyncio' in str(type(redis_client)):
+                logger.info("✅ Detected async Redis client")
+            else:
+                logger.warning("⚠️ Detected sync Redis client (this may cause async/await errors)")
+        else:
+            logger.warning("⚠️ Cache initialized with no Redis client")
         
         # Cache TTL settings (in seconds)
-        self.metadata_ttl = 3600  # 1 hour for metadata
-        self.format_ttl = 7200    # 2 hours for format detection
         self.thumbnail_ttl = 86400  # 24 hours for thumbnails
         
         # Cache key prefixes
-        self.metadata_prefix = "cache:metadata:"
-        self.format_prefix = "cache:format:"
         self.thumbnail_prefix = "cache:thumbnail:"
     
     def _generate_url_hash(self, url: str) -> str:
@@ -55,30 +65,52 @@ class MetadataCache:
     
     async def get_metadata(self, url: str) -> Optional[Dict[str, Any]]:
         """
-        Get cached video metadata
+        Retrieve cached video metadata
         
         Args:
-            url: Video URL
+            url: Video URL to look up
             
         Returns:
-            Cached metadata dictionary or None if not found
+            Cached metadata dictionary or None if not found/expired
         """
         try:
-            cache_key = self._generate_cache_key(self.metadata_prefix, url)
-            cached_data = await self.redis.get(cache_key)
-            
-            if cached_data:
-                metadata = json.loads(cached_data)
-                logger.debug(f"Cache hit for metadata: {url}")
+            if self.redis is None:
+                logger.debug("Redis not available, skipping cache lookup")
+                return None
                 
-                return metadata
+            cache_key = self._generate_cache_key(self.metadata_prefix, url)
             
-            logger.debug(f"Cache miss for metadata: {url}")
-            return None
-            
+            # Get from cache - handle both async and sync Redis clients
+            try:
+                result = self.redis.get(cache_key)
+                
+                # Handle async vs sync Redis clients
+                if asyncio.iscoroutine(result):
+                    result = await result
+                
+                if result:
+                    cache_entry = json.loads(result)
+                    
+                    # Validate cache entry structure
+                    if 'metadata' in cache_entry and 'cached_at' in cache_entry:
+                        cached_time = datetime.fromisoformat(cache_entry['cached_at'])
+                        if datetime.utcnow() - cached_time < timedelta(seconds=self.metadata_ttl):
+                            logger.info(f"✅ Cache hit for metadata: {url}")
+                            return cache_entry
+                        else:
+                            logger.info(f"⏰ Cache expired for metadata: {url}")
+                    else:
+                        logger.warning(f"⚠️ Invalid cache entry structure for: {url}")
+                else:
+                    logger.debug(f"Cache miss for metadata: {url}")
+                    
+            except Exception as redis_error:
+                logger.error(f"Redis get failed: {redis_error}")
+                
         except Exception as e:
             logger.error(f"Failed to get metadata from cache: {str(e)}")
-            return None
+            
+        return None
     
     async def set_metadata(self, url: str, metadata: Dict[str, Any]) -> bool:
         """
@@ -92,6 +124,10 @@ class MetadataCache:
             True if successfully cached, False otherwise
         """
         try:
+            if self.redis is None:
+                logger.debug("Redis not available, skipping cache storage")
+                return False
+                
             cache_key = self._generate_cache_key(self.metadata_prefix, url)
             
             # Add cache metadata
@@ -102,20 +138,133 @@ class MetadataCache:
                 'cache_version': '1.0'
             }
             
-            # Store with TTL
-            success = await self.redis.setex(
-                cache_key, 
-                self.metadata_ttl, 
-                json.dumps(cache_entry, default=str)
-            )
-            
-            if success:
-                logger.debug(f"Cached metadata for: {url}")
-            
-            return bool(success)
+            # Store with TTL - handle both async and sync Redis clients
+            try:
+                result = self.redis.setex(
+                    cache_key, 
+                    self.metadata_ttl, 
+                    json.dumps(cache_entry, default=str)
+                )
+                
+                # Handle async vs sync Redis clients
+                if asyncio.iscoroutine(result):
+                    result = await result
+                
+                # Convert result to boolean (Redis setex returns True on success)
+                success = bool(result) if result is not None else False
+                if success:
+                    logger.info(f"✅ Cached metadata for: {url}")
+                else:
+                    logger.warning(f"⚠️ Redis setex returned {result} for metadata cache")
+                return success
+            except Exception as redis_error:
+                logger.error(f"Redis setex failed: {redis_error}")
+                return False
             
         except Exception as e:
             logger.error(f"Failed to cache metadata: {str(e)}")
+            return False
+    
+    async def get_format_metadata(self, url: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve cached detailed format metadata
+        
+        Args:
+            url: Video URL to look up
+            
+        Returns:
+            Cached detailed metadata dictionary or None if not found/expired
+        """
+        try:
+            if self.redis is None:
+                logger.debug("Redis not available, skipping format cache lookup")
+                return None
+                
+            cache_key = self._generate_cache_key(self.format_prefix, url)
+            
+            # Get from cache - handle both async and sync Redis clients
+            try:
+                result = self.redis.get(cache_key)
+                
+                # Handle async vs sync Redis clients
+                if asyncio.iscoroutine(result):
+                    result = await result
+                
+                if result:
+                    cache_entry = json.loads(result)
+                    
+                    # Validate cache entry structure
+                    if 'metadata' in cache_entry and 'cached_at' in cache_entry:
+                        cached_time = datetime.fromisoformat(cache_entry['cached_at'])
+                        if datetime.utcnow() - cached_time < timedelta(seconds=self.format_ttl):
+                            logger.info(f"✅ Cache hit for format metadata: {url}")
+                            return cache_entry
+                        else:
+                            logger.info(f"⏰ Format cache expired for: {url}")
+                    else:
+                        logger.warning(f"⚠️ Invalid format cache entry structure for: {url}")
+                else:
+                    logger.debug(f"Format cache miss for: {url}")
+                    
+            except Exception as redis_error:
+                logger.error(f"Redis get failed: {redis_error}")
+                
+        except Exception as e:
+            logger.error(f"Failed to get format metadata from cache: {str(e)}")
+            
+        return None
+    
+    async def set_format_metadata(self, url: str, metadata: Dict[str, Any]) -> bool:
+        """
+        Cache detailed format metadata (for /metadata/extract endpoint)
+        
+        Args:
+            url: Video URL
+            metadata: Detailed metadata with formats to cache
+            
+        Returns:
+            True if successfully cached, False otherwise
+        """
+        try:
+            if self.redis is None:
+                logger.debug("Redis not available, skipping format cache storage")
+                return False
+                
+            cache_key = self._generate_cache_key(self.format_prefix, url)
+            
+            # Add cache metadata
+            cache_entry = {
+                'url': url,
+                'metadata': metadata,
+                'cached_at': datetime.utcnow().isoformat(),
+                'cache_version': '1.0'
+            }
+            
+            # Store with TTL - handle both async and sync Redis clients
+            try:
+                result = self.redis.setex(
+                    cache_key, 
+                    self.format_ttl, 
+                    json.dumps(cache_entry, default=str)
+                )
+                
+                # Handle async vs sync Redis clients
+                if asyncio.iscoroutine(result):
+                    result = await result
+                
+                # Convert result to boolean (Redis setex returns True on success)
+                success = bool(result) if result is not None else False
+                if success:
+                    logger.info(f"✅ Cached format metadata for: {url}")
+                else:
+                    logger.warning(f"⚠️ Redis setex returned {result} for format metadata cache")
+                return success
+            except Exception as redis_error:
+                logger.error(f"Redis setex failed: {redis_error}")
+                return False
+            
+        except Exception as e:
+            logger.error(f"Failed to cache format metadata: {str(e)}")
             return False
     
     async def get_format_info(self, url: str, quality: str = "best") -> Optional[Dict[str, Any]]:

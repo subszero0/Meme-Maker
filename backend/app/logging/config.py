@@ -9,7 +9,7 @@ import uuid
 from typing import Dict, Any, Optional
 from contextvars import ContextVar
 
-from ..config.settings import get_logging_settings
+from ..config.configuration import get_logging_settings
 from ..constants import LoggingConfig
 
 

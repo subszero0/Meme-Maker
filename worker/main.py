@@ -8,29 +8,90 @@ import sys
 import time
 import logging
 import traceback
+import os
 from datetime import datetime, timezone
 
-# Add backend to path for imports
-import os
-backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
-sys.path.append(backend_path)
-
-# Import backend dependencies
-from app import redis, settings
-from app.models import JobStatus
-
-# Import worker functionality
-from process_clip import process_clip
-
-# Configure logging
+# Configure logging first, before any other imports
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
+# Minimal settings directly in worker to avoid backend import issues
+class WorkerSettings:
+    def __init__(self):
+        self.redis_url = os.getenv('REDIS_URL', 'redis://redis:6379')
+        self.storage_backend = os.getenv('STORAGE_BACKEND', 'local')
+        self.clips_dir = os.getenv('CLIPS_DIR', '/app/clips')
+        self.environment = os.getenv('ENVIRONMENT', 'development')
+
+# Initialize worker settings
+worker_settings = WorkerSettings()
+
+# Redis connection (will be initialized later)
+redis = None
+
+# Job status constants
+class JobStatus:
+    queued = "queued"
+    working = "working"
+    completed = "completed"
+    error = "error"
+
+def init_worker_redis():
+    """Initialize Redis connection specifically for worker"""
+    global redis
+    
+    logger.info(f"🔍 Initializing Redis connection...")
+    logger.info(f"🔍 Redis URL from env: {worker_settings.redis_url}")
+    
+    try:
+        import redis as redis_module
+        
+        # Try to connect to real Redis
+        logger.info(f"🔍 Attempting Redis connection to: {worker_settings.redis_url}")
+        redis = redis_module.Redis.from_url(
+            worker_settings.redis_url, 
+            decode_responses=True, 
+            socket_connect_timeout=10,
+            socket_timeout=10,
+            retry_on_timeout=True,
+            health_check_interval=30
+        )
+        
+        # Test connection with retries
+        for attempt in range(3):
+            try:
+                result = redis.ping()
+                logger.info(f"✅ Redis ping successful on attempt {attempt + 1}: {result}")
+                return redis
+            except Exception as retry_e:
+                if attempt == 2:  # Last attempt
+                    raise retry_e
+                logger.warning(f"⚠️ Redis ping failed attempt {attempt + 1}: {retry_e}")
+                time.sleep(1)
+                
+    except Exception as e:
+        logger.error(f"❌ Redis connection failed: {e}")
+        # Fall back to FakeRedis for local development
+        try:
+            import fakeredis
+            redis = fakeredis.FakeRedis(decode_responses=True)
+            logger.warning(f"⚠️ Using FakeRedis for local development - caching will work but won't persist")
+            return redis
+        except ImportError:
+            logger.error("❌ Both Redis and FakeRedis unavailable")
+            redis = None
+            logger.warning("⚠️ Continuing without Redis - caching disabled")
+            return None
+
 def get_queued_jobs():
     """Get all jobs with 'queued' status from Redis"""
+    if not redis:
+        logger.warning("⚠️ Redis not available, returning empty job list")
+        return []
+        
     try:
         # Scan for all job keys
         cursor = 0
@@ -39,16 +100,15 @@ def get_queued_jobs():
             cursor, keys = redis.scan(cursor, match="job:*", count=100)
             for key in keys:
                 job_data = redis.hgetall(key)
-                if job_data and job_data.get(b'status', b'').decode() == 'queued':
-                    # Decode the job data
-                    decoded_job = {k.decode(): v.decode() for k, v in job_data.items()}
+                if job_data and job_data.get('status', '') == 'queued':
+                    # Data is already decoded due to decode_responses=True
                     jobs.append({
-                        'id': decoded_job['id'],
-                        'url': decoded_job['url'],
-                        'in_ts': float(decoded_job['in_ts']),
-                        'out_ts': float(decoded_job['out_ts']),
-                        'created_at': decoded_job['created_at'],
-                        'format_id': decoded_job.get('format_id') if decoded_job.get('format_id') != 'None' else None
+                        'id': job_data['id'],
+                        'url': job_data['url'],
+                        'in_ts': float(job_data['in_ts']),
+                        'out_ts': float(job_data['out_ts']),
+                        'created_at': job_data['created_at'],
+                        'format_id': job_data.get('format_id') if job_data.get('format_id') not in ['None', '', None] else None
                     })
             if cursor == 0:
                 break
@@ -63,12 +123,16 @@ def get_queued_jobs():
 
 def mark_job_as_working(job_id: str):
     """Mark a job as being worked on"""
+    if not redis:
+        logger.warning("⚠️ Redis not available, cannot mark job as working")
+        return False
+        
     try:
         job_key = f"job:{job_id}"
         redis.hset(job_key, mapping={
-            "status": JobStatus.working.value,
+            "status": JobStatus.working,
             "progress": 0,
-                            "started_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            "started_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         })
         redis.expire(job_key, 3600)  # 1 hour expiry
         return True
@@ -76,18 +140,49 @@ def mark_job_as_working(job_id: str):
         logger.error(f"Failed to mark job {job_id} as working: {e}")
         return False
 
+def mark_job_as_error(job_id: str, error_message: str):
+    """Mark a job as failed with error message"""
+    if not redis:
+        logger.warning("⚠️ Redis not available, cannot mark job as error")
+        return False
+        
+    try:
+        job_key = f"job:{job_id}"
+        redis.hset(job_key, mapping={
+            "status": JobStatus.error,
+            "error_code": "PROCESSING_FAILED",
+            "error_message": str(error_message)[:500],
+            "progress": None
+        })
+        redis.expire(job_key, 3600)
+        return True
+    except Exception as e:
+        logger.error(f"Failed to mark job {job_id} as error: {e}")
+        return False
+
 def main():
     """Main worker loop"""
     logger.info("🚀 Worker starting up...")
-    logger.info(f"📍 Redis URL: {settings.redis_url}")
-    logger.info(f"🐳 Environment: {getattr(settings, 'environment', 'development')}")
+    logger.info(f"📍 Redis URL: {worker_settings.redis_url}")
+    logger.info(f"🐳 Environment: {worker_settings.environment}")
     
-    # Test Redis connection
+    # Initialize Redis connection
+    redis_instance = init_worker_redis()
+    
+    if not redis_instance:
+        logger.error("❌ Failed to initialize Redis, exiting...")
+        sys.exit(1)
+    
+    logger.info("✅ Redis connection successful")
+    
+    # Import process_clip only after Redis is working (lazy import to avoid backend issues)
     try:
-        redis.ping()
-        logger.info("✅ Redis connection successful")
+        logger.info("📦 Loading video processing module...")
+        from process_clip import process_clip
+        logger.info("✅ Video processing module loaded successfully")
     except Exception as e:
-        logger.error(f"❌ Redis connection failed: {e}")
+        logger.error(f"❌ Failed to import process_clip: {e}")
+        logger.error(f"📍 Traceback: {traceback.format_exc()}")
         sys.exit(1)
     
     poll_interval = 2  # seconds
@@ -114,7 +209,8 @@ def main():
                                 url=job['url'],
                                 in_ts=job['in_ts'],
                                 out_ts=job['out_ts'],
-                                format_id=job.get('format_id')  # Pass format_id if provided
+                                format_id=job.get('format_id'),  # Pass format_id if provided
+                                redis_connection=redis  # Pass Redis connection for progress updates
                             )
                             logger.info(f"✅ Job {job_id} completed successfully")
                             
@@ -123,17 +219,7 @@ def main():
                             logger.error(f"📍 Traceback: {traceback.format_exc()}")
                             
                             # Update job with error status
-                            try:
-                                job_key = f"job:{job_id}"
-                                redis.hset(job_key, mapping={
-                                    "status": JobStatus.error.value,
-                                    "error_code": "PROCESSING_FAILED",
-                                    "error_message": str(e)[:500],
-                                    "progress": None
-                                })
-                                redis.expire(job_key, 3600)
-                            except Exception as update_error:
-                                logger.error(f"Failed to update job error status: {update_error}")
+                            mark_job_as_error(job_id, str(e))
                     else:
                         logger.error(f"❌ Failed to mark job {job_id} as working, skipping...")
             

@@ -42,7 +42,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         """Add security headers to response"""
         
         # Import settings here to avoid circular imports and get current values
-        from ..config import settings
+        from ..config import get_settings
+        settings = get_settings()
         
         # Warn if CORS is set to allow all origins in production (only check once per request)
         if "*" in settings.cors_origins and not settings.debug and not hasattr(self, '_warned'):
@@ -70,7 +71,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         """Add all security headers to the response"""
         
         # Import settings here to avoid circular imports and get current values
-        from ..config import settings
+        from ..config import get_settings
+        settings = get_settings()
         
         # Skip ALL security headers for Swagger UI, ReDoc and OpenAPI endpoints
         swagger_paths = ["/docs", "/redoc", "/openapi.json"]
