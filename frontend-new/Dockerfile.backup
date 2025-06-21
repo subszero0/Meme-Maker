@@ -1,0 +1,51 @@
+# Simplified Dockerfile for frontend-new
+# Single-stage build to avoid complexity
+
+FROM node:18-alpine
+
+# Install system dependencies
+RUN apk update && apk upgrade && \
+    apk add --no-cache \
+    nginx \
+    curl \
+    && rm -rf /var/cache/apk/*
+
+WORKDIR /app
+
+# Copy only npm files first (ignore bun)
+COPY package.json ./
+COPY package-lock.json ./
+
+# Install dependencies with --ignore-scripts to skip prepare
+RUN npm ci --silent --ignore-scripts && \
+    npm cache clean --force
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN npm run build:production
+
+# Configure nginx
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copy built files to nginx directory
+RUN cp -r dist/* /usr/share/nginx/html/
+
+# Create nginx user and set permissions
+RUN addgroup -g 1001 -S nginx-app && \
+    adduser -S nginx-app -u 1001 && \
+    chown -R nginx-app:nginx-app /usr/share/nginx/html && \
+    chown -R nginx-app:nginx-app /var/log/nginx && \
+    chown -R nginx-app:nginx-app /etc/nginx && \
+    mkdir -p /var/run/nginx && \
+    chown -R nginx-app:nginx-app /var/run/nginx
+
+USER nginx-app
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/ || exit 1
+
+CMD ["nginx", "-g", "daemon off;"] 
