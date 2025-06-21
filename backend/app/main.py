@@ -63,10 +63,20 @@ async def startup_event():
 # Add CORS middleware with explicit configuration for development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins + ["*"],  # Add wildcard as fallback for development  
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8080"] + settings.cors_origins,
     allow_credentials=False,  # Set to False for development to avoid credentials issues
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
-    allow_headers=["*"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language", 
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Cache-Control",
+        "Pragma",
+        "User-Agent"
+    ],
     expose_headers=["*"],
 )
 
