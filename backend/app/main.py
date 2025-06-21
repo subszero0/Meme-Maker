@@ -168,5 +168,5 @@ async def get_storage_metrics():
     else:
         return {
             "storage_backend": settings.storage_backend,
-            "message": "Storage metrics not available for S3 backend"
+                            "message": "Storage metrics not available"
         }

@@ -28,7 +28,7 @@ class Job(BaseModel):
     error: Optional[str] = None  # New error field
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
-    download_url: Optional[str] = None  # Presigned S3 URL when done - no validation needed
+    download_url: Optional[str] = None  # Download URL when done - no validation needed
     stage: Optional[str] = None  # Current processing stage description
     format_id: Optional[str] = None  # Selected video format/resolution
     video_title: Optional[str] = None  # Video title for filename
@@ -100,7 +100,7 @@ class JobResponse(BaseModel):
     status: JobStatus
     created_at: datetime
     progress: Optional[int] = None
-    download_url: Optional[str] = None  # presigned S3 URL when done
+    download_url: Optional[str] = None  # download URL when done
     error_code: Optional[str] = None
     stage: Optional[str] = None  # Current processing stage description
     format_id: Optional[str] = None  # Selected video format/resolution
