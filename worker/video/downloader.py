@@ -39,15 +39,7 @@ class VideoDownloader:
     def _build_download_configs(self) -> List[Dict[str, Any]]:
         """Build a list of yt-dlp configurations to try in order"""
         return [
-            # Attempt 1: Default configuration (WORKING as of 2025-01-13)
-            {
-                'quiet': True,
-                'no_warnings': True,
-                'writesubtitles': False,
-                'writeautomaticsub': False,
-                'extract_flat': False,
-            },
-            # Attempt 2: Updated Android client configuration (2024)
+            # Attempt 1: Android Creator client (most reliable for 2025)
             {
                 'quiet': True,
                 'no_warnings': True,
@@ -57,7 +49,7 @@ class VideoDownloader:
                 'extractor_args': {
                     'youtube': {
                         'player_client': ['android_creator'],
-                        'skip': ['dash']
+                        'skip': ['dash', 'hls']
                     }
                 },
                 'http_headers': {
@@ -65,12 +57,59 @@ class VideoDownloader:
                     'Accept': '*/*',
                     'Accept-Language': 'en-US,en;q=0.9',
                     'Accept-Encoding': 'gzip, deflate, br',
+                    'X-YouTube-Client-Name': '14',
+                    'X-YouTube-Client-Version': '24.47.100',
                     'DNT': '1',
                     'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1'
+                    'Sec-Fetch-Mode': 'navigate'
                 }
             },
-            # Attempt 3: Web client with modern headers
+            # Attempt 2: iOS client with proper headers
+            {
+                'quiet': True,
+                'no_warnings': True,
+                'writesubtitles': False,
+                'writeautomaticsub': False,
+                'extract_flat': False,
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['ios'],
+                        'skip': ['dash']
+                    }
+                },
+                'http_headers': {
+                    'User-Agent': 'com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 17_6_1 like Mac OS X)',
+                    'Accept': '*/*',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'X-YouTube-Client-Name': '5',
+                    'X-YouTube-Client-Version': '19.45.4',
+                    'DNT': '1',
+                    'Connection': 'keep-alive'
+                }
+            },
+            # Attempt 3: Android Music client
+            {
+                'quiet': True,
+                'no_warnings': True,
+                'writesubtitles': False,
+                'writeautomaticsub': False,
+                'extract_flat': False,
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android_music'],
+                        'skip': ['dash', 'hls']
+                    }
+                },
+                'http_headers': {
+                    'User-Agent': 'com.google.android.apps.youtube.music/6.42.52 (Linux; U; Android 14; SM-S918B) gzip',
+                    'Accept': '*/*',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'X-YouTube-Client-Name': '21',
+                    'X-YouTube-Client-Version': '6.42.52'
+                }
+            },
+            # Attempt 4: Web client with modern browser headers
             {
                 'quiet': True,
                 'no_warnings': True,
@@ -84,10 +123,10 @@ class VideoDownloader:
                     }
                 },
                 'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
                     'Accept-Language': 'en-US,en;q=0.9',
-                    'Accept-Encoding': 'gzip, deflate, br',
+                    'Accept-Encoding': 'gzip, deflate, br, zstd',
                     'DNT': '1',
                     'Connection': 'keep-alive',
                     'Upgrade-Insecure-Requests': '1',
@@ -95,12 +134,14 @@ class VideoDownloader:
                     'Sec-Fetch-Mode': 'navigate',
                     'Sec-Fetch-Site': 'none',
                     'Sec-Fetch-User': '?1',
-                    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                    'sec-ch-ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
                     'sec-ch-ua-mobile': '?0',
-                    'sec-ch-ua-platform': '"Windows"'
+                    'sec-ch-ua-platform': '"Windows"',
+                    'Pragma': 'no-cache',
+                    'Cache-Control': 'no-cache'
                 }
             },
-            # Attempt 4: iOS client
+            # Attempt 5: TV client (often bypasses restrictions)
             {
                 'quiet': True,
                 'no_warnings': True,
@@ -109,41 +150,21 @@ class VideoDownloader:
                 'extract_flat': False,
                 'extractor_args': {
                     'youtube': {
-                        'player_client': ['ios']
-                    }
-                },
-                'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'DNT': '1',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1'
-                }
-            },
-            # Attempt 5: Age-gate bypass attempt with embedded player
-            {
-                'quiet': True,
-                'no_warnings': True,
-                'writesubtitles': False,
-                'writeautomaticsub': False,
-                'extract_flat': False,
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['web_embedded'],
+                        'player_client': ['tv_embedded'],
                         'skip': ['dash', 'hls']
                     }
                 },
                 'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Referer': 'https://www.youtube.com/',
-                    'Accept': '*/*',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'DNT': '1',
-                    'Connection': 'keep-alive'
+                    'User-Agent': 'Mozilla/5.0 (SMART-TV; LINUX; Tizen 2.4.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/2.4.0 TV Safari/538.1'
                 }
+            },
+            # Attempt 6: Default fallback
+            {
+                'quiet': True,
+                'no_warnings': True,
+                'writesubtitles': False,
+                'writeautomaticsub': False,
+                'extract_flat': False,
             }
         ]
     
