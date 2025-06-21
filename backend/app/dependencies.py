@@ -1,10 +1,10 @@
 from fastapi import Depends
 from app.storage_factory import get_storage_manager, storage_manager
-from app.storage import LocalStorageManager, S3StorageManager
-from typing import Union, Optional
+from app.storage import LocalStorageManager
+from typing import Optional
 
 
-def get_storage() -> Union[LocalStorageManager, S3StorageManager]:
+def get_storage() -> LocalStorageManager:
     """FastAPI dependency for storage manager"""
     return storage_manager
 

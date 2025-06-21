@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from app.storage import LocalStorageManager, S3StorageManager
+from app.storage import LocalStorageManager
 from app.storage_factory import get_storage_manager
 from app.config import settings
 
@@ -240,17 +240,18 @@ def test_storage_factory_local():
         assert isinstance(storage, LocalStorageManager)
 
 
-def test_storage_factory_s3():
-    """Test storage factory returns S3StorageManager for s3 backend (when boto3 available)"""
-    with patch.object(settings, 'storage_backend', 's3'):
-        try:
-            storage = get_storage_manager()
-            assert isinstance(storage, S3StorageManager)
-        except RuntimeError as e:
-            if "boto3 not available" in str(e):
-                pytest.skip("boto3 not available - S3 backend not installed (expected during migration)")
-            else:
-                raise
+# S3 storage test removed - migration to local storage complete
+# def test_storage_factory_s3():
+#     """Test storage factory returns S3StorageManager for s3 backend (when boto3 available)"""
+#     with patch.object(settings, 'storage_backend', 's3'):
+#         try:
+#             storage = get_storage_manager()
+#             assert isinstance(storage, S3StorageManager)
+#         except RuntimeError as e:
+#             if "boto3 not available" in str(e):
+#                 pytest.skip("boto3 not available - S3 backend not installed (expected during migration)")
+#             else:
+#                 raise
 
 
 def test_storage_factory_invalid():

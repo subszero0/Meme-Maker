@@ -15,12 +15,11 @@ from pathlib import Path
 
 from app.models import JobResponse, JobStatus, Job
 from app.dependencies import get_storage, get_redis
-from app.storage import LocalStorageManager, S3StorageManager
+from app.storage import LocalStorageManager
 # Import settings using direct file path to avoid package/module conflict
 # Import settings from the new configuration module
 from app.config.configuration import get_settings
 settings = get_settings()
-from typing import Union
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -149,7 +148,7 @@ async def get_job(job_id: str, redis=Depends(get_redis)):
 @router.get("/jobs/{job_id}/download")
 async def download_job_file(
     job_id: str, 
-    storage: Union[LocalStorageManager, S3StorageManager] = Depends(get_storage),
+    storage: LocalStorageManager = Depends(get_storage),
     redis=Depends(get_redis)
 ):
     """Download processed video file with integrity checks"""
@@ -184,44 +183,35 @@ async def download_job_file(
             detail="Job not completed yet"
         )
     
-    # Try local storage first, then fallback to S3 (backward compatibility)
+    # Get file from local storage
     try:
-        if isinstance(storage, LocalStorageManager):
-            file_path = await storage.get(job_id)
-            if file_path and file_path.exists():
-                # Size check before serving
-                expected_size = job_data.get("file_size")
-                if expected_size:
-                    actual_size = file_path.stat().st_size
-                    if actual_size != int(expected_size):
-                        logger.error(f"File size mismatch for {job_id}: expected {expected_size}, got {actual_size}")
-                        raise HTTPException(
-                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail="File integrity check failed"
-                        )
-                
-                video_title = job_data.get("video_title", "video")
-                filename = f"{video_title}_{job_id}.mp4"
-                
-                return FileResponse(
-                    path=str(file_path),
-                    media_type="video/mp4",
-                    filename=filename,
-                    headers={
-                        "Content-Disposition": f"attachment; filename=\"{filename}\"",
-                        "Cache-Control": "no-cache, no-store, must-revalidate",
-                        "Pragma": "no-cache",
-                        "Expires": "0"
-                    }
-                )
-        
-        # Legacy S3 fallback (during migration period)
-        elif isinstance(storage, S3StorageManager):
-            if await storage.exists(job_id):
-                download_url = await storage.get(job_id)
-                if download_url:
-                    from fastapi.responses import RedirectResponse
-                    return RedirectResponse(url=download_url)
+        file_path = await storage.get(job_id)
+        if file_path and file_path.exists():
+            # Size check before serving
+            expected_size = job_data.get("file_size")
+            if expected_size:
+                actual_size = file_path.stat().st_size
+                if actual_size != int(expected_size):
+                    logger.error(f"File size mismatch for {job_id}: expected {expected_size}, got {actual_size}")
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="File integrity check failed"
+                    )
+            
+            video_title = job_data.get("video_title", "video")
+            filename = f"{video_title}_{job_id}.mp4"
+            
+            return FileResponse(
+                path=str(file_path),
+                media_type="video/mp4",
+                filename=filename,
+                headers={
+                    "Content-Disposition": f"attachment; filename=\"{filename}\"",
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0"
+                }
+            )
     
     except FileNotFoundError:
         pass
@@ -235,7 +225,7 @@ async def download_job_file(
 @router.delete("/jobs/{job_id}")
 async def cleanup_job(
     job_id: str,
-    storage: Union[LocalStorageManager, S3StorageManager] = Depends(get_storage)
+    storage: LocalStorageManager = Depends(get_storage)
 ):
     """Clean up job data and associated files"""
     
@@ -253,10 +243,7 @@ async def cleanup_job(
 
 @router.get("/storage/stats")
 async def get_storage_stats(
-    storage: Union[LocalStorageManager, S3StorageManager] = Depends(get_storage)
+    storage: LocalStorageManager = Depends(get_storage)
 ):
     """Get storage usage statistics (admin endpoint)"""
-    if isinstance(storage, LocalStorageManager):
-        return storage.get_storage_stats()
-    else:
-        return {"message": "Storage stats not available for S3 backend"} 
+    return storage.get_storage_stats() 
