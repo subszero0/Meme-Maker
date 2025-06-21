@@ -44,8 +44,9 @@ const environmentConfigs: Record<string, Partial<EnvironmentConfig>> = {
     ENVIRONMENT: 'staging',
   },
   production: {
-    API_BASE_URL: 'https://api.meme-maker.com',
-    WS_BASE_URL: 'wss://api.meme-maker.com',
+    // Use relative URLs for production to work with any domain
+    API_BASE_URL: '/api',
+    WS_BASE_URL: `${typeof window !== 'undefined' ? (window.location.protocol === 'https:' ? 'wss:' : 'ws:') : 'ws:'}//${typeof window !== 'undefined' ? window.location.host : 'localhost'}/ws`,
     ENABLE_LOGGING: false,
     ENABLE_ANALYTICS: true,
     ENABLE_DEVTOOLS: false,
@@ -57,11 +58,23 @@ const environmentConfigs: Record<string, Partial<EnvironmentConfig>> = {
 const currentMode = import.meta.env.MODE || 'development';
 const envConfig = environmentConfigs[currentMode] || {};
 
+// For production, if we're in a browser, use relative URLs
+const getProductionApiUrl = () => {
+  if (typeof window !== 'undefined') {
+    // In browser, use relative URL to current domain
+    return '/api';
+  }
+  // Fallback for server-side rendering
+  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+};
+
 export const config: EnvironmentConfig = {
   ...defaultConfig,
   ...envConfig,
   // Allow environment variables to override config
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || envConfig.API_BASE_URL || defaultConfig.API_BASE_URL,
+  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 
+    (isProduction ? getProductionApiUrl() : envConfig.API_BASE_URL) || 
+    defaultConfig.API_BASE_URL,
   WS_BASE_URL: import.meta.env.VITE_WS_BASE_URL || envConfig.WS_BASE_URL || defaultConfig.WS_BASE_URL,
 };
 

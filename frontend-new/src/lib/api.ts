@@ -13,8 +13,44 @@ export const apiClient = axios.create({
   timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
+    // Add mobile-friendly headers
+    'Accept': 'application/json',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
   },
 });
+
+// Add request interceptor for mobile compatibility
+apiClient.interceptors.request.use(
+  (config) => {
+    // Add mobile-specific headers if on mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      config.headers['User-Agent'] = navigator.userAgent;
+      config.headers['X-Requested-With'] = 'XMLHttpRequest';
+      // Increase timeout for mobile networks
+      config.timeout = Math.max(config.timeout || 30000, 45000);
+    }
+    
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor for better error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.code === 'ECONNABORTED') {
+      console.error('Request timeout - this may be due to slow network connection');
+    }
+    return Promise.reject(error);
+  }
+);
 
 // ===========================
 // TypeScript Interfaces

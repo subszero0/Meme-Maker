@@ -147,14 +147,6 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
           )}
         </Button>
       </form>
-
-      <div className="flex justify-center space-x-4 text-sm text-gray-500">
-        <span className="bg-red-100 px-3 py-1 rounded-full">YouTube</span>
-        <span className="bg-green-100 px-3 py-1 rounded-full">WhatsApp</span>
-        <span className="bg-blue-100 px-3 py-1 rounded-full">Facebook</span>
-        <span className="bg-purple-100 px-3 py-1 rounded-full">Instagram</span>
-        <span className="bg-gray-100 px-3 py-1 rounded-full">Threads</span>
-      </div>
     </div>
   );
 };
