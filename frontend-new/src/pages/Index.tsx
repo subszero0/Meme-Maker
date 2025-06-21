@@ -195,11 +195,11 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50">
       {/* Header */}
       <header className="bg-gradient-to-r from-orange-400 to-red-400 text-white p-4 shadow-lg">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl tracking-wide md:text-4xl text-left my-0 mx-[37px] px-0 py-0 font-bold text-slate-50">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between">
+          <h1 className="text-3xl tracking-wide md:text-4xl font-bold text-slate-50 mb-2 md:mb-0">
             MemeIT
           </h1>
-          <p className="text-center mt-2 text-orange-100 text-sm md:text-base">
+          <p className="text-orange-100 text-sm md:text-base">
             Clip, Create, Share - Your video moments made viral
           </p>
         </div>
