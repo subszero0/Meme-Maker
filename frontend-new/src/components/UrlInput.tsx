@@ -127,7 +127,14 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Failed to fetch video information. Please check the URL and try again.
+              {metadataError instanceof Error && metadataError.message 
+                ? metadataError.message.includes('Sign in to confirm')
+                  ? 'YouTube is temporarily blocking automated requests. Please try again in a few minutes or try a different video.'
+                  : metadataError.message.includes('Failed to extract video metadata')
+                    ? metadataError.message.replace('Failed to extract video metadata: ', '')
+                    : metadataError.message
+                : 'Failed to fetch video information. Please check the URL and try again.'
+              }
             </AlertDescription>
           </Alert>
         )}
