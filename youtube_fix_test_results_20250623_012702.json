@@ -1,0 +1,31 @@
+{
+  "timestamp": "2025-06-23T01:27:02.484235",
+  "summary": {
+    "success_rate": 0.0,
+    "bot_detection_rate": 100.0,
+    "total_tests": 3
+  },
+  "detailed_results": [
+    {
+      "status": "bot_detection",
+      "error": "Failed to extract video metadata: ERROR: [youtube] dQw4w9WgXcQ: Sign in to confirm you\u2019re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+      "response_time": 3.2147319316864014,
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "description": "Classic YouTube video (Rick Roll)"
+    },
+    {
+      "status": "bot_detection",
+      "error": "Failed to extract video metadata: ERROR: [youtube] wgSQ5Uevegg: Sign in to confirm you\u2019re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+      "response_time": 2.725383758544922,
+      "url": "https://www.youtube.com/watch?v=wgSQ5Uevegg",
+      "description": "URL from user screenshot"
+    },
+    {
+      "status": "bot_detection",
+      "error": "Failed to extract video metadata: ERROR: [youtube] jNQXAC9IVRw: Sign in to confirm you\u2019re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+      "response_time": 2.684739351272583,
+      "url": "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+      "description": "Another popular video"
+    }
+  ]
+}
