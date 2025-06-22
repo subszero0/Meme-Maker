@@ -26,10 +26,12 @@ services:
       - REDIS_URL=redis://redis:6379
       - ENVIRONMENT=production
       - CLIPS_DIR=/app/clips
+      - BASE_URL=https://memeit.pro
+      - CORS_ORIGINS=["https://memeit.pro", "https://www.memeit.pro", "http://memeit.pro", "http://13.126.173.223"]
     ports:
       - "8000:8000"
     volumes:
-      - /opt/meme-maker/storage:/app/clips
+      - ./storage:/app/clips
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -46,15 +48,21 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - VITE_API_BASE_URL=http://backend:8000
-      - VITE_WS_BASE_URL=ws://backend:8000
+      # Remove VITE_API_BASE_URL to use relative URLs for production
+      # - VITE_API_BASE_URL=http://backend:8000
+      # - VITE_WS_BASE_URL=ws://backend:8000
     ports:
-      - "80:3000"
+      - "80:80"   # HTTP port
+      - "443:443" # HTTPS port
+    volumes:
+      # Mount SSL certificates
+      - ./ssl/certs:/etc/ssl/certs:ro
+      - ./ssl/private:/etc/ssl/private:ro
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      test: ["CMD", "curl", "-f", "http://localhost/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -75,7 +83,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - CLIPS_DIR=/app/clips
     volumes:
-      - /opt/meme-maker/storage:/app/clips
+      - ./storage:/app/clips
 
   prometheus:
     image: prom/prometheus

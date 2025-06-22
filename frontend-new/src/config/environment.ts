@@ -45,7 +45,7 @@ const environmentConfigs: Record<string, Partial<EnvironmentConfig>> = {
   },
   production: {
     // Use relative URLs for production to work with any domain
-    API_BASE_URL: '/api',
+    API_BASE_URL: '',
     WS_BASE_URL: `${typeof window !== 'undefined' ? (window.location.protocol === 'https:' ? 'wss:' : 'ws:') : 'ws:'}//${typeof window !== 'undefined' ? window.location.host : 'localhost'}/ws`,
     ENABLE_LOGGING: false,
     ENABLE_ANALYTICS: true,
@@ -62,7 +62,7 @@ const envConfig = environmentConfigs[currentMode] || {};
 const getProductionApiUrl = () => {
   if (typeof window !== 'undefined') {
     // In browser, use relative URL to current domain
-    return '/api';
+    return '';
   }
   // Fallback for server-side rendering
   return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
