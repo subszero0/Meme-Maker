@@ -7,7 +7,7 @@ const getApiBaseUrl = (): string => {
       console.log(
         `[API] Production environment detected. Using relative URLs for domain: ${window.location.hostname}`,
       );
-      return ""; // Empty string means relative URLs
+      return ""; // Empty string means relative URLs - no base path needed
     }
     // Development: Use localhost with port
     console.log("[API] Development environment detected. Using localhost:8000");
