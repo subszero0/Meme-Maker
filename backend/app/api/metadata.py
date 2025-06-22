@@ -37,7 +37,7 @@ class VideoMetadata(BaseModel):
     formats: List[VideoFormat]
 
 def get_optimized_ydl_opts() -> Dict:
-    """Get optimized yt-dlp configuration for fast metadata extraction"""
+    """Get optimized yt-dlp configuration for fast metadata extraction with bot detection avoidance"""
     return {
         'quiet': True,
         'no_warnings': True,
@@ -45,32 +45,66 @@ def get_optimized_ydl_opts() -> Dict:
         'skip_download': True,  # Only extract metadata, don't download
         'extractor_args': {
             'youtube': {
-                'player_client': ['android_creator', 'web'],
-                'skip': ['dash']  # Skip DASH for faster extraction
+                'player_client': ['ios', 'android_creator', 'web'],
+                'skip': ['dash'],  # Skip DASH for faster extraction
+                'max_comments': ['0'],  # Don't fetch comments
+                'comment_sort': ['top']
             }
         },
         'http_headers': {
-            'User-Agent': 'com.google.android.apps.youtube.creator/24.47.100 (Linux; U; Android 14; SM-S918B) gzip',
-            'Accept': '*/*',
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept-Encoding': 'gzip, deflate, br',
             'DNT': '1',
             'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1'
-        }
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none'
+        },
+        'socket_timeout': 30,
+        'retries': 3
     }
 
 def get_fallback_ydl_opts() -> List[Dict]:
-    """Get fallback configurations if primary fails"""
+    """Get fallback configurations if primary fails - multiple strategies for bot detection avoidance"""
     return [
-        # Simple fallback without extra configurations
+        # TV client fallback (often bypasses restrictions)
         {
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
             'skip_download': True,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['tv_embedded'],
+                    'skip': ['dash', 'hls']
+                }
+            },
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (SMART-TV; LINUX; Tizen 2.4.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/2.4.0 TV Safari/538.1'
+            },
+            'socket_timeout': 30
         },
-        # Web client fallback
+        # Android fallback with different user agent
+        {
+            'quiet': True,
+            'no_warnings': True,
+            'extract_flat': False,
+            'skip_download': True,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android'],
+                    'skip': ['dash']
+                }
+            },
+            'http_headers': {
+                'User-Agent': 'com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip'
+            },
+            'socket_timeout': 30
+        },
+        # Web client with desktop user agent
         {
             'quiet': True,
             'no_warnings': True,
@@ -80,7 +114,19 @@ def get_fallback_ydl_opts() -> List[Dict]:
                 'youtube': {
                     'player_client': ['web'],
                 }
-            }
+            },
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            'socket_timeout': 30
+        },
+        # Simple fallback without extra configurations
+        {
+            'quiet': True,
+            'no_warnings': True,
+            'extract_flat': False,
+            'skip_download': True,
+            'socket_timeout': 30
         }
     ]
 
