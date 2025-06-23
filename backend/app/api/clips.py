@@ -1,5 +1,3 @@
-import os
-
 # Import Redis and Job model to get video title
 import sys
 import urllib.parse
@@ -10,7 +8,6 @@ from fastapi.responses import FileResponse
 
 sys.path.append("/app/backend")
 from app import redis
-from app.models import Job
 
 router = APIRouter()
 

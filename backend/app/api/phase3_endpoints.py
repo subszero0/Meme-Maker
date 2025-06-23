@@ -5,12 +5,11 @@ Includes cache management, cleanup operations, and system monitoring.
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse
 
 from ..cache.metadata_cache import MetadataCache
 from ..constants import AsyncConfig, CacheConfig
 from ..dependencies import get_job_repository, get_redis_client
-from ..factories.storage_factory import StorageBackend, StorageFactory
+from ..factories.storage_factory import StorageFactory
 from ..logging.config import get_logger
 from ..middleware.rate_limiter import RateLimiter, get_rate_limiter
 from ..repositories.job_repository import JobRepository

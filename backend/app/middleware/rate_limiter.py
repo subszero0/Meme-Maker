@@ -2,18 +2,17 @@
 Rate limiting middleware using token bucket algorithm.
 Implements per-IP and per-endpoint rate limiting for API security.
 """
-import asyncio
 import time
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ..config.configuration import get_settings
-from ..constants import HTTPStatusCodes, RateLimits
+from ..constants import RateLimits
 from ..logging.config import get_logger
 
 logger = get_logger(__name__)

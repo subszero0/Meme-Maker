@@ -1,14 +1,7 @@
-import asyncio
-import json
 import logging
-import os
 import uuid
-from datetime import datetime
 from decimal import Decimal
-from pathlib import Path
-from typing import Any, Dict, Optional
-
-import redis as redis_client
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, HttpUrl, validator
@@ -228,7 +221,11 @@ async def download_job_file(
 
 
 @router.delete("/jobs/{job_id}")
-async def cleanup_job(job_id: str, storage: LocalStorageManager = Depends(get_storage)):
+async def cleanup_job(
+    job_id: str,
+    storage: LocalStorageManager = Depends(get_storage),
+    redis=Depends(get_redis),
+):
     """Clean up job data and associated files"""
 
     # Delete file from storage

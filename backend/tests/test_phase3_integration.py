@@ -6,8 +6,7 @@ Integration tests for Phase 3 components:
 - Rate limiting
 - Factory patterns
 """
-import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -267,13 +266,11 @@ class TestAsyncVideoProcessor:
         """Test concurrent job limiting with semaphore"""
         # This would test the semaphore-based concurrency control
         # in the async video processor
-        pass
 
     @pytest.mark.asyncio
     async def test_batch_processing(self):
         """Test batch processing functionality"""
         # This would test processing multiple videos in batches
-        pass
 
 
 class TestPhase3Integration:

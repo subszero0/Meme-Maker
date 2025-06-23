@@ -7,7 +7,7 @@ import logging.config
 import sys
 import uuid
 from contextvars import ContextVar
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from ..config.configuration import get_logging_settings
 from ..constants import LoggingConfig
@@ -101,7 +101,7 @@ class StructuredLogger:
         extra = (
             {"job_id": job_id, "extra_fields": kwargs} if kwargs else {"job_id": job_id}
         )
-        self.logger.debug(message, extra=extra, exc_info=exc_info)
+        self.logger.debug(message, extra=extra)
 
 
 def setup_logging() -> None:

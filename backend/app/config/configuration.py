@@ -5,7 +5,6 @@ All configuration parameters are defined here with proper validation.
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal, Optional
 
 
 class VideoProcessingSettings:

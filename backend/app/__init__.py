@@ -4,7 +4,6 @@ Initialize Redis and queue connections.
 """
 
 # Import settings for backward compatibility with worker
-import os
 
 # Import settings from the new configuration module
 from app.config.configuration import get_settings

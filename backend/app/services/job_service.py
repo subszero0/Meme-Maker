@@ -2,7 +2,6 @@
 Job service layer for handling video processing job business logic.
 Separates business logic from HTTP concerns.
 """
-import asyncio
 import uuid
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -11,11 +10,9 @@ from ..config.configuration import get_settings
 from ..constants import ErrorMessages, JobStates, VideoConstraints
 from ..exceptions import (
     QueueFullError,
-    RepositoryError,
     ValidationError,
-    VideoProcessingError,
 )
-from ..models import Job, JobCreateRequest, JobResponse
+from ..models import Job, JobCreateRequest, JobStatus
 from ..queue.manager import QueueManager
 from ..repositories.job_repository import JobRepository
 

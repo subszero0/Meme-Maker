@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 from ..config.configuration import get_settings
-from ..constants import StorageConfig
 from ..exceptions import ProcessingError
 from ..logging.config import get_logger
 
@@ -41,7 +40,6 @@ class StorageStrategy(ABC):
         Returns:
             Download URL for the stored file
         """
-        pass
 
     @abstractmethod
     async def delete_file(self, file_key: str) -> bool:
@@ -54,7 +52,6 @@ class StorageStrategy(ABC):
         Returns:
             True if deleted successfully, False otherwise
         """
-        pass
 
     @abstractmethod
     async def get_file_info(self, file_key: str) -> Optional[Dict[str, Any]]:
@@ -67,7 +64,6 @@ class StorageStrategy(ABC):
         Returns:
             File information dictionary or None if not found
         """
-        pass
 
     @abstractmethod
     async def list_files(self, prefix: Optional[str] = None) -> list[Dict[str, Any]]:
@@ -80,12 +76,10 @@ class StorageStrategy(ABC):
         Returns:
             List of file information dictionaries
         """
-        pass
 
     @abstractmethod
     def get_backend_type(self) -> StorageBackend:
         """Get the storage backend type"""
-        pass
 
 
 class LocalStorageStrategy(StorageStrategy):
@@ -387,12 +381,10 @@ class VideoProcessingStrategy(ABC):
         Returns:
             Path to processed video
         """
-        pass
 
     @abstractmethod
     def get_strategy_name(self) -> str:
         """Get strategy name"""
-        pass
 
 
 class StandardVideoProcessingStrategy(VideoProcessingStrategy):

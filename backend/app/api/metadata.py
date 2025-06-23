@@ -4,8 +4,7 @@ import time
 from typing import Dict, List, Optional
 
 import yt_dlp
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, HttpUrl
 
 from ..cache.metadata_cache import MetadataCache
