@@ -207,7 +207,7 @@ describe("TrimPanel", () => {
       in: 30,
       out: 90,
       rights: true,
-      formatId: undefined, // ResolutionSelector doesn't get formats in test environment
+      formatId: "22", // ResolutionSelector now gets proper formats from mock
     });
   });
 
