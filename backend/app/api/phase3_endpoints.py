@@ -248,9 +248,10 @@ async def get_system_health(
             }
 
         # Overall health
+        components_dict: Dict[str, Any] = health_status["components"]
         unhealthy_components = [
             name
-            for name, component in health_status["components"].items()
+            for name, component in components_dict.items()
             if component["status"] == "unhealthy"
         ]
 

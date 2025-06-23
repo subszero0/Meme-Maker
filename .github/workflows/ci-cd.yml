@@ -74,8 +74,7 @@ jobs:
         poetry run black --check .
         poetry run isort --check-only .
         poetry run flake8 .
-        # Temporarily disabled mypy - systematic type improvements needed
-        # poetry run mypy app/
+        poetry run mypy app/
 
     - name: Test frontend
       working-directory: frontend

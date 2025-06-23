@@ -284,7 +284,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Check rate limit
         is_allowed, rate_limit_info = await self.rate_limiter.check_rate_limit(request)
 
-        if not is_allowed:
+        if not is_allowed and rate_limit_info is not None:
             # Log rate limit hit
             logger.warning(
                 f"Rate limit exceeded for {rate_limit_info['client_ip']} "

@@ -9,7 +9,7 @@ from typing import List, Optional
 from ..config.configuration import get_settings
 from ..constants import ErrorMessages, JobStates, VideoConstraints
 from ..exceptions import QueueFullError, ValidationError
-from ..models import Job, JobCreateRequest, JobStatus
+from ..models import Job, JobCreateRequest
 from ..queue.manager import QueueManager
 from ..repositories.job_repository import JobRepository
 
@@ -82,7 +82,7 @@ class JobService:
         """
         return await self.repository.get(job_id)
 
-    async def get_job_status(self, job_id: str) -> Optional[JobStatus]:
+    async def get_job_status(self, job_id: str) -> Optional[Job]:
         """
         Get job status with progress information
 
@@ -90,22 +90,13 @@ class JobService:
             job_id: Unique job identifier
 
         Returns:
-            Job status if found, None otherwise
+            Job object if found, None otherwise
         """
         job = await self.repository.get(job_id)
         if not job:
             return None
 
-        return JobStatus(
-            id=job.id,
-            state=job.state,
-            progress=job.progress,
-            stage=job.stage,
-            error=job.error,
-            result=job.result,
-            created_at=job.created_at,
-            updated_at=job.updated_at,
-        )
+        return job
 
     async def update_job_progress(
         self, job_id: str, progress: int, stage: str = None
