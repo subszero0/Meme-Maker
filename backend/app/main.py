@@ -19,7 +19,6 @@ from .middleware.security_headers import SecurityHeadersMiddleware
 
 # Get settings instance
 settings = get_settings()
-from . import metrics  # Import to register custom metrics
 
 # Create FastAPI app with proper configuration
 app = FastAPI(

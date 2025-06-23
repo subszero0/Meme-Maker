@@ -3,18 +3,14 @@ Background cleanup tasks for automated maintenance.
 Handles cleanup of temporary files, expired jobs, and storage optimization.
 """
 import asyncio
-import logging
-import os
-import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from fastapi import BackgroundTasks
 
 from ..config.configuration import get_settings
-from ..constants import JobStates, StorageConfig
-from ..exceptions import RepositoryError
+from ..constants import StorageConfig
 from ..logging.config import get_logger
 from ..repositories.job_repository import JobRepository
 

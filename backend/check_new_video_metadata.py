@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import json
 import subprocess
-import sys
 
 # Get the NEW video file path
 video_path = "/app/clips/2025-06-18/Defiant_Iran_claims_to_gain_control_of_skies_over_Israeli_cities_Arrow_3_fails_Janta_Ka_Reporter_df36d8db-1394-40d0-9b78-243d4de50ead.mp4"

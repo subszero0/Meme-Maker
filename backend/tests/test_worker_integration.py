@@ -1,6 +1,5 @@
 import os
 import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -11,7 +10,7 @@ worker_path = os.path.join(os.path.dirname(__file__), "../../worker")
 if worker_path not in sys.path:
     sys.path.insert(0, worker_path)
 
-from app import redis, settings
+from app import redis
 from app.models import JobStatus
 
 

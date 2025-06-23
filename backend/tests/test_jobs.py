@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime
-from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import fakeredis
@@ -9,7 +8,6 @@ from fastapi.testclient import TestClient
 from rq import Queue
 
 from app.main import app
-from app.models import JobStatus
 
 
 @pytest.fixture

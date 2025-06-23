@@ -20,7 +20,6 @@ from app.logging.config import (
     get_correlation_id,
     get_logger,
     set_correlation_id,
-    setup_logging,
 )
 
 
