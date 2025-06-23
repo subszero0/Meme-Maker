@@ -1,8 +1,9 @@
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, HttpUrl, Field, validator
-from decimal import Decimal
+
+from pydantic import BaseModel, Field, HttpUrl, validator
 
 
 class JobStatus(str, Enum):

@@ -2,10 +2,10 @@
 Centralized configuration management with validation.
 All configuration parameters are defined here with proper validation.
 """
+import os
+from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Optional
-from functools import lru_cache
-import os
 
 
 class VideoProcessingSettings:

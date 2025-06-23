@@ -1,11 +1,12 @@
-from pathlib import Path
-from fastapi import APIRouter, HTTPException, status
-from fastapi.responses import FileResponse
 import os
-import urllib.parse
 
 # Import Redis and Job model to get video title
 import sys
+import urllib.parse
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import FileResponse
 
 sys.path.append("/app/backend")
 from app import redis

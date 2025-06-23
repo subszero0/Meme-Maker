@@ -1,9 +1,10 @@
-import pytest
-import tempfile
 import os
 import sys
+import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add the worker directory to Python path
 worker_path = os.path.join(os.path.dirname(__file__), "../../worker")

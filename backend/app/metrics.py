@@ -1,7 +1,7 @@
 """Prometheus metrics for Meme Maker backend"""
 
 try:
-    from prometheus_client import Histogram, Gauge, Counter
+    from prometheus_client import Counter, Gauge, Histogram
 
     METRICS_AVAILABLE = True
 

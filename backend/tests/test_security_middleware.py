@@ -1,8 +1,9 @@
-import pytest
 import os
+from unittest.mock import patch
+
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from unittest.mock import patch
 
 from app.middleware.security_headers import SecurityHeadersMiddleware
 

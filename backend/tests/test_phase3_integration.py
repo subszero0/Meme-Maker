@@ -6,15 +6,16 @@ Integration tests for Phase 3 components:
 - Rate limiting
 - Factory patterns
 """
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from backend.app.cache.metadata_cache import MetadataCache
-from backend.app.tasks.cleanup import CleanupManager
+from backend.app.factories.storage_factory import StorageBackend, StorageFactory
 from backend.app.middleware.rate_limiter import RateLimiter, TokenBucket
-from backend.app.factories.storage_factory import StorageFactory, StorageBackend
+from backend.app.tasks.cleanup import CleanupManager
 
 
 class TestMetadataCache:

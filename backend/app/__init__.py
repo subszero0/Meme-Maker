@@ -33,9 +33,9 @@ def init_redis():
     print(f"🔍 Redis URL from env: {redis_url}")
 
     try:
+        import redis.asyncio as aioredis
         from redis import Redis
         from rq import Queue
-        import redis.asyncio as aioredis
 
         # Try to connect to real Redis with more robust settings
         print(f"🔍 Attempting Redis connection to: {redis_url}")

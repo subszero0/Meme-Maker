@@ -1,7 +1,9 @@
-from fastapi import Depends
-from app.storage_factory import get_storage_manager, storage_manager
-from app.storage import LocalStorageManager
 from typing import Optional
+
+from fastapi import Depends
+
+from app.storage import LocalStorageManager
+from app.storage_factory import get_storage_manager, storage_manager
 
 
 def get_storage() -> LocalStorageManager:
@@ -11,7 +13,7 @@ def get_storage() -> LocalStorageManager:
 
 def get_redis():
     """FastAPI dependency for sync Redis client (for RQ)"""
-    from . import redis, init_redis
+    from . import init_redis, redis
 
     # Ensure Redis is initialized
     if redis is None:

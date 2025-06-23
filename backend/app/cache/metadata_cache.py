@@ -1,12 +1,12 @@
 """
 Cache module for storing video metadata to reduce repeated extraction calls.
 """
-import json
-import logging
 import asyncio
 import hashlib
+import json
+import logging
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, Union, List
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import quote
 
 logger = logging.getLogger(__name__)

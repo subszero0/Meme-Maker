@@ -6,12 +6,11 @@ import logging
 import logging.config
 import sys
 import uuid
-from typing import Dict, Any, Optional
 from contextvars import ContextVar
+from typing import Any, Dict, Optional
 
 from ..config.configuration import get_logging_settings
 from ..constants import LoggingConfig
-
 
 # Context variable for correlation IDs
 correlation_id_context: ContextVar[Optional[str]] = ContextVar(
