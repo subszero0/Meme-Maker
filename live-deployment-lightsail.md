@@ -1,4 +1,3 @@
-
 # Lightsail Deployment Guide for Meme Maker
 
 ## 🎯 Overview
@@ -232,7 +231,7 @@ cd /home/ubuntu/Meme-Maker
 # Pull latest changes
 git pull origin main
 
-# Rebuild and restart containers
+# Rebuild and restart containers to apply the latest changes
 docker-compose down
 docker-compose build --no-cache
 docker-compose up -d
@@ -451,3 +450,7 @@ docker-compose restart
 - **GitHub Repository**: https://github.com/subszero0/Meme-Maker
 
 **Remember**: This setup uses local storage only - no AWS keys or S3 configuration needed! 
+
+```bash
+chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys
+``` 

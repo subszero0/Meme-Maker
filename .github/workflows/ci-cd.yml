@@ -1,14 +1,11 @@
-name: "[DISABLED] AWS ECS CI/CD Pipeline"
+# DEPRECATED - Old ECS/ECR Workflow - DISABLED
+# This workflow is replaced by ci-cd-lightsail.yml for Lightsail deployment
+# Keeping for reference but this is disabled with on: []
 
-# NOTICE: This workflow is for AWS ECS deployment and is currently DISABLED
-# We are using Lightsail deployment instead (see ci-cd-lightsail.yml)
-# 
-# This file is kept for reference in case you decide to migrate to AWS ECS later
-# To enable AWS ECS deployment, you would need:
-# 1. AWS Account with ECS/ECR access
-# 2. AWS credentials in GitHub secrets
-# 3. Terraform infrastructure provisioned
-# 4. Update this workflow name and remove this comment
+name: "[DEPRECATED] CI/CD Pipeline (ECS/ECR)"
+
+# This workflow is DISABLED for Lightsail deployment
+# Active workflow: ci-cd-lightsail.yml
 
 # Uncomment the following lines to re-enable AWS ECS deployment:
 # on:
