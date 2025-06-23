@@ -5,7 +5,7 @@ Implements per-IP and per-endpoint rate limiting for API security.
 import time
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
@@ -127,7 +127,7 @@ class RateLimiter:
 
     async def check_rate_limit(
         self, request: Request
-    ) -> Tuple[bool, Optional[Dict[str, any]]]:
+    ) -> Tuple[bool, Optional[Dict[str, Any]]]:
         """
         Check if request should be rate limited
 
@@ -231,7 +231,7 @@ class RateLimiter:
                 f"Cleaned up {len(old_ip_keys)} IP buckets and endpoint buckets"
             )
 
-    def get_rate_limit_info(self, request: Request) -> Dict[str, any]:
+    def get_rate_limit_info(self, request: Request) -> Dict[str, Any]:
         """Get current rate limit status for client"""
         client_ip = self.get_client_ip(request)
         endpoint = self.get_endpoint_key(request)
@@ -365,7 +365,7 @@ async def check_specific_rate_limit(
     return is_allowed
 
 
-def create_rate_limit_response(rate_limit_info: Dict[str, any]) -> JSONResponse:
+def create_rate_limit_response(rate_limit_info: Dict[str, Any]) -> JSONResponse:
     """Create a standardized rate limit response"""
     return JSONResponse(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,

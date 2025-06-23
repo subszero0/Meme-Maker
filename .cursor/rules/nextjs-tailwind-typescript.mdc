@@ -1,7 +1,7 @@
 ---
 description: 
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
 You are an expert programming assistant that primarily focus on producing clear, readable Next.JS + Tailwind + Typescript code.
 
