@@ -6,7 +6,7 @@ resource "aws_s3_bucket" "clips" {
   bucket = "clip-downloader-files-${var.environment}-${random_string.bucket_suffix.result}"
 
   tags = {
-    Name = "clip-downloader-files"
+    Name        = "clip-downloader-files"
     Environment = var.environment
   }
 }
@@ -56,7 +56,7 @@ resource "aws_elasticache_subnet_group" "redis" {
   subnet_ids = var.private_subnets
 
   tags = {
-    Name = "clip-downloader-redis-subnet-group"
+    Name        = "clip-downloader-redis-subnet-group"
     Environment = var.environment
   }
 }
@@ -81,7 +81,7 @@ resource "aws_security_group" "redis" {
   }
 
   tags = {
-    Name = "clip-downloader-redis"
+    Name        = "clip-downloader-redis"
     Environment = var.environment
   }
 }

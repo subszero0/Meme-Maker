@@ -29,7 +29,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project = "clip-downloader"
+      Project   = "clip-downloader"
       ManagedBy = "terraform"
     }
   }
@@ -42,7 +42,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project = "clip-downloader"
+      Project   = "clip-downloader"
       ManagedBy = "terraform"
     }
   }
