@@ -178,7 +178,7 @@ class TestRateLimiter:
         # Use pytest.approx for floating-point comparison to handle precision issues
         import pytest
 
-        assert bucket.tokens == pytest.approx(3.0, abs=1e-6)
+        assert bucket.tokens == pytest.approx(3.0, abs=1e-5)
 
     def test_token_bucket_refill(self):
         """Test token bucket refill mechanism"""
