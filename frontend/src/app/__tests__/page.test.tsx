@@ -97,7 +97,7 @@ describe("Home Page Flow", () => {
     await user.type(urlInput, "https://youtube.com/watch?v=test");
     await user.click(submitBtn);
 
-    // Should show loading state  
+    // Should show loading state
     expect(screen.getByText("Loading...")).toBeInTheDocument();
 
     // Wait for transition to trim state
