@@ -1,5 +1,6 @@
 import hashlib
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -33,6 +34,24 @@ class LocalStorageManager:
         if not os.access(self.base_path, os.W_OK):
             raise RuntimeError(f"clips_dir not writable: {self.base_path}")
 
+    def _sanitize_filename(self, filename: str) -> str:
+        """Sanitize filename for filesystem compatibility"""
+        # Replace invalid characters with underscores
+        # Invalid chars: < > : " | ? * \ /
+        sanitized = re.sub(r'[<>:"|?*\\/]', "_", filename)
+
+        # Replace multiple underscores with single underscore
+        sanitized = re.sub(r"_+", "_", sanitized)
+
+        # Remove leading/trailing underscores and whitespace
+        sanitized = sanitized.strip("_ ")
+
+        # Ensure filename isn't empty
+        if not sanitized:
+            sanitized = "untitled"
+
+        return sanitized
+
     def _get_daily_path(self, job_id: str) -> Path:
         """Get ISO-8601 organized path for job"""
         today = datetime.utcnow().strftime("%Y-%m-%d")
@@ -48,8 +67,9 @@ class LocalStorageManager:
         daily_path = self._get_daily_path(job_id)
         daily_path.mkdir(parents=True, exist_ok=True)
 
-        # Generate final file path
-        filename = f"{video_title}_{job_id}.mp4"
+        # Generate final file path with sanitized title
+        sanitized_title = self._sanitize_filename(video_title)
+        filename = f"{sanitized_title}_{job_id}.mp4"
         final_path = daily_path / filename
 
         # Write to temporary file first (atomic operation)

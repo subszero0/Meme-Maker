@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.config import settings
+from app.config import get_settings
 from app.storage import LocalStorageManager
 from app.storage_factory import get_storage_manager
 
@@ -230,14 +230,14 @@ async def test_download_url_generation(storage_manager):
     url = storage_manager.get_download_url(job_id, filename)
 
     # Should contain base URL and job ID
-    assert settings.base_url in url
+    assert get_settings().base_url in url
     assert job_id in url
     assert "download" in url
 
 
 def test_storage_factory_local():
     """Test storage factory returns LocalStorageManager for local backend"""
-    with patch.object(settings, "storage_backend", "local"):
+    with patch.object(get_settings(), "storage_backend", "local"):
         storage = get_storage_manager()
         assert isinstance(storage, LocalStorageManager)
 
@@ -258,7 +258,7 @@ def test_storage_factory_local():
 
 def test_storage_factory_invalid():
     """Test storage factory raises error for invalid backend"""
-    with patch.object(settings, "storage_backend", "invalid"):
+    with patch.object(get_settings(), "storage_backend", "invalid"):
         with pytest.raises(ValueError, match="Unknown storage backend"):
             get_storage_manager()
 
