@@ -8,10 +8,7 @@ from typing import List, Optional
 
 from ..config.configuration import get_settings
 from ..constants import ErrorMessages, JobStates, VideoConstraints
-from ..exceptions import (
-    QueueFullError,
-    ValidationError,
-)
+from ..exceptions import QueueFullError, ValidationError
 from ..models import Job, JobCreateRequest, JobStatus
 from ..queue.manager import QueueManager
 from ..repositories.job_repository import JobRepository

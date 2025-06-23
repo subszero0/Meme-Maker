@@ -2,6 +2,7 @@ import logging
 import uuid
 from decimal import Decimal
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, HttpUrl, validator
