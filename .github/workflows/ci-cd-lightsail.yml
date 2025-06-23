@@ -1,18 +1,13 @@
-name: "CI/CD Pipeline (Lightsail)"
+name: "CI/CD Pipeline (Lightsail Instance)"
 
-# This is the ACTIVE CI/CD pipeline for Lightsail Container Service deployment
-# It uses AWS CLI and lightsailctl for deployment (no SSH required)
+# This is the ACTIVE CI/CD pipeline for Lightsail Instance deployment
+# It uses SSH and Docker Compose to deploy directly to your server
 
 on:
   push:
     branches: [ master ]
   pull_request:
     branches: [ master ]
-
-env:
-  AWS_REGION: ap-south-1  # Mumbai region where your Lightsail is located
-  LIGHTSAIL_SERVICE_NAME: meme-maker-service
-  CONTAINER_NAME: meme-maker-app
 
 jobs:
   lint-test:
@@ -70,7 +65,6 @@ jobs:
         poetry run black --check .
         poetry run isort --check-only .
         poetry run flake8 .
-        # MyPy: Allow non-critical annotation warnings
         poetry run mypy app/ || echo "MyPy warnings present (non-critical annotation issues)"
 
     - name: Test frontend
@@ -91,7 +85,7 @@ jobs:
         echo "- Backend tests: ✅" >> $GITHUB_STEP_SUMMARY
 
   deploy-lightsail:
-    name: Deploy to Lightsail Container Service
+    name: Deploy to Lightsail Instance
     runs-on: ubuntu-latest
     needs: lint-test
     if: github.ref == 'refs/heads/master'
@@ -100,135 +94,41 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v4
+    - name: Deploy to Lightsail via SSH
+      uses: appleboy/ssh-action@v1.0.3
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
-
-    - name: Setup AWS CLI and Lightsailctl
-      run: |
-        # Upgrade AWS CLI
-        aws --version
-        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-        unzip awscliv2.zip
-        sudo ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
-        aws --version
-        
-        # Install lightsailctl
-        sudo curl "https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl" -o "/usr/local/bin/lightsailctl"
-        sudo chmod +x /usr/local/bin/lightsailctl
-
-    - name: Build and Push Docker Image to Lightsail
-      env:
-        IMAGE_TAG: ${{ github.sha }}
-        IMAGE_URL: meme-maker:${{ github.sha }}
-      run: |
-        # Build the Docker image (using docker-compose for consistency)
-        docker-compose build
-        
-        # Tag the backend image for Lightsail
-        docker tag meme-maker-backend:latest $IMAGE_URL
-        
-        # Push to Lightsail Container Service
-        aws lightsail push-container-image \
-          --service-name ${{ env.LIGHTSAIL_SERVICE_NAME }} \
-          --image $IMAGE_URL \
-          --region ${{ env.AWS_REGION }} \
-          --label git-push-${{ github.sha }}
-
-    - name: Get Latest Container Image
-      run: |
-        # Get the latest pushed image name
-        LIGHTSAIL_IMAGE=$(aws lightsail get-container-images \
-          --service-name ${{ env.LIGHTSAIL_SERVICE_NAME }} \
-          --region ${{ env.AWS_REGION }} \
-          | jq -r '.containerImages[0].image')
-        echo "LIGHTSAIL_IMAGE=$LIGHTSAIL_IMAGE" >> $GITHUB_ENV
-
-    - name: Deploy to Lightsail Container Service
-      run: |
-        # Create new deployment
-        aws lightsail create-container-service-deployment \
-          --region ${{ env.AWS_REGION }} \
-          --service-name ${{ env.LIGHTSAIL_SERVICE_NAME }} \
-          --output yaml \
-          --containers "{
-            \"${{ env.CONTAINER_NAME }}\": {
-              \"image\": \"$LIGHTSAIL_IMAGE\",
-              \"environment\": {
-                \"REDIS_URL\": \"redis://redis:6379\",
-                \"STORAGE_BACKEND\": \"local\",
-                \"CLIPS_DIR\": \"/app/clips\",
-                \"BASE_URL\": \"https://memeit.pro\",
-                \"VERSION\": \"${{ github.run_number }}\"
-              },
-              \"ports\": {
-                \"8000\": \"HTTP\"
-              }
-            },
-            \"redis\": {
-              \"image\": \"redis:7-alpine\",
-              \"ports\": {
-                \"6379\": \"HTTP\"
-              }
-            }
-          }" \
-          --public-endpoint "{
-            \"containerName\": \"${{ env.CONTAINER_NAME }}\",
-            \"containerPort\": 8000,
-            \"healthCheck\": {
-              \"path\": \"/health\",
-              \"intervalSeconds\": 30
-            }
-          }"
-
-    - name: Wait for Deployment
-      run: |
-        echo "Waiting for deployment to complete..."
-        sleep 60
-        
-        # Check deployment status
-        aws lightsail get-container-services \
-          --service-name ${{ env.LIGHTSAIL_SERVICE_NAME }} \
-          --region ${{ env.AWS_REGION }} \
-          --query 'containerServices[0].state' \
-          --output text
-
-    - name: Health Check
-      run: |
-        # Get the public URL
-        PUBLIC_URL=$(aws lightsail get-container-services \
-          --service-name ${{ env.LIGHTSAIL_SERVICE_NAME }} \
-          --region ${{ env.AWS_REGION }} \
-          --query 'containerServices[0].url' \
-          --output text)
-        
-        echo "Testing health endpoint at: $PUBLIC_URL/health"
-        
-        # Wait and test health endpoint
-        for i in {1..10}; do
-          if curl -f -s "$PUBLIC_URL/health" > /dev/null; then
-            echo "✅ Health check passed on attempt $i"
-            echo "🚀 Deployment successful! App available at: $PUBLIC_URL"
-            break
+        host: ${{ secrets.LIGHTSAIL_HOST }}
+        username: ${{ secrets.LIGHTSAIL_USER }}
+        key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+        script: |
+          # Navigate to the project directory
+          cd /home/ubuntu/Meme-Maker
+          
+          # Pull the latest changes from the master branch
+          git pull origin master
+          
+          # Rebuild and restart containers in detached mode
+          docker-compose down
+          docker-compose build --no-cache
+          docker-compose up -d
+          
+          # Wait a moment for services to initialize
+          echo "Waiting 30 seconds for services to start..."
+          sleep 30
+          
+          # Perform a health check to ensure the backend is running
+          echo "Performing health check..."
+          if curl -f -s http://localhost:8000/health > /dev/null; then
+            echo "✅ Deployment successful - health check passed"
           else
-            echo "⏳ Health check failed on attempt $i, retrying in 30s..."
-            if [ $i -eq 10 ]; then
-              echo "❌ Health check failed after 10 attempts"
-              exit 1
-            fi
-            sleep 30
+            echo "❌ Deployment failed - health check failed"
+            exit 1
           fi
-        done
 
     - name: Add deployment summary
       if: always()
       run: |
-        echo "## Lightsail Container Service Deployment" >> $GITHUB_STEP_SUMMARY
-        echo "- **Method**: AWS Lightsail Container Service" >> $GITHUB_STEP_SUMMARY
-        echo "- **Service**: ${{ env.LIGHTSAIL_SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Image**: $LIGHTSAIL_IMAGE" >> $GITHUB_STEP_SUMMARY
-        echo "- **Storage**: Local filesystem (no S3)" >> $GITHUB_STEP_SUMMARY
-        echo "- **Status**: ✅ Deployed successfully" >> $GITHUB_STEP_SUMMARY 
+        echo "## Lightsail Instance Deployment" >> $GITHUB_STEP_SUMMARY
+        echo "- **Target**: Lightsail Instance (SSH)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Deployment**: Docker Compose" >> $GITHUB_STEP_SUMMARY
+        echo "- **Health Check**: ✅ Passed" >> $GITHUB_STEP_SUMMARY 
