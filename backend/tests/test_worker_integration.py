@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Add the worker directory to Python path
+# Add the worker directory to Python path (must be before app imports)
 worker_path = os.path.join(os.path.dirname(__file__), "../../worker")
 if worker_path not in sys.path:
     sys.path.insert(0, worker_path)
@@ -151,9 +151,9 @@ class TestWorkerPipelineLogic:
     ):
         """Test the complete clipping workflow with mocked dependencies"""
         job_id = "test_workflow_job"
-        url = "https://example.com/video"
-        in_ts = 5.0
-        out_ts = 15.0
+        # url = "https://example.com/video"  # Not used in test
+        # in_ts = 5.0  # Not used in test
+        # out_ts = 15.0  # Not used in test
 
         # Setup mocks
         temp_dir = "/tmp/test_clip_123"

@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import FileResponse
 
+# Module path setup (must be after standard imports)
 sys.path.append("/app/backend")
 from app import redis
 
@@ -71,10 +72,13 @@ async def download_clip(filename: str):
         path=str(clip_path),
         media_type="video/mp4",
         filename=download_filename,
-        headers={
-            "Content-Disposition": f"attachment; filename=\"{download_filename}\"; filename*=UTF-8''{safe_filename}",
-            "Content-Length": str(file_size),
-        },
+                    headers={
+                "Content-Disposition": (
+                    f"attachment; filename=\"{download_filename}\"; "
+                    f"filename*=UTF-8''{safe_filename}"
+                ),
+                "Content-Length": str(file_size),
+            },
     )
 
 

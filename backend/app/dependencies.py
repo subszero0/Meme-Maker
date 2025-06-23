@@ -45,7 +45,7 @@ async def get_async_redis():
         # Test the client to ensure it's working
         try:
             await client.ping()
-            print(f"✅ Async Redis client ping successful")
+            print("✅ Async Redis client ping successful")
         except Exception as ping_error:
             print(f"⚠️ Async Redis client ping failed: {ping_error}")
             # Still return the client as it might work for other operations

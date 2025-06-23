@@ -73,9 +73,9 @@ try:
         else:
             print("✅ NEW VIDEO - NO ROTATION METADATA FOUND")
 
-        print(f"\n🎯 COMPARISON WITH ORIGINAL:")
-        print(f"Both videos from same source, same processing pipeline")
-        print(f"If both have same rotation issue, problem is systematic")
+        print("\n🎯 COMPARISON WITH ORIGINAL:")
+        print("Both videos from same source, same processing pipeline")
+        print("If both have same rotation issue, problem is systematic")
 
     else:
         print("❌ No video streams found")

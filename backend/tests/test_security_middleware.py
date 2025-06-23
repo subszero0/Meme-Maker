@@ -127,9 +127,6 @@ class TestSecurityHeaders:
         assert response.status_code == 200
 
         # Should have basic CORS setup (either credentials or origin)
-        has_cors = (
-            "access-control-allow-credentials" in response.headers
-            or "access-control-allow-origin" in response.headers
-        )
+        # Note: CORS headers may vary based on configuration
         # This may or may not be true depending on settings, so we just verify the response works
         assert response.status_code == 200

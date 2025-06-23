@@ -22,7 +22,8 @@ def init_redis():
 
     if redis is not None and async_redis_pool is not None:
         print(
-            f"🔄 Redis already initialized: sync={type(redis)}, async_pool={type(async_redis_pool)}"
+            f"🔄 Redis already initialized: "
+            f"sync={type(redis)}, async_pool={type(async_redis_pool)}"
         )
         return redis
 
@@ -69,7 +70,7 @@ def init_redis():
         print(f"🔍 Redis info: {redis.info('server').get('redis_version', 'unknown')}")
 
         # Initialize async Redis connection pool
-        print(f"🔍 Creating async Redis connection pool...")
+        print("🔍 Creating async Redis connection pool...")
         async_redis_pool = aioredis.ConnectionPool.from_url(
             redis_url,
             decode_responses=True,
@@ -78,7 +79,7 @@ def init_redis():
             socket_connect_timeout=10,
             socket_timeout=10,
         )
-        print(f"✅ Async Redis connection pool created successfully")
+        print("✅ Async Redis connection pool created successfully")
 
     except Exception as e:
         print(f"❌ Redis connection failed: {e}")
@@ -90,7 +91,8 @@ def init_redis():
             redis = fakeredis.FakeRedis(decode_responses=True)
             async_redis_pool = "fake"  # Flag for fake Redis
             print(
-                f"⚠️  Using FakeRedis for local development - caching will work but won't persist"
+                "⚠️  Using FakeRedis for local development - "
+                "caching will work but won't persist"
             )
         except ImportError:
             print("❌ Both Redis and FakeRedis unavailable")
@@ -103,13 +105,14 @@ def init_redis():
     try:
         if redis is not None:
             q = Queue("clips", connection=redis)
-            print(f"✅ Initialized RQ queue 'clips'")
+            print("✅ Initialized RQ queue 'clips'")
     except Exception as e:
         print(f"⚠️ RQ queue initialization failed: {e}")
         q = None
 
     print(
-        f"🎯 Redis initialization complete: sync={type(redis)}, async_pool={type(async_redis_pool)}"
+        f"🎯 Redis initialization complete: "
+        f"sync={type(redis)}, async_pool={type(async_redis_pool)}"
     )
     return redis
 
