@@ -86,7 +86,11 @@ describe("Home Page Flow", () => {
       duration: 120,
     };
 
-    mockFetchVideoMetadata.mockResolvedValue(mockMetadata);
+    // Add a delay to the mock to ensure loading state is visible
+    mockFetchVideoMetadata.mockImplementation(
+      () =>
+        new Promise((resolve) => setTimeout(() => resolve(mockMetadata), 100)),
+    );
 
     renderWithToast(<Home />);
 
@@ -98,7 +102,9 @@ describe("Home Page Flow", () => {
     await user.click(submitBtn);
 
     // Should show loading state
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Loading...")).toBeInTheDocument();
+    });
 
     // Wait for transition to trim state
     await waitFor(() => {
