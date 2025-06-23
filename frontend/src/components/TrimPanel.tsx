@@ -1,16 +1,21 @@
-'use client';
+"use client";
 
-import { useReducer, useCallback, useState, useEffect } from 'react';
-import ReactPlayer from 'react-player';
-import { Range, getTrackBackground } from 'react-range';
-import { useDebouncedCallback } from 'use-debounce';
-import { formatTime, parseTime } from '@/lib/formatTime';
-import { useToast } from './ToastProvider';
-import ResolutionSelector from './ResolutionSelector';
+import { useReducer, useCallback, useState, useEffect } from "react";
+import ReactPlayer from "react-player";
+import { Range, getTrackBackground } from "react-range";
+import { useDebouncedCallback } from "use-debounce";
+import { formatTime, parseTime } from "@/lib/formatTime";
+import { useToast } from "./ToastProvider";
+import ResolutionSelector from "./ResolutionSelector";
 
 interface TrimPanelProps {
   jobMeta: { url: string; title: string; duration: number }; // duration in seconds
-  onSubmit(params: { in: number; out: number; rights: boolean; formatId?: string }): void;
+  onSubmit(params: {
+    in: number;
+    out: number;
+    rights: boolean;
+    formatId?: string;
+  }): void;
 }
 
 interface TrimState {
@@ -21,23 +26,23 @@ interface TrimState {
 }
 
 type TrimAction =
-  | { type: 'SET_IN'; payload: number }
-  | { type: 'SET_OUT'; payload: number }
-  | { type: 'SET_RIGHTS'; payload: boolean }
-  | { type: 'SET_RANGE'; payload: { in: number; out: number } }
-  | { type: 'SET_FORMAT_ID'; payload: string | undefined };
+  | { type: "SET_IN"; payload: number }
+  | { type: "SET_OUT"; payload: number }
+  | { type: "SET_RIGHTS"; payload: boolean }
+  | { type: "SET_RANGE"; payload: { in: number; out: number } }
+  | { type: "SET_FORMAT_ID"; payload: string | undefined };
 
 function trimReducer(state: TrimState, action: TrimAction): TrimState {
   switch (action.type) {
-    case 'SET_IN':
+    case "SET_IN":
       return { ...state, in: action.payload };
-    case 'SET_OUT':
+    case "SET_OUT":
       return { ...state, out: action.payload };
-    case 'SET_RIGHTS':
+    case "SET_RIGHTS":
       return { ...state, rights: action.payload };
-    case 'SET_RANGE':
+    case "SET_RANGE":
       return { ...state, in: action.payload.in, out: action.payload.out };
-    case 'SET_FORMAT_ID':
+    case "SET_FORMAT_ID":
       return { ...state, formatId: action.payload };
     default:
       return state;
@@ -73,14 +78,14 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
   const debouncedInChange = useDebouncedCallback((value: string) => {
     const parsed = parseTime(value);
     if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
-      dispatch({ type: 'SET_IN', payload: parsed });
+      dispatch({ type: "SET_IN", payload: parsed });
     }
   }, 150);
 
   const debouncedOutChange = useDebouncedCallback((value: string) => {
     const parsed = parseTime(value);
     if (parsed !== null && parsed >= 0 && parsed <= jobMeta.duration) {
-      dispatch({ type: 'SET_OUT', payload: parsed });
+      dispatch({ type: "SET_OUT", payload: parsed });
     }
   }, 150);
 
@@ -89,52 +94,69 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
     // Snap to 0.1s precision
     const snappedIn = Math.round(newIn * 10) / 10;
     const snappedOut = Math.round(newOut * 10) / 10;
-    
+
     // Ensure minimum gap of 0.1s
     if (snappedOut - snappedIn >= 0.1) {
-      dispatch({ type: 'SET_RANGE', payload: { in: snappedIn, out: snappedOut } });
+      dispatch({
+        type: "SET_RANGE",
+        payload: { in: snappedIn, out: snappedOut },
+      });
     }
   }, []);
 
-  const handleInTimeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setInTimeInput(value);
-    debouncedInChange(value);
-  }, [debouncedInChange]);
+  const handleInTimeChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setInTimeInput(value);
+      debouncedInChange(value);
+    },
+    [debouncedInChange],
+  );
 
-  const handleOutTimeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setOutTimeInput(value);
-    debouncedOutChange(value);
-  }, [debouncedOutChange]);
+  const handleOutTimeChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setOutTimeInput(value);
+      debouncedOutChange(value);
+    },
+    [debouncedOutChange],
+  );
 
   const handleFormatChange = useCallback((formatId: string | undefined) => {
-    console.log('🎭 TrimPanel: Format changed to:', formatId);
-    dispatch({ type: 'SET_FORMAT_ID', payload: formatId });
+    console.log("🎭 TrimPanel: Format changed to:", formatId);
+    dispatch({ type: "SET_FORMAT_ID", payload: formatId });
   }, []);
 
   const handleSubmit = useCallback(() => {
     if (!canSubmit) return;
-    
-    console.log('🎭 TrimPanel: Submitting with state:', {
+
+    console.log("🎭 TrimPanel: Submitting with state:", {
       in: state.in,
       out: state.out,
       formatId: state.formatId,
-      rights: state.rights
+      rights: state.rights,
     });
-    
+
     try {
-      onSubmit({ 
-        in: state.in, 
-        out: state.out, 
-        rights: true, 
-        formatId: state.formatId 
+      onSubmit({
+        in: state.in,
+        out: state.out,
+        rights: true,
+        formatId: state.formatId,
       });
     } catch (error) {
-      console.error('🎭 TrimPanel: Submit failed:', error);
-      pushToast({ type: 'error', message: 'Failed to submit clip request' });
+      console.error("🎭 TrimPanel: Submit failed:", error);
+      pushToast({ type: "error", message: "Failed to submit clip request" });
     }
-  }, [canSubmit, state.in, state.out, state.formatId, state.rights, onSubmit, pushToast]);
+  }, [
+    canSubmit,
+    state.in,
+    state.out,
+    state.formatId,
+    state.rights,
+    onSubmit,
+    pushToast,
+  ]);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-6">
@@ -152,14 +174,21 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
 
       {/* Video Info */}
       <div className="text-center">
-        <h3 className="text-lg font-semibold text-gray-900 truncate">{jobMeta.title}</h3>
-        <p className="text-sm text-gray-600">Duration: {formatTime(jobMeta.duration)}</p>
+        <h3 className="text-lg font-semibold text-gray-900 truncate">
+          {jobMeta.title}
+        </h3>
+        <p className="text-sm text-gray-600">
+          Duration: {formatTime(jobMeta.duration)}
+        </p>
       </div>
 
       {/* Time Inputs */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="in-time" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="in-time"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Start Time (hh:mm:ss.mmm)
           </label>
           <input
@@ -173,7 +202,10 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
           />
         </div>
         <div>
-          <label htmlFor="out-time" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="out-time"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             End Time (hh:mm:ss.mmm)
           </label>
           <input
@@ -203,7 +235,7 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
               style={{
                 background: getTrackBackground({
                   values: [state.in, state.out],
-                  colors: ['#e5e7eb', '#3b82f6', '#e5e7eb'],
+                  colors: ["#e5e7eb", "#3b82f6", "#e5e7eb"],
                   min: 0,
                   max: jobMeta.duration,
                 }),
@@ -218,20 +250,24 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
               <div
                 key={key}
                 {...thumbProps}
-                data-testid={index === 0 ? 'handle-start' : 'handle-end'}
+                data-testid={index === 0 ? "handle-start" : "handle-end"}
                 className="h-6 w-6 bg-blue-600 border-2 border-white rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                 style={{ ...thumbProps.style }}
                 aria-valuemin={0}
                 aria-valuemax={jobMeta.duration}
                 aria-valuenow={index === 0 ? state.in : state.out}
-                aria-label={index === 0 ? 'Start time' : 'End time'}
+                aria-label={index === 0 ? "Start time" : "End time"}
               />
             );
           }}
         />
         <div className="flex justify-between text-xs text-gray-500">
           <span>{formatTime(state.in)}</span>
-          <span className={clipDuration > maxDuration ? 'text-red-600 font-medium' : ''}>
+          <span
+            className={
+              clipDuration > maxDuration ? "text-red-600 font-medium" : ""
+            }
+          >
             Duration: {formatTime(clipDuration)}
           </span>
           <span>{formatTime(state.out)}</span>
@@ -265,7 +301,9 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
           data-testid="rights-checkbox"
           type="checkbox"
           checked={state.rights}
-          onChange={(e) => dispatch({ type: 'SET_RIGHTS', payload: e.target.checked })}
+          onChange={(e) =>
+            dispatch({ type: "SET_RIGHTS", payload: e.target.checked })
+          }
           className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
         />
         <label htmlFor="rights-checkbox" className="text-sm text-gray-700">
@@ -280,12 +318,12 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
         data-testid="clip-btn"
         className={`w-full py-3 px-4 rounded-md font-semibold text-white transition-colors ${
           canSubmit
-            ? 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-            : 'bg-gray-400 cursor-not-allowed'
+            ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            : "bg-gray-400 cursor-not-allowed"
         }`}
       >
         Clip & Download
       </button>
     </div>
   );
-} 
+}

@@ -16,7 +16,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Clip Downloader - Video Trimming Tool",
-  description: "Trim and download video clips from social media platforms instantly",
+  description:
+    "Trim and download video clips from social media platforms instantly",
 };
 
 const AppShell: FC<PropsWithChildren> = ({ children }) => {
@@ -51,11 +52,13 @@ const AppShell: FC<PropsWithChildren> = ({ children }) => {
                   return false;
                 }
               });
-            `
+            `,
           }}
         />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         {/* Fixed Header */}
         <header className="fixed top-0 left-0 right-0 z-50 bg-indigo-500 text-white shadow-lg">
           <div className="container mx-auto px-4 py-3">
@@ -67,7 +70,7 @@ const AppShell: FC<PropsWithChildren> = ({ children }) => {
         </header>
 
         {/* Hidden Progress Bar */}
-        <div 
+        <div
           className="fixed top-16 left-0 right-0 z-40 h-1 bg-gray-200"
           aria-hidden="true"
         >
@@ -76,9 +79,7 @@ const AppShell: FC<PropsWithChildren> = ({ children }) => {
 
         {/* Main Content */}
         <main className="pt-20">
-          <ToastProvider>
-            {children}
-          </ToastProvider>
+          <ToastProvider>{children}</ToastProvider>
         </main>
       </body>
     </html>
