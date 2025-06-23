@@ -10,8 +10,8 @@ worker_path = os.path.join(os.path.dirname(__file__), "../../worker")
 if worker_path not in sys.path:
     sys.path.insert(0, worker_path)
 
-from app import redis
-from app.models import JobStatus
+from app import redis  # noqa: E402
+from app.models import JobStatus  # noqa: E402
 
 
 class TestWorkerFunctions:

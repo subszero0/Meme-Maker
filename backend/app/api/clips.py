@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 
 # Module path setup (must be after standard imports)
 sys.path.append("/app/backend")
-from app import redis
+from app import redis  # noqa: E402
 
 router = APIRouter()
 
