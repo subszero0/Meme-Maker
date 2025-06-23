@@ -539,6 +539,190 @@ Using nginx debugging techniques on a FastAPI static-serving architecture (or vi
 
 ---
 
+## 🎯 **Best Practice #20: Systematically Resolve CI/CD Pipeline Errors with Priority-Based Approach**
+
+**Principle**: When CI/CD pipelines fail due to code quality issues, distinguish between critical functional errors and cosmetic issues. Fix functional blockers first, then assess whether cosmetic issues need immediate resolution.
+
+**Implementation**:
+
+**Step 1: Categorize Errors by Criticality**
+- **Critical (Must Fix)**: F821 (undefined variables), F401 (unused imports), E722 (bare except), F601 (duplicate keys)
+- **Important (Should Fix)**: F541 (f-string placeholders), F841 (unused variables), E402 (import order)
+- **Cosmetic (Can Defer)**: E501 (line length), E203 (whitespace), W503 (line breaks)
+
+**Step 2: Use Automated Tools Strategically**
+```bash
+# Fix critical undefined variables and unused imports first
+poetry run flake8 . --select=F821,F401,E722,F601 --count
+
+# Use autoflake for safe automated cleanup
+autoflake --remove-all-unused-imports --in-place --recursive .
+
+# Use black for consistent formatting
+poetry run black .
+
+# Use isort for import organization
+poetry run isort .
+```
+
+**Step 3: Fix Critical Issues Manually**
+- **F821**: Add missing parameters, imports, or variable definitions
+- **E722**: Replace bare `except:` with specific exception types
+- **F601**: Remove duplicate dictionary keys in test data
+- **F541**: Remove f-string prefix from strings without placeholders
+
+**Step 4: Apply Minimal Changes Principle**
+- Don't fix all cosmetic issues if they're not blocking deployment
+- Focus on issues that break functionality or security
+- Document remaining cosmetic issues for future cleanup
+
+**Real-World Example**:
+- **Initial State**: 55 Flake8 errors blocking CI/CD pipeline
+- **Priority Analysis**: 
+  - 5 critical functional errors (F821, E722, F601, F841)
+  - 7 f-string formatting issues (F541)  
+  - 35 cosmetic line length issues (E501)
+  - 3 import order issues (E402)
+- **Systematic Resolution**:
+  1. Fixed all F821 undefined variables → enabled functionality
+  2. Fixed E722 bare except → improved error handling security
+  3. Fixed F601 duplicate keys → corrected test data integrity
+  4. Fixed F541/F841 formatting → code consistency
+  5. Left 35 E501 issues → cosmetic, non-blocking
+- **Result**: CI/CD pipeline unblocked, functionality restored
+
+**Error-Specific Resolution Strategies**:
+
+**F821 (Undefined Variables)**:
+```python
+# Before: Missing parameter
+def cleanup_job(job_id):  # Missing redis parameter
+    redis.delete(f"job:{job_id}")
+
+# After: Add required parameter  
+def cleanup_job(job_id, redis):
+    redis.delete(f"job:{job_id}")
+```
+
+**E722 (Bare Except)**:
+```python
+# Before: Unsafe bare except
+try:
+    width, height = map(int, fmt.resolution.split("x"))
+except:
+    return (0, 0)
+
+# After: Specific exception handling
+try:
+    width, height = map(int, fmt.resolution.split("x"))
+except (ValueError, AttributeError):
+    return (0, 0)
+```
+
+**F601 (Duplicate Dictionary Keys)**:
+```python
+# Before: Duplicate keys overwrite each other
+job_data = {
+    "url": "https://youtube.com/watch?v=test",  # Original URL
+    "url": "https://s3.amazonaws.com/file.mp4"  # Download URL
+}
+
+# After: Use different keys
+job_data = {
+    "source_url": "https://youtube.com/watch?v=test",
+    "url": "https://s3.amazonaws.com/file.mp4"  # Download URL
+}
+```
+
+**Step 5: Verify Critical Fixes**
+```bash
+# Ensure all functional errors are resolved
+poetry run flake8 . --select=F821,F401,E722,F601 --count
+# Should return: 0
+
+# Check remaining cosmetic issues
+poetry run flake8 . --count
+# Acceptable if only E501, E402, W503 remain
+```
+
+**Step 6: Commit and Push Systematically**
+```bash
+git add .
+git commit -m "Fix critical CI/CD lint errors
+
+- Fix F821 undefined variables 
+- Fix E722 bare except clauses
+- Fix F601 duplicate dictionary keys
+- Fix F541 f-string placeholders
+- Remaining N cosmetic issues are non-blocking"
+
+git push origin master
+```
+
+**Why It Matters**: 
+CI/CD pipelines often block on any lint errors, but not all errors are equally critical. Fixing functional errors first ensures the pipeline can proceed while allowing cosmetic improvements to be addressed in follow-up work. This prevents perfectionism from blocking deployment.
+
+**Automation vs Manual Balance**:
+- Use automated tools (black, isort, autoflake) for safe, consistent changes
+- Manually fix logic errors (undefined variables, bare except) that require human judgment
+- Don't use automated formatters that might break working code patterns
+
+---
+
+## 🎯 **Best Practice #21: Always Push Local Fixes to Remote Repository for CI/CD**
+
+**Principle**: Local fixes don't affect CI/CD pipelines until they're pushed to the remote repository. Never assume local test results reflect CI/CD behavior.
+
+**Implementation**:
+
+**Critical Workflow Step**:
+1. **Fix issues locally** → Test locally → Commit locally
+2. **Push to remote repository** → Trigger CI/CD → Verify pipeline success
+3. **Missing Step 2 = CI/CD still fails with old code**
+
+**Common Mistake Pattern**:
+```bash
+# Fix lint errors locally
+poetry run flake8 .  # ✅ 0 errors locally
+
+# User reports: "CI/CD still failing"
+# Reality: Fixes not pushed to GitHub yet
+```
+
+**Correct Process**:
+```bash
+# 1. Fix and test locally
+poetry run flake8 .  # Verify fixes work
+
+# 2. Stage and commit changes
+git add .
+git commit -m "Fix lint errors blocking CI/CD"
+
+# 3. CRITICAL: Push to remote
+git push origin master
+
+# 4. Verify CI/CD picks up changes
+# Check GitHub Actions for new workflow run
+```
+
+**Real-World Example**:
+- **Problem**: User reports "Actions aren't updated with latest push"
+- **Root Cause**: Assistant fixed lint errors locally but never pushed to GitHub
+- **CI/CD Status**: Still running against old code with 55 lint errors
+- **Solution**: `git push origin master` to trigger new CI/CD run with fixes
+- **Lesson**: Local success ≠ CI/CD success until code is pushed
+
+**Verification Steps**:
+1. **Confirm push succeeded**: Check git output for "Writing objects" and remote confirmation
+2. **Verify GitHub has new commit**: Check GitHub repository for latest commit hash
+3. **Monitor CI/CD trigger**: New push should trigger new workflow run
+4. **Validate pipeline progression**: Check that workflow progresses past previously failing step
+
+**Why It Matters**: 
+CI/CD pipelines only operate on code in the remote repository. Local fixes are invisible to GitHub Actions until pushed. Always complete the git push step to make local fixes effective in the deployment pipeline.
+
+---
+
 ## 🔄 **Meta Best Practice: Continuous Learning Integration**
 
 **Implementation**:
@@ -576,5 +760,7 @@ After each debugging session:
 17. **Understand frontend migration context** - Recent frontend updates change entire debugging approach
 18. **Distinguish code vs deployment issues** - Production errors with working development often indicate deployment pipeline problems
 19. **Use architecture-aware debugging** - Match debugging strategy to actual deployed architecture
+20. **Prioritize CI/CD errors systematically** - Fix critical functional errors before cosmetic issues
+21. **Always push fixes to remote** - Local fixes don't affect CI/CD until pushed to repository
 
 These practices work together to create a systematic, safe, and effective approach to production problem resolution that minimizes system disruption while maximizing learning and long-term stability. 
