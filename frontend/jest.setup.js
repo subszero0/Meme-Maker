@@ -1,7 +1,9 @@
 import "@testing-library/jest-dom";
 
-// Suppress JSdom navigation warnings and React act() warnings that are harmless in tests
+// Suppress JSdom navigation warnings, React act() warnings, and excessive component logging in tests
 const originalConsoleError = console.error;
+const originalConsoleLog = console.log;
+
 console.error = (...args) => {
   if (
     typeof args[0] === "string" &&
@@ -12,6 +14,22 @@ console.error = (...args) => {
     return;
   }
   originalConsoleError.apply(console, args);
+};
+
+// Suppress excessive component debug logging in test environment
+console.log = (...args) => {
+  if (
+    typeof args[0] === "string" &&
+    (args[0].includes("🎬 ResolutionSelector:") ||
+      args[0].includes("🎭 TrimPanel:") ||
+      args[0].includes("🏠 HomePage:") ||
+      args[0].includes("📊 JobPoller:") ||
+      args[0].includes("Making API request to:") ||
+      args[0].includes("API response received:"))
+  ) {
+    return;
+  }
+  originalConsoleLog.apply(console, args);
 };
 
 // Comprehensive fetch mock for tests
