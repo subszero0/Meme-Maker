@@ -5,7 +5,7 @@ Handles cleanup of temporary files, expired jobs, and storage optimization.
 import asyncio
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from fastapi import BackgroundTasks
 
@@ -139,7 +139,7 @@ class CleanupManager:
             logger.error(f"Storage cleanup failed: {str(e)}", exc_info=True)
             raise
 
-    async def optimize_storage(self) -> Dict[str, any]:
+    async def optimize_storage(self) -> Dict[str, Any]:
         """
         Optimize storage by removing duplicates and compressing old files
 
@@ -293,7 +293,7 @@ class CleanupManager:
         # In a real implementation, you'd hash files and compare
         return 0
 
-    async def _get_storage_usage(self, directory: Path) -> Dict[str, any]:
+    async def _get_storage_usage(self, directory: Path) -> Dict[str, Any]:
         """Get storage usage statistics"""
         try:
             total_size = 0
