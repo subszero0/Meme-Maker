@@ -16,11 +16,7 @@ from app.config.configuration import (
     get_settings,
 )
 from app.constants import LoggingConfig, VideoConstraints
-from app.logging.config import (
-    get_correlation_id,
-    get_logger,
-    set_correlation_id,
-)
+from app.logging.config import get_correlation_id, get_logger, set_correlation_id
 
 
 class TestVideoProcessingSettings:
