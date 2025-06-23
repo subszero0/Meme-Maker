@@ -36,6 +36,6 @@ except ImportError:
         def set(self, *args, **kwargs):
             pass
 
-    clip_job_latency_seconds = DummyMetric()
-    clip_jobs_inflight = DummyMetric()
-    clip_jobs_queued_total = DummyMetric()
+    clip_job_latency_seconds: "Histogram" = DummyMetric()  # type: ignore
+    clip_jobs_inflight: "Gauge" = DummyMetric()  # type: ignore
+    clip_jobs_queued_total: "Counter" = DummyMetric()  # type: ignore

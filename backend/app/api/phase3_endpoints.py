@@ -202,7 +202,7 @@ async def get_system_health(
     Get comprehensive system health status including Phase 3 components
     """
     try:
-        health_status = {
+        health_status: Dict[str, Any] = {
             "status": "healthy",
             "timestamp": "2024-01-01T00:00:00Z",  # Would be actual timestamp
             "components": {},
