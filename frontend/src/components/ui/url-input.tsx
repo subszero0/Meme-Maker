@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
 interface UrlInputProps {
   onSubmit: (url: string) => void;
@@ -8,7 +8,7 @@ interface UrlInputProps {
 }
 
 export default function UrlInput({ onSubmit, loading = false }: UrlInputProps) {
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,9 +34,9 @@ export default function UrlInput({ onSubmit, loading = false }: UrlInputProps) {
           disabled={loading || !url.trim()}
           className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {loading ? 'Processing...' : 'Start'}
+          {loading ? "Processing..." : "Start"}
         </button>
       </div>
     </form>
   );
-} 
+}

@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect } from "react";
+import { motion } from "framer-motion";
 
 export interface ToastData {
   id: string;
-  type: 'success' | 'error' | 'info';
+  type: "success" | "error" | "info";
   message: string;
   timestamp: number;
 }
@@ -16,15 +16,15 @@ interface ToastProps {
 }
 
 const variants = {
-  success: 'bg-green-50 border-green-200 text-green-800',
-  error: 'bg-red-50 border-red-200 text-red-800',
-  info: 'bg-indigo-50 border-indigo-200 text-indigo-800'
+  success: "bg-green-50 border-green-200 text-green-800",
+  error: "bg-red-50 border-red-200 text-red-800",
+  info: "bg-indigo-50 border-indigo-200 text-indigo-800",
 };
 
 const icons = {
-  success: '✓',
-  error: '✕',
-  info: 'ℹ'
+  success: "✓",
+  error: "✕",
+  info: "ℹ",
 };
 
 export default function Toast({ toast, onDismiss }: ToastProps) {
@@ -41,14 +41,16 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
       initial={{ opacity: 0, translateY: -8, scale: 0.95 }}
       animate={{ opacity: 1, translateY: 0, scale: 1 }}
       exit={{ opacity: 0, translateY: -8, scale: 0.95 }}
-      transition={{ 
+      transition={{
         duration: 0.2,
-        ease: 'easeOut'
+        ease: "easeOut",
       }}
-      style={{
-        // Respect prefers-reduced-motion
-        '--duration': 'var(--motion-duration, 0.2s)'
-      } as React.CSSProperties}
+      style={
+        {
+          // Respect prefers-reduced-motion
+          "--duration": "var(--motion-duration, 0.2s)",
+        } as React.CSSProperties
+      }
       role="status"
       aria-live="polite"
       data-testid="toast"
@@ -63,9 +65,7 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
         <span className="flex-shrink-0 mr-3 text-lg font-bold">
           {icons[toast.type]}
         </span>
-        <p className="text-sm font-medium leading-5">
-          {toast.message}
-        </p>
+        <p className="text-sm font-medium leading-5">{toast.message}</p>
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -79,4 +79,4 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
       </div>
     </motion.div>
   );
-} 
+}

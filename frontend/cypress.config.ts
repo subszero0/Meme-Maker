@@ -1,9 +1,9 @@
-import { defineConfig } from 'cypress';
+import { defineConfig } from "cypress";
 
 export default defineConfig({
   e2e: {
-    baseUrl: 'http://localhost:3000',
-    supportFile: 'cypress/support/e2e.ts',
+    baseUrl: "http://localhost:3000",
+    supportFile: "cypress/support/e2e.ts",
     video: false,
     screenshotOnRunFailure: false,
     viewportWidth: 1280,
@@ -15,4 +15,4 @@ export default defineConfig({
       // implement node event listeners here
     },
   },
-}); 
+});

@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { Fragment } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
-import { motion } from 'framer-motion';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { Fragment } from "react";
+import { Dialog, Transition } from "@headlessui/react";
+import { motion } from "framer-motion";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 
 interface DownloadModalProps {
   url: string;
@@ -38,7 +38,7 @@ export default function DownloadModal({ url, onClose }: DownloadModalProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel 
+              <Dialog.Panel
                 as={motion.div}
                 className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all"
               >
@@ -60,14 +60,18 @@ export default function DownloadModal({ url, onClose }: DownloadModalProps) {
                 </p>
                 <div className="flex space-x-3">
                   <a
-                    href={url} download rel="noopener noreferrer"
-                    onClick={handleDownload} data-testid="download-btn"
+                    href={url}
+                    download
+                    rel="noopener noreferrer"
+                    onClick={handleDownload}
+                    data-testid="download-btn"
                     className="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                   >
                     Download
                   </a>
                   <button
-                    type="button" onClick={onClose}
+                    type="button"
+                    onClick={onClose}
                     className="inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                   >
                     Cancel
@@ -80,4 +84,4 @@ export default function DownloadModal({ url, onClose }: DownloadModalProps) {
       </Dialog>
     </Transition>
   );
-} 
+}
