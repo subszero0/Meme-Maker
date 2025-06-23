@@ -97,7 +97,7 @@ describe("Home Page Flow", () => {
     await user.type(urlInput, "https://youtube.com/watch?v=test");
     await user.click(submitBtn);
 
-    // Should show loading state
+    // Should show loading state  
     expect(screen.getByText("Loading...")).toBeInTheDocument();
 
     // Wait for transition to trim state
@@ -196,7 +196,7 @@ describe("Home Page Flow", () => {
     await user.click(screen.getByTestId("trim-submit"));
 
     await waitFor(() => {
-      expect(screen.getByText("Trimming video...")).toBeInTheDocument();
+      expect(screen.getByText("Processing...")).toBeInTheDocument();
     });
 
     // Progress bar should be present (we can't easily test the exact progress value)
