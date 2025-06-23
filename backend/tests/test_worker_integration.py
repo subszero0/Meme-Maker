@@ -4,14 +4,17 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from fakeredis import FakeRedis
 
 # Add the worker directory to Python path (must be before app imports)
 worker_path = os.path.join(os.path.dirname(__file__), "../../worker")
 if worker_path not in sys.path:
     sys.path.insert(0, worker_path)
 
-from app import redis  # noqa: E402
 from app.models import JobStatus  # noqa: E402
+
+# Use fake Redis for testing
+redis = FakeRedis()
 
 
 class TestWorkerFunctions:
@@ -51,7 +54,7 @@ class TestWorkerFunctions:
                 "status": JobStatus.error.value,
                 "error_code": error_code,
                 "error_message": error_message[:500],
-                "progress": None,
+                "progress": "",  # Use empty string instead of None for Redis
             },
         )
         redis.expire(f"job:{self.job_id}", 3600)
@@ -249,8 +252,8 @@ class TestDockerWorkerSetup:
         assert "redis" in content, "Should include Redis"
         assert "rq" in content, "Should include RQ"
         assert "yt-dlp" in content, "Should include yt-dlp"
-        assert "boto3" in content, "Should include boto3"
-        assert "pydantic" in content, "Should include Pydantic"
+        assert "aiofiles" in content, "Should include aiofiles for local storage"
+        assert "pydantic" in content, "Should include pydantic"
 
     def test_process_clip_file_exists(self):
         """Test that process_clip.py exists"""

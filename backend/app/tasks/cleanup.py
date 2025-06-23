@@ -5,7 +5,7 @@ Handles cleanup of temporary files, expired jobs, and storage optimization.
 import asyncio
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 from fastapi import BackgroundTasks
 
@@ -24,7 +24,7 @@ class CleanupManager:
         self.job_repository = job_repository
         self.settings = get_settings()
 
-    async def cleanup_expired_jobs(self) -> Dict[str, int]:
+    async def cleanup_expired_jobs(self) -> Dict[str, Union[int, str]]:
         """
         Clean up expired jobs and their associated data
 
@@ -47,7 +47,7 @@ class CleanupManager:
             # Delete job records
             jobs_deleted = await self.job_repository.cleanup_jobs_before(cutoff_time)
 
-            stats = {
+            stats: Dict[str, Union[int, str]] = {
                 "jobs_deleted": jobs_deleted,
                 "files_deleted": files_deleted,
                 "cutoff_time": cutoff_time.isoformat(),
@@ -60,7 +60,9 @@ class CleanupManager:
             logger.error(f"Job cleanup failed: {str(e)}", exc_info=True)
             raise
 
-    async def cleanup_temporary_files(self, max_age_hours: int = 24) -> Dict[str, int]:
+    async def cleanup_temporary_files(
+        self, max_age_hours: int = 24
+    ) -> Dict[str, Union[int, float, str]]:
         """
         Clean up temporary files older than specified age
 
@@ -85,10 +87,10 @@ class CleanupManager:
             for temp_dir in temp_dirs:
                 if temp_dir.exists():
                     result = await self._cleanup_directory(temp_dir, cutoff_time)
-                    total_files_deleted += result["files_deleted"]
-                    total_size_freed += result["size_freed"]
+                    total_files_deleted += int(result["files_deleted"])
+                    total_size_freed += int(result["size_freed"])
 
-            stats = {
+            stats: Dict[str, Union[int, float, str]] = {
                 "files_deleted": total_files_deleted,
                 "size_freed_mb": round(total_size_freed / (1024 * 1024), 2),
                 "directories_scanned": len([d for d in temp_dirs if d.exists()]),
@@ -102,7 +104,7 @@ class CleanupManager:
             logger.error(f"Temporary file cleanup failed: {str(e)}", exc_info=True)
             raise
 
-    async def cleanup_storage_directory(self) -> Dict[str, int]:
+    async def cleanup_storage_directory(self) -> Dict[str, Union[int, float, str]]:
         """
         Clean up the main storage directory using configured retention policy
 
@@ -205,7 +207,7 @@ class CleanupManager:
 
     async def _cleanup_directory(
         self, directory: Path, cutoff_time: datetime
-    ) -> Dict[str, int]:
+    ) -> Dict[str, Union[int, float]]:
         """Clean up files in a directory older than cutoff time"""
         files_deleted = 0
         size_freed = 0

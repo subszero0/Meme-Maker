@@ -102,7 +102,7 @@ REDIS_DB=0
 # Storage Configuration - LOCAL ONLY (no S3)
 STORAGE_BACKEND=local
 CLIPS_DIR=/app/clips
-BASE_URL=https://yourdomain.com  # or http://your-lightsail-ip
+BASE_URL=https://memeit.pro  # or http://13.126.173.223
 
 # Worker Configuration
 MAX_CONCURRENT_JOBS=20

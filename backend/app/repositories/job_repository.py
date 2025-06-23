@@ -25,7 +25,7 @@ class JobRepository:
 
     async def get_job_counts_by_state(self) -> Dict[str, int]:
         """Get count of jobs by state"""
-        counts = {}
+        counts: Dict[str, int] = {}
         for job in self._jobs.values():
             state = job.state or "pending"
             counts[state] = counts.get(state, 0) + 1

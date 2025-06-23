@@ -153,7 +153,12 @@ class TestRateLimiter:
 
     def test_token_bucket_consume_failure(self):
         """Test failed token consumption"""
-        bucket = TokenBucket(capacity=10, tokens=3.0, refill_rate=1.0, last_refill=0)
+        import time
+
+        current_time = time.time()
+        bucket = TokenBucket(
+            capacity=10, tokens=3.0, refill_rate=1.0, last_refill=current_time
+        )
 
         result = bucket.consume(5)
 
@@ -247,9 +252,7 @@ class TestStorageFactory:
 
     def test_get_default_storage(self):
         """Test getting default storage"""
-        with patch(
-            "backend.app.factories.storage_factory.get_settings"
-        ) as mock_settings:
+        with patch("app.factories.storage_factory.get_settings") as mock_settings:
             mock_settings.return_value.storage_backend = "local"
 
             storage = StorageFactory.get_default_storage()
