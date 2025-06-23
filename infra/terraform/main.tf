@@ -6,7 +6,7 @@ resource "aws_s3_bucket" "clips" {
   bucket = "clip-downloader-files-${var.environment}-${random_string.bucket_suffix.result}"
 
   tags = {
-    Name = "clip-downloader-files"
+    Name        = "clip-downloader-files"
     Environment = var.environment
   }
 }
@@ -52,11 +52,11 @@ resource "aws_s3_bucket_lifecycle_configuration" "clips" {
 
 # ElastiCache subnet group
 resource "aws_elasticache_subnet_group" "redis" {
-  name       = "clip-downloader-redis-${var.environment}"
+  Name        = "clip-downloader-redis-${var.environment}"
   subnet_ids = var.private_subnets
 
   tags = {
-    Name = "clip-downloader-redis-subnet-group"
+    Name        = "clip-downloader-redis-subnet-group"
     Environment = var.environment
   }
 }
@@ -81,7 +81,7 @@ resource "aws_security_group" "redis" {
   }
 
   tags = {
-    Name = "clip-downloader-redis"
+    Name        = "clip-downloader-redis"
     Environment = var.environment
   }
 }
@@ -98,50 +98,50 @@ resource "aws_elasticache_cluster" "redis" {
   security_group_ids   = [aws_security_group.redis.id]
 
   tags = {
-    Name = "clip-downloader-redis"
+    Name        = "clip-downloader-redis"
     Environment = var.environment
   }
 }
 
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
-  name = "clip-downloader-${var.environment}"
+  Name        = "clip-downloader-${var.environment}"
 
   setting {
-    name  = "containerInsights"
+    Name        = "containerInsights"
     value = "enabled"
   }
 
   tags = {
-    Name = "clip-downloader-cluster"
+    Name        = "clip-downloader-cluster"
     Environment = var.environment
   }
 }
 
 # CloudWatch Log Groups
 resource "aws_cloudwatch_log_group" "backend" {
-  name              = "/ecs/clip-downloader-backend-${var.environment}"
+  Name        = "/ecs/clip-downloader-backend-${var.environment}"
   retention_in_days = 7
 
   tags = {
-    Name = "clip-downloader-backend-logs"
+    Name        = "clip-downloader-backend-logs"
     Environment = var.environment
   }
 }
 
 resource "aws_cloudwatch_log_group" "worker" {
-  name              = "/ecs/clip-downloader-worker-${var.environment}"
+  Name        = "/ecs/clip-downloader-worker-${var.environment}"
   retention_in_days = 7
 
   tags = {
-    Name = "clip-downloader-worker-logs"
+    Name        = "clip-downloader-worker-logs"
     Environment = var.environment
   }
 }
 
 # IAM Role for ECS Tasks
 resource "aws_iam_role" "ecs_task_execution" {
-  name = "clip-downloader-ecs-task-execution-${var.environment}"
+  Name        = "clip-downloader-ecs-task-execution-${var.environment}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -164,7 +164,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
 
 # IAM Role for ECS Tasks (application permissions)
 resource "aws_iam_role" "ecs_task" {
-  name = "clip-downloader-ecs-task-${var.environment}"
+  Name        = "clip-downloader-ecs-task-${var.environment}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -182,7 +182,7 @@ resource "aws_iam_role" "ecs_task" {
 
 # IAM Policy for S3 access
 resource "aws_iam_role_policy" "ecs_task_s3" {
-  name = "clip-downloader-s3-access-${var.environment}"
+  Name        = "clip-downloader-s3-access-${var.environment}"
   role = aws_iam_role.ecs_task.id
 
   policy = jsonencode({
@@ -211,7 +211,7 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
 
 # IAM Policy for CloudWatch Logs
 resource "aws_iam_role_policy" "ecs_task_logs" {
-  name = "clip-downloader-logs-access-${var.environment}"
+  Name        = "clip-downloader-logs-access-${var.environment}"
   role = aws_iam_role.ecs_task.id
 
   policy = jsonencode({
@@ -259,7 +259,7 @@ resource "aws_security_group" "alb" {
   }
 
   tags = {
-    Name = "clip-downloader-alb"
+    Name        = "clip-downloader-alb"
     Environment = var.environment
   }
 }
@@ -284,14 +284,14 @@ resource "aws_security_group" "ecs_tasks" {
   }
 
   tags = {
-    Name = "clip-downloader-ecs-tasks"
+    Name        = "clip-downloader-ecs-tasks"
     Environment = var.environment
   }
 }
 
 # Application Load Balancer
 resource "aws_lb" "main" {
-  name               = "clip-downloader-${var.environment}"
+  Name        = "clip-downloader-${var.environment}"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
@@ -300,14 +300,14 @@ resource "aws_lb" "main" {
   enable_deletion_protection = var.environment == "prod" ? true : false
 
   tags = {
-    Name = "clip-downloader-alb"
+    Name        = "clip-downloader-alb"
     Environment = var.environment
   }
 }
 
 # Target Group for Backend Service
 resource "aws_lb_target_group" "backend" {
-  name        = "clip-downloader-backend-${var.environment}"
+  Name        = "clip-downloader-backend-${var.environment}"
   port        = 8000
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
@@ -326,7 +326,7 @@ resource "aws_lb_target_group" "backend" {
   }
 
   tags = {
-    Name = "clip-downloader-backend-tg"
+    Name        = "clip-downloader-backend-tg"
     Environment = var.environment
     Project = "clip-downloader"
   }
@@ -344,7 +344,7 @@ resource "aws_acm_certificate" "main" {
   }
 
   tags = {
-    Name = "clip-downloader-cert"
+    Name        = "clip-downloader-cert"
     Environment = var.environment
     Project = "clip-downloader"
   }
@@ -354,14 +354,14 @@ resource "aws_acm_certificate" "main" {
 resource "cloudflare_record" "cert_validation" {
   for_each = var.domain_name != "" && var.cloudflare_zone_id != "" ? {
     for dvo in aws_acm_certificate.main[0].domain_validation_options : dvo.domain_name => {
-      name   = dvo.resource_record_name
+      Name        = dvo.resource_record_name
       record = dvo.resource_record_value
       type   = dvo.resource_record_type
     }
   } : {}
 
   zone_id = var.cloudflare_zone_id
-  name    = trimsuffix(each.value.name, ".${var.domain_name}.")
+  Name        = trimsuffix(each.value.name, ".${var.domain_name}.")
   value   = trimsuffix(each.value.record, ".")
   type    = each.value.type
   ttl     = 60
@@ -389,7 +389,7 @@ resource "aws_acm_certificate_validation" "main" {
 resource "cloudflare_record" "api" {
   count   = var.domain_name != "" && var.cloudflare_zone_id != "" ? 1 : 0
   zone_id = var.cloudflare_zone_id
-  name    = "api"
+  Name        = "api"
   value   = aws_lb.main.dns_name
   type    = "CNAME"
   ttl     = 300
@@ -415,7 +415,7 @@ resource "aws_lb_listener" "https" {
   }
 
   tags = {
-    Name = "clip-downloader-https-listener"
+    Name        = "clip-downloader-https-listener"
     Environment = var.environment
     Project = "clip-downloader"
   }
@@ -439,7 +439,7 @@ resource "aws_lb_listener" "http_redirect" {
   }
 
   tags = {
-    Name = "clip-downloader-http-redirect"
+    Name        = "clip-downloader-http-redirect"
     Environment = var.environment
     Project = "clip-downloader"
   }
@@ -458,7 +458,7 @@ resource "aws_lb_listener" "http_direct" {
   }
 
   tags = {
-    Name = "clip-downloader-http-direct"
+    Name        = "clip-downloader-http-direct"
     Environment = var.environment
     Project = "clip-downloader"
   }
@@ -467,7 +467,7 @@ resource "aws_lb_listener" "http_direct" {
 # AWS WAFv2 Web ACL for rate limiting
 resource "aws_wafv2_web_acl" "main" {
   count = var.domain_name != "" && var.cloudflare_zone_id != "" ? 1 : 0
-  name  = "clip-downloader-waf-${var.environment}"
+  Name        = "clip-downloader-waf-${var.environment}"
   scope = "REGIONAL"
 
   default_action {
@@ -475,7 +475,7 @@ resource "aws_wafv2_web_acl" "main" {
   }
 
   rule {
-    name     = "RateLimitRule"
+    Name        = "RateLimitRule"
     priority = 1
 
     override_action {
@@ -501,7 +501,7 @@ resource "aws_wafv2_web_acl" "main" {
   }
 
   rule {
-    name     = "AWSManagedRulesCommonRuleSet"
+    Name        = "AWSManagedRulesCommonRuleSet"
     priority = 2
 
     override_action {
@@ -510,7 +510,7 @@ resource "aws_wafv2_web_acl" "main" {
 
     statement {
       managed_rule_group_statement {
-        name        = "AWSManagedRulesCommonRuleSet"
+        Name        = "AWSManagedRulesCommonRuleSet"
         vendor_name = "AWS"
       }
     }
@@ -523,7 +523,7 @@ resource "aws_wafv2_web_acl" "main" {
   }
 
   tags = {
-    Name = "clip-downloader-waf"
+    Name        = "clip-downloader-waf"
     Environment = var.environment
     Project = "clip-downloader"
   }
@@ -546,7 +546,7 @@ resource "aws_wafv2_web_acl_association" "main" {
 
 # ECR Repositories
 resource "aws_ecr_repository" "backend" {
-  name                 = "clip/backend"
+  Name        = "clip/backend"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -554,13 +554,13 @@ resource "aws_ecr_repository" "backend" {
   }
 
   tags = {
-    Name = "clip-backend-repo"
+    Name        = "clip-backend-repo"
     Environment = var.environment
   }
 }
 
 resource "aws_ecr_repository" "worker" {
-  name                 = "clip/worker"
+  Name        = "clip/worker"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -568,7 +568,7 @@ resource "aws_ecr_repository" "worker" {
   }
 
   tags = {
-    Name = "clip-worker-repo"
+    Name        = "clip-worker-repo"
     Environment = var.environment
   }
 }
@@ -585,7 +585,7 @@ resource "aws_ecs_task_definition" "backend" {
 
   container_definitions = jsonencode([
     {
-      name  = "backend"
+      Name        = "backend"
       image = "${aws_ecr_repository.backend.repository_url}:latest"
 
       portMappings = [
@@ -597,19 +597,19 @@ resource "aws_ecs_task_definition" "backend" {
 
       environment = [
         {
-          name  = "REDIS_URL"
+          Name        = "REDIS_URL"
           value = "redis://${aws_elasticache_cluster.redis.cache_nodes[0].address}:6379"
         },
         {
-          name  = "S3_BUCKET"
+          Name        = "S3_BUCKET"
           value = aws_s3_bucket.clips.bucket
         },
         {
-          name  = "AWS_REGION"
+          Name        = "AWS_REGION"
           value = var.aws_region
         },
         {
-          name  = "ENVIRONMENT"
+          Name        = "ENVIRONMENT"
           value = var.environment
         }
       ]
@@ -634,7 +634,7 @@ resource "aws_ecs_task_definition" "backend" {
   ])
 
   tags = {
-    Name = "clip-downloader-backend-task"
+    Name        = "clip-downloader-backend-task"
     Environment = var.environment
   }
 }
@@ -651,24 +651,24 @@ resource "aws_ecs_task_definition" "worker" {
 
   container_definitions = jsonencode([
     {
-      name  = "worker"
+      Name        = "worker"
       image = "${aws_ecr_repository.worker.repository_url}:latest"
 
       environment = [
         {
-          name  = "REDIS_URL"
+          Name        = "REDIS_URL"
           value = "redis://${aws_elasticache_cluster.redis.cache_nodes[0].address}:6379"
         },
         {
-          name  = "S3_BUCKET"
+          Name        = "S3_BUCKET"
           value = aws_s3_bucket.clips.bucket
         },
         {
-          name  = "AWS_REGION"
+          Name        = "AWS_REGION"
           value = var.aws_region
         },
         {
-          name  = "ENVIRONMENT"
+          Name        = "ENVIRONMENT"
           value = var.environment
         }
       ]
@@ -693,14 +693,14 @@ resource "aws_ecs_task_definition" "worker" {
   ])
 
   tags = {
-    Name = "clip-downloader-worker-task"
+    Name        = "clip-downloader-worker-task"
     Environment = var.environment
   }
 }
 
 # ECS Service for Backend
 resource "aws_ecs_service" "backend" {
-  name            = "clip-downloader-backend-${var.environment}"
+  Name        = "clip-downloader-backend-${var.environment}"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.backend.arn
   desired_count   = var.backend_desired_count
@@ -721,14 +721,14 @@ resource "aws_ecs_service" "backend" {
   depends_on = [aws_lb_listener.main]
 
   tags = {
-    Name = "clip-downloader-backend-service"
+    Name        = "clip-downloader-backend-service"
     Environment = var.environment
   }
 }
 
 # ECS Service for Worker
 resource "aws_ecs_service" "worker" {
-  name            = "clip-downloader-worker-${var.environment}"
+  Name        = "clip-downloader-worker-${var.environment}"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.worker.arn
   desired_count   = var.worker_desired_count
@@ -741,23 +741,23 @@ resource "aws_ecs_service" "worker" {
   }
 
   tags = {
-    Name = "clip-downloader-worker-service"
+    Name        = "clip-downloader-worker-service"
     Environment = var.environment
   }
 }
 
 # IAM User for CI/CD
 resource "aws_iam_user" "ci_deploy" {
-  name = "clip-downloader-ci-deploy-${var.environment}"
+  Name        = "clip-downloader-ci-deploy-${var.environment}"
 
   tags = {
-    Name = "clip-downloader-ci-deploy"
+    Name        = "clip-downloader-ci-deploy"
     Environment = var.environment
   }
 }
 
 resource "aws_iam_user_policy" "ci_deploy" {
-  name = "clip-downloader-ci-deploy-policy-${var.environment}"
+  Name        = "clip-downloader-ci-deploy-policy-${var.environment}"
   user = aws_iam_user.ci_deploy.name
 
   policy = jsonencode({
@@ -816,14 +816,14 @@ resource "aws_iam_openid_connect_provider" "github" {
   ]
 
   tags = {
-    Name = "github-actions-oidc"
+    Name        = "github-actions-oidc"
     Environment = var.environment
   }
 }
 
 # GitHub Actions OIDC Role (alternative to IAM user)
 resource "aws_iam_role" "github_actions" {
-  name = "clip-downloader-github-actions-${var.environment}"
+  Name        = "clip-downloader-github-actions-${var.environment}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -847,14 +847,14 @@ resource "aws_iam_role" "github_actions" {
   })
 
   tags = {
-    Name = "github-actions-role"
+    Name        = "github-actions-role"
     Environment = var.environment
   }
 }
 
 # Attach the same policy used by CI user to the OIDC role
 resource "aws_iam_role_policy" "github_actions" {
-  name = "clip-downloader-github-actions-policy-${var.environment}"
+  Name        = "clip-downloader-github-actions-policy-${var.environment}"
   role = aws_iam_role.github_actions.id
 
   policy = jsonencode({
