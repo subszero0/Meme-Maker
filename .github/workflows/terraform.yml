@@ -1,16 +1,26 @@
-name: Terraform
+# DEPRECATED - Terraform AWS Workflow - DISABLED  
+# This workflow is for AWS infrastructure and replaced by Lightsail deployment
+# Keeping for reference but this is disabled
 
-on:
-  push:
-    branches: [ main, develop ]
-    paths: 
-      - 'infra/terraform/**'
-      - '.github/workflows/terraform.yml'
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'infra/terraform/**'
-      - '.github/workflows/terraform.yml'
+name: "[DEPRECATED] Terraform"
+
+# This workflow is DISABLED for Lightsail deployment
+# Active workflow: ci-cd-lightsail.yml (Docker Compose deployment)
+
+# Disabled - uncomment to enable Terraform AWS deployment
+# on:
+#   push:
+#     branches: [ main, develop ]
+#     paths: 
+#       - 'infra/terraform/**'
+#       - '.github/workflows/terraform.yml'
+#   pull_request:
+#     branches: [ main ]
+#     paths:
+#       - 'infra/terraform/**'
+#       - '.github/workflows/terraform.yml'
+
+on: []  # This disables the workflow
 
 defaults:
   run:
