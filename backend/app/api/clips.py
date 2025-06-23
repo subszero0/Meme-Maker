@@ -40,21 +40,22 @@ async def download_clip(filename: str):
     # Try to get video title from Redis by finding job that produced this file
     video_title = None
     try:
-        # Scan for jobs to find the one with matching download_url
-        cursor = 0
-        while True:
-            cursor, keys = redis.scan(cursor, match="job:*", count=100)
-            for key in keys:
-                job_data = redis.hgetall(key)
-                if job_data and job_data.get(b"download_url"):
-                    download_url = job_data.get(b"download_url").decode()
-                    if filename in download_url:
-                        video_title = job_data.get(b"video_title")
-                        if video_title:
-                            video_title = video_title.decode()
-                        break
-            if cursor == 0 or video_title:
-                break
+        if redis is not None:
+            # Scan for jobs to find the one with matching download_url
+            cursor = 0
+            while True:
+                cursor, keys = redis.scan(cursor, match="job:*", count=100)
+                for key in keys:
+                    job_data = redis.hgetall(key)
+                    if job_data and job_data.get(b"download_url"):
+                        download_url = job_data.get(b"download_url").decode()
+                        if filename in download_url:
+                            video_title = job_data.get(b"video_title")
+                            if video_title:
+                                video_title = video_title.decode()
+                            break
+                if cursor == 0 or video_title:
+                    break
     except Exception as e:
         print(f"Warning: Could not get video title from Redis: {e}")
 

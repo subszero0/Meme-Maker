@@ -54,3 +54,15 @@ async def get_async_redis():
     except Exception as e:
         print(f"❌ Async Redis client initialization failed: {e}")
         return None
+
+
+def get_redis_client():
+    """FastAPI dependency for Redis client (alias for phase3 compatibility)"""
+    return get_redis()
+
+
+def get_job_repository():
+    """FastAPI dependency for job repository"""
+    from .repositories.job_repository import JobRepository
+
+    return JobRepository()
