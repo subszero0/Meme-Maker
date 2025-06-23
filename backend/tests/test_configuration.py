@@ -1,25 +1,26 @@
 """
 Tests for the centralized configuration management system.
 """
-import pytest
-import tempfile
 import os
-from unittest.mock import patch, MagicMock
+import tempfile
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from app.config.configuration import (
-    VideoProcessingSettings,
     LoggingSettings,
     MetricsSettings,
-    get_settings,
+    VideoProcessingSettings,
     get_logging_settings,
     get_metrics_settings,
+    get_settings,
 )
-from app.constants import VideoConstraints, LoggingConfig
+from app.constants import LoggingConfig, VideoConstraints
 from app.logging.config import (
-    setup_logging,
+    get_correlation_id,
     get_logger,
     set_correlation_id,
-    get_correlation_id,
+    setup_logging,
 )
 
 

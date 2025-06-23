@@ -1,15 +1,16 @@
+import asyncio
+import logging
+import time
+from typing import Dict, List, Optional
+
 import yt_dlp
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, HttpUrl
-import logging
-import asyncio
-import time
-from typing import List, Dict, Optional
 
-from ..models import MetadataRequest, MetadataResponse
 from ..cache.metadata_cache import MetadataCache
 from ..dependencies import get_async_redis
+from ..models import MetadataRequest, MetadataResponse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

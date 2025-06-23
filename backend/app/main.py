@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -12,7 +13,7 @@ except ImportError:
     PROMETHEUS_AVAILABLE = False
     print("Warning: prometheus_fastapi_instrumentator not available, metrics disabled")
 
-from .api import jobs, metadata, clips
+from .api import clips, jobs, metadata
 from .config import get_settings
 from .middleware.security_headers import SecurityHeadersMiddleware
 
@@ -136,7 +137,7 @@ async def debug_cors() -> dict:
 @app.get("/debug/redis", tags=["debug"])
 async def debug_redis() -> dict:
     """Debug endpoint to check Redis connection status"""
-    from . import redis, init_redis
+    from . import init_redis, redis
 
     # Try to initialize Redis if not already done
     if redis is None:
@@ -176,8 +177,8 @@ async def debug_redis() -> dict:
 @app.get("/api/v1/storage/metrics", tags=["monitoring"])
 async def get_storage_metrics():
     """Get storage usage metrics for monitoring"""
-    from .storage_factory import storage_manager
     from .storage import LocalStorageManager
+    from .storage_factory import storage_manager
 
     if isinstance(storage_manager, LocalStorageManager):
         stats = storage_manager.get_storage_stats()

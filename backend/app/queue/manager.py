@@ -3,6 +3,7 @@ Queue manager for handling job processing queue.
 Simplified version for testing configuration.
 """
 from typing import List
+
 from ..models import Job
 
 

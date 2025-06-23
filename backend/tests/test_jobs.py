@@ -1,10 +1,10 @@
-import pytest
 import uuid
-from decimal import Decimal
 from datetime import datetime
-from unittest.mock import patch, MagicMock
+from decimal import Decimal
+from unittest.mock import MagicMock, patch
 
 import fakeredis
+import pytest
 from fastapi.testclient import TestClient
 from rq import Queue
 
