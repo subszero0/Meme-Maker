@@ -167,7 +167,7 @@ def test_get_job_done_status(client_with_fake_redis, fake_redis):
     job_id = uuid.uuid4().hex
     job_data = {
         "id": job_id,
-        "url": "https://www.youtube.com/watch?v=test",
+        "source_url": "https://www.youtube.com/watch?v=test",
         "in_ts": "10.0",
         "out_ts": "70.0",
         "status": "done",

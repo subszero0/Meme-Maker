@@ -486,7 +486,7 @@ async def migrate_storage_backend(
         Migration statistics
     """
     source_storage = StorageFactory.create_storage(source_backend)
-    target_storage = StorageFactory.create_storage(target_backend)
+    # target_storage = StorageFactory.create_storage(target_backend)  # TODO: Implement migration logic
 
     # Get list of files to migrate
     files = await source_storage.list_files(file_filter)

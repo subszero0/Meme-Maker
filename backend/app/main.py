@@ -40,7 +40,7 @@ async def startup_event():
 
     print("🔍 Initializing Redis connection...")
     try:
-        result = init_redis()
+        init_redis()
         # Test Redis connection immediately if it was initialized
         if redis is not None:
             redis.ping()
@@ -60,7 +60,7 @@ async def startup_event():
 
     print(f"✅ Storage backend: {settings.storage_backend}")
     print(f"✅ Clips directory: {clips_path} (writable)")
-    print(f"✅ Configuration validated successfully")
+    print("✅ Configuration validated successfully")
 
 
 # Add CORS middleware with explicit configuration for development

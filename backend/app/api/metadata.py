@@ -351,7 +351,7 @@ async def extract_video_metadata(
                 width, height = map(int, fmt.resolution.split("x"))
                 filesize = fmt.filesize or 0
                 return (width * height, filesize)
-            except:
+            except (ValueError, AttributeError):
                 return (0, 0)
 
         formats.sort(key=resolution_sort_key, reverse=True)
