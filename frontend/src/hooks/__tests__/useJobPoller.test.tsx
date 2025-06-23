@@ -29,10 +29,10 @@ describe('useJobPoller', () => {
     // Mock axios.CancelToken.source
     mockedAxios.CancelToken = {
       source: jest.fn(() => mockCancelTokenSource)
-    } as any;
+    } as { source: jest.Mock };
     
     // Mock axios.isCancel
-    (mockedAxios.isCancel as any) = jest.fn().mockReturnValue(false);
+    (mockedAxios.isCancel as jest.Mock) = jest.fn().mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -338,7 +338,7 @@ describe('useJobPoller', () => {
   });
 
   it('includes poll interval test element for timing assertions', () => {
-    const { result } = renderHook(() => useJobPoller('test-job'), {
+    renderHook(() => useJobPoller('test-job'), {
       wrapper: Wrapper
     });
 
@@ -349,5 +349,14 @@ describe('useJobPoller', () => {
     };
 
     expect(TestComponent).toBeDefined();
+  });
+
+  it('supports custom poll intervals for testing timing', () => {
+    // Test that the hook can be called with different intervals
+    const hook1 = renderHook(() => useJobPoller('test-job-1', 1000), { wrapper: Wrapper });
+    const hook2 = renderHook(() => useJobPoller('test-job-2', 2000), { wrapper: Wrapper });
+    
+    expect(hook1.result.current.status).toBe('queued');
+    expect(hook2.result.current.status).toBe('queued');
   });
 }); 

@@ -402,6 +402,143 @@ Production websites don't depend on local Docker containers. Solving local envir
 
 ---
 
+## 🎯 **Best Practice #16: Always Verify Branch Architecture Before Debugging Production Issues**
+
+**Principle**: Different branches may have completely different architectures, deployment mechanisms, and CI/CD configurations. Never assume all branches use the same stack.
+
+**Implementation**:
+- **Check CI/CD Configuration First**: Look at `.github/workflows/` to see which branch triggers production deployment
+- **Compare Branch Architectures**: Different branches may use different reverse proxies (nginx vs Caddy), frontend frameworks (Next.js vs React/Vite), or deployment strategies
+- **Verify Frontend Location**: Check if production uses `frontend/` vs `frontend-new/` vs other directories
+- **Understand Deployment Chain**: Map out how code flows from branch → CI/CD → production environment
+
+**Real-World Example**:
+- **Problem**: Production showing "Failed to fetch video information" with double `/api/api/` URLs
+- **Initial Assumption**: API routing issue, nginx configuration problem
+- **Reality Discovery**: 
+  - `main` branch: Next.js frontend + FastAPI serving static files + Caddy reverse proxy
+  - `master` branch: React/Vite frontend + nginx reverse proxy + separate frontend container
+  - **Root Cause**: Production deployed from `main` (old architecture) while fixes were applied to `master` (new architecture)
+- **Solution**: Update CI/CD workflow to deploy from `master` branch instead of `main`
+
+**Key Questions to Ask**:
+1. Which branch does production actually deploy from?
+2. Are there architectural differences between branches?
+3. When was the last time production was updated from the current branch?
+4. Does the branch I'm debugging match the branch that's actually deployed?
+
+**Why It Matters**: 
+You can spend hours debugging the wrong architecture. Production issues must be debugged against the actual deployed branch and its specific architecture, not the development branch you happen to be working on.
+
+---
+
+## 🎯 **Best Practice #17: Understand Frontend Update Context and Migration States**
+
+**Principle**: When users mention "recently updated the frontend," this is a critical architectural context that changes everything about debugging approach.
+
+**Implementation**:
+- **Ask About Recent Changes**: If debugging frontend issues, explicitly ask "Have you recently updated or migrated the frontend?"
+- **Identify Migration States**: 
+  - Old frontend still in production but new frontend in development
+  - Multiple frontend directories (`frontend/`, `frontend-new/`, `frontend-backup/`)
+  - CI/CD pointing to wrong branch after frontend migration
+- **Map Frontend-to-Deployment Chain**: Trace from frontend code → build process → deployment → production serving
+- **Check Environment Configuration**: New frontends often have different environment variable patterns, API base URLs, or build configurations
+
+**Real-World Example**:
+- **User Context**: "We recently updated the frontend to a new one"
+- **Critical Insight**: This meant:
+  - Production still running old frontend architecture (Next.js + FastAPI static serving)
+  - New frontend architecture (React/Vite + nginx) existed but wasn't deployed
+  - All debugging efforts on new architecture were irrelevant to production issues
+- **Lesson**: Frontend migration context immediately changes debugging from "fix the code" to "fix the deployment pipeline"
+
+**Migration State Indicators**:
+- Multiple frontend directories in project structure
+- Different package.json files with different frameworks
+- Docker configurations mentioning different frontend paths
+- CI/CD workflows referencing different branches or build processes
+
+**Why It Matters**: 
+Frontend migrations create a gap between development architecture and production architecture. Debugging must target the actually deployed architecture, not the desired future architecture.
+
+---
+
+## 🎯 **Best Practice #18: Distinguish Between Code Issues and Deployment Pipeline Issues**
+
+**Principle**: When production shows errors but development works fine, the problem is often in the deployment pipeline, not the application code.
+
+**Implementation**:
+- **Check Deployment Recency**: When was production last deployed? From which branch?
+- **Compare Branch Timestamps**: Is the deployed branch older than recent fixes?
+- **Verify CI/CD Triggers**: Does the CI/CD workflow trigger on the branch you're working on?
+- **Trace Deployment Chain**: Code changes → branch push → CI/CD trigger → build → deployment
+- **Look for Deployment Gaps**: Are fixes being applied to a branch that doesn't trigger production deployment?
+
+**Real-World Example**:
+- **Problem**: Production API calls failing with routing errors
+- **Development Status**: Local development working perfectly, all fixes applied
+- **Discovery Process**:
+  1. Fixes applied to `master` branch ✅
+  2. Local development using `master` branch ✅
+  3. CI/CD configured to deploy from `main` branch ❌
+  4. Production never received the fixes because wrong branch was being deployed
+- **Solution**: Update CI/CD to deploy from `master` instead of `main`
+
+**Deployment Pipeline Red Flags**:
+- User reports production errors but local development works
+- Recent commits exist but production behavior unchanged
+- CI/CD workflow hasn't run recently despite code changes
+- Multiple active branches with different architectures
+
+**Why It Matters**: 
+Code can be perfect but production can still fail if the deployment pipeline isn't connecting the right code to the production environment. Always verify the deployment chain before debugging application logic.
+
+---
+
+## 🎯 **Best Practice #19: Use Architecture-Aware Debugging Strategies**
+
+**Principle**: Different frontend architectures require completely different debugging approaches. Tailor your diagnostic strategy to the actual deployed architecture.
+
+**Implementation**:
+
+**For Next.js + FastAPI Static Serving Architecture**:
+- Check FastAPI static file mounting configuration
+- Verify build output directory (`out/` or `dist/`) matches FastAPI expectations
+- Test API base URL resolution in production environment
+- Debug relative vs absolute URL patterns
+
+**For React/Vite + nginx Reverse Proxy Architecture**:
+- Check nginx proxy_pass configuration
+- Verify upstream backend connectivity
+- Test nginx routing rules
+- Debug CORS and proxy header forwarding
+
+**For Containerized Deployments**:
+- Verify container networking between frontend and backend
+- Check environment variable injection into containers
+- Test inter-container communication
+- Debug volume mounts and file serving
+
+**Architecture Detection Methods**:
+```bash
+# Check Docker configuration
+grep -r "nginx" docker-compose.yml
+grep -r "static" backend/app/main.py
+
+# Check build configuration
+ls -la frontend*/
+cat frontend*/package.json | grep -E "(next|vite|react)"
+
+# Check CI/CD deployment strategy
+cat .github/workflows/*.yml | grep -A5 -B5 "deploy"
+```
+
+**Why It Matters**: 
+Using nginx debugging techniques on a FastAPI static-serving architecture (or vice versa) wastes time and can introduce unnecessary configuration changes. Match your debugging strategy to the actual deployed architecture.
+
+---
+
 ## 🔄 **Meta Best Practice: Continuous Learning Integration**
 
 **Implementation**:
@@ -411,6 +548,8 @@ After each debugging session:
 3. **What assumptions proved wrong?** (Learning opportunities)
 4. **What diagnostic approaches worked best?** (Methodology improvement)
 5. **How can we prevent this class of issue in the future?** (Systemic improvement)
+6. **What architectural context was missing initially?** (Context improvement)
+7. **How did deployment pipeline issues mask/create the problem?** (Pipeline awareness)
 
 **📝 Note**: This document is continuously updated with new best practices from real debugging sessions to improve precision in problem identification and resolution. Each new scenario adds learnings that prevent similar mistakes in future debugging efforts.
 
@@ -433,6 +572,9 @@ After each debugging session:
 13. **Use comprehensive cache clearing** - Multiple levels from hard refresh to incognito mode
 14. **Verify environment context** - Production vs development confirmation required
 15. **Service vs configuration** - Local service status irrelevant to production domain issues
-16. **Test cache clearing effectiveness** - Use incognito mode to confirm cache vs server issues
+16. **Verify branch architecture** - Different branches may have completely different deployment architectures
+17. **Understand frontend migration context** - Recent frontend updates change entire debugging approach
+18. **Distinguish code vs deployment issues** - Production errors with working development often indicate deployment pipeline problems
+19. **Use architecture-aware debugging** - Match debugging strategy to actual deployed architecture
 
 These practices work together to create a systematic, safe, and effective approach to production problem resolution that minimizes system disruption while maximizing learning and long-term stability. 

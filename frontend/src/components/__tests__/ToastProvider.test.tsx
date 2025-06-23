@@ -1,14 +1,13 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import ToastProvider, { useToast } from '../ToastProvider';
 
 // Mock framer-motion to avoid animation issues in tests
 jest.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>
+    div: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => <div {...props}>{children}</div>
   },
-  AnimatePresence: ({ children }: any) => children
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => children
 }));
 
 // Test component that uses the toast hook

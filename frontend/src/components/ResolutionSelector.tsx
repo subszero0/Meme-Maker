@@ -65,7 +65,6 @@ export default function ResolutionSelector({ url, selectedFormatId, onFormatChan
           console.log('🎬 ResolutionSelector: Format already selected or no formats available');
         }
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load resolutions';
         console.error('🎬 ResolutionSelector: Failed to fetch video formats:', err);
         console.log('🎬 ResolutionSelector: Falling back to default format selection');
         
@@ -106,7 +105,7 @@ export default function ResolutionSelector({ url, selectedFormatId, onFormatChan
   };
 
   const getQualityLabel = (resolution: string) => {
-    const [width, height] = resolution.split('x').map(Number);
+    const height = parseInt(resolution.split('x')[1]);
     if (height >= 2160) return '4K';
     if (height >= 1440) return '1440p';
     if (height >= 1080) return '1080p';
