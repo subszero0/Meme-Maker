@@ -87,18 +87,25 @@ class TestMetadataCache:
         """Test cache invalidation"""
         url = "https://example.com/video.mp4"
 
-        # Mock keys and delete operations
-        mock_redis.keys.return_value = [
-            b"cache:metadata:abc123",
-            b"cache:format:abc123",
-        ]
-        mock_redis.delete.return_value = 2
+        # Mock keys and delete operations - each pattern returns specific keys
+        def mock_keys_side_effect(pattern):
+            if "metadata" in pattern:
+                return [b"cache:metadata:abc123"]
+            elif "format" in pattern:
+                return [b"cache:format:abc123"]
+            else:  # thumbnail
+                return []
+
+        mock_redis.keys.side_effect = mock_keys_side_effect
+        mock_redis.delete.return_value = 1  # Each delete call removes 1 key
 
         result = await cache.invalidate_url(url)
 
-        assert result == 2
+        assert result == 2  # 2 total keys deleted (1 metadata + 1 format)
         assert mock_redis.keys.call_count == 3  # One for each prefix
-        mock_redis.delete.assert_called()
+        assert (
+            mock_redis.delete.call_count == 2
+        )  # Two delete calls for non-empty patterns
 
 
 class TestCleanupManager:
@@ -130,13 +137,18 @@ class TestCleanupManager:
     @pytest.mark.asyncio
     async def test_cleanup_temporary_files(self, cleanup_manager):
         """Test temporary file cleanup"""
-        with patch.object(cleanup_manager, "_cleanup_directory") as mock_cleanup:
+        # Mock both _cleanup_directory and Path.exists() to ensure directories are found
+        with patch.object(cleanup_manager, "_cleanup_directory") as mock_cleanup, patch(
+            "pathlib.Path.exists", return_value=True
+        ):
+            # Mock async method to return files deleted
             mock_cleanup.return_value = {"files_deleted": 10, "size_freed": 1024 * 1024}
 
             result = await cleanup_manager.cleanup_temporary_files()
 
-            assert result["files_deleted"] == 10
-            assert result["size_freed_mb"] == 1.0
+            # Method calls _cleanup_directory for 3 temp directories, so 3 * 10 = 30
+            assert result["files_deleted"] == 30
+            assert result["size_freed_mb"] == 3.0  # 3 directories * 1MB each
 
 
 class TestRateLimiter:
@@ -163,7 +175,10 @@ class TestRateLimiter:
         result = bucket.consume(5)
 
         assert result is False
-        assert bucket.tokens == 3.0
+        # Use pytest.approx for floating-point comparison to handle precision issues
+        import pytest
+
+        assert bucket.tokens == pytest.approx(3.0, abs=1e-6)
 
     def test_token_bucket_refill(self):
         """Test token bucket refill mechanism"""
