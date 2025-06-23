@@ -262,7 +262,7 @@ class TestDockerWorkerSetup:
         )
         assert process_clip_path.exists(), "worker/process_clip.py should exist"
 
-        content = process_clip_path.read_text()
+        content = process_clip_path.read_text(encoding="utf-8")
         assert "def process_clip" in content, "Should have process_clip function"
         assert "update_job_progress" in content, "Should have progress update function"
         assert "update_job_error" in content, "Should have error update function"
@@ -352,7 +352,7 @@ class TestEndToEndSimulation:
                     "status": JobStatus.error.value,
                     "error_code": "YTDLP_FAIL",
                     "error_message": "Video not available",
-                    "progress": None,
+                    "progress": "",  # Use empty string instead of None for Redis
                 },
             )
             redis.expire(f"job:{job_id}", 3600)
