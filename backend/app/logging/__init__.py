@@ -10,15 +10,15 @@ from .config import (
     get_correlation_id,
     clear_correlation_id,
     create_logger,
-    StructuredLogger
+    StructuredLogger,
 )
 
 __all__ = [
     "setup_logging",
-    "get_logger", 
+    "get_logger",
     "set_correlation_id",
     "get_correlation_id",
     "clear_correlation_id",
     "create_logger",
-    "StructuredLogger"
-] 
+    "StructuredLogger",
+]

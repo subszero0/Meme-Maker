@@ -5,4 +5,4 @@ Provides Redis-based caching for improved performance.
 
 from .metadata_cache import MetadataCache
 
-__all__ = ["MetadataCache"] 
+__all__ = ["MetadataCache"]

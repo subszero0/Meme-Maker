@@ -1,5 +1,6 @@
 from app.storage import LocalStorageManager
 
+
 def get_storage_manager() -> LocalStorageManager:
     """
     Factory function to get storage manager
@@ -7,8 +8,9 @@ def get_storage_manager() -> LocalStorageManager:
     """
     # Import settings using the new configuration module
     from app.config.configuration import get_settings
+
     settings = get_settings()
-    
+
     if settings.storage_backend == "local":
         return LocalStorageManager()
     else:
@@ -19,6 +21,7 @@ def get_storage_manager() -> LocalStorageManager:
 # Singleton instance for dependency injection - initialize when first accessed
 _storage_manager = None
 
+
 def get_storage_instance():
     """Get singleton storage manager instance"""
     global _storage_manager
@@ -26,5 +29,6 @@ def get_storage_instance():
         _storage_manager = get_storage_manager()
     return _storage_manager
 
+
 # For backward compatibility
-storage_manager = get_storage_instance() 
+storage_manager = get_storage_instance()
