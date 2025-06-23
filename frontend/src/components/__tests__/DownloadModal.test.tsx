@@ -5,7 +5,7 @@ import DownloadModal from '../DownloadModal';
 // Mock framer-motion to avoid animation complexity in tests
 jest.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => <div {...props}>{children}</div>,
   },
 }));
 

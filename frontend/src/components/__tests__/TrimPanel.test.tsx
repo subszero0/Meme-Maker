@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TrimPanel from '../TrimPanel';
 import { useToast } from '../ToastProvider';
@@ -10,7 +10,13 @@ jest.mock('../ToastProvider', () => ({
 
 // Mock react-player
 jest.mock('react-player', () => {
-  return function MockReactPlayer({ url, controls, muted, playing, ...props }: any) {
+  return function MockReactPlayer({ url, controls, muted, playing, ...props }: { 
+    url: string; 
+    controls?: boolean; 
+    muted?: boolean; 
+    playing?: boolean; 
+    [key: string]: unknown;
+  }) {
     return (
       <div 
         data-testid="react-player" 
@@ -26,7 +32,7 @@ jest.mock('react-player', () => {
 
 // Mock use-debounce
 jest.mock('use-debounce', () => ({
-  useDebouncedCallback: (callback: any, delay: number) => callback,
+  useDebouncedCallback: (callback: (value: string) => void) => callback,
 }));
 
 const mockPushToast = jest.fn();

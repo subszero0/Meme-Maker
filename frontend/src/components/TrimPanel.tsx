@@ -134,7 +134,7 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
       console.error('🎭 TrimPanel: Submit failed:', error);
       pushToast({ type: 'error', message: 'Failed to submit clip request' });
     }
-  }, [canSubmit, state.in, state.out, state.formatId, onSubmit, pushToast]);
+  }, [canSubmit, state.in, state.out, state.formatId, state.rights, onSubmit, pushToast]);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-6">

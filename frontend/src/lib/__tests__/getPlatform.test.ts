@@ -1,4 +1,4 @@
-import getPlatform, { Platform } from '../getPlatform';
+import getPlatform from '../getPlatform';
 
 describe('getPlatform', () => {
   describe('YouTube detection', () => {
