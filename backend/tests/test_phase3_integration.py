@@ -11,10 +11,10 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from backend.app.cache.metadata_cache import MetadataCache
-from backend.app.factories.storage_factory import StorageBackend, StorageFactory
-from backend.app.middleware.rate_limiter import RateLimiter, TokenBucket
-from backend.app.tasks.cleanup import CleanupManager
+from app.cache.metadata_cache import MetadataCache
+from app.factories.storage_factory import StorageBackend, StorageFactory
+from app.middleware.rate_limiter import RateLimiter, TokenBucket
+from app.tasks.cleanup import CleanupManager
 
 
 class TestMetadataCache:
