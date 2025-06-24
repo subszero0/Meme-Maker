@@ -1,0 +1,47 @@
+name: Deploy to Lightsail Production
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Deploy via SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        script: |
+          # Navigate to the project directory
+          cd ~/Meme-Maker
+          
+          # Pull the latest changes from the master branch
+          git pull origin master
+          echo "✅ Pulled latest changes from GitHub"
+          
+          # Stop the current services
+          docker-compose down
+          echo "✅ Services stopped"
+          
+          # Rebuild all services without cache to ensure fresh build
+          docker-compose build --no-cache
+          echo "✅ Containers rebuilt"
+          
+          # Start the services in detached mode
+          docker-compose up -d
+          echo "✅ Services started"
+          
+          # Clean up unused Docker images and volumes
+          docker system prune -af
+          echo "✅ Docker system pruned"
+          
+          echo "🚀 Deployment to production successful!" 

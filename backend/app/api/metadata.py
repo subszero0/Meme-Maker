@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 import yt_dlp
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, HttpUrl
+from yt_dlp.utils import DownloadError
 
 from ..cache.metadata_cache import MetadataCache
 from ..dependencies import get_async_redis
@@ -150,8 +151,17 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
                 logger.info(f"✅ Metadata extraction successful with config {i+1}")
                 return info
 
+        except DownloadError as e:
+            logger.warning(f"⚠️ DownloadError with config {i+1}: {e}")
+            # Check for rate-limiting error
+            if "HTTP Error 429" in str(e):
+                logger.error("🚫 YouTube rate-limiting detected. Aborting retries.")
+                raise  # Re-raise to be caught by the endpoint
+            if i == len(configs) - 1:  # Last attempt
+                raise e
+            continue
         except Exception as e:
-            logger.warning(f"⚠️ Config {i+1} failed: {e}")
+            logger.warning(f"⚠️ Generic error with config {i+1}: {e}")
             if i == len(configs) - 1:  # Last attempt
                 raise e
             continue
@@ -164,34 +174,33 @@ async def get_video_metadata(
     request: MetadataRequest, redis_client=Depends(get_async_redis)
 ) -> MetadataResponse:
     """Get video metadata using yt-dlp with caching"""
+    url = str(request.url)
+    logger.info(f"📋 Fetching metadata for URL: {url}")
+
+    # Initialize cache
+    cache = MetadataCache(redis_client)
+
+    # Check cache first with performance logging
+    cache_start_time = time.time()
+    cached_metadata = await cache.get_metadata(url)
+    cache_time = time.time() - cache_start_time
+
+    if cached_metadata:
+        logger.info(
+            f"✅ Cache hit for metadata: {url} (cache lookup: {cache_time:.3f}s)"
+        )
+        metadata = cached_metadata.get("metadata", {})
+        return MetadataResponse(
+            title=metadata.get("title", "Unknown Video"),
+            duration=metadata.get("duration", 0),
+            thumbnail_url=metadata.get("thumbnail_url"),
+            resolutions=metadata.get("resolutions", []),
+        )
+    else:
+        logger.info(
+            f"❌ Cache miss for metadata: {url} (cache lookup: {cache_time:.3f}s)"
+        )
     try:
-        url = str(request.url)
-        logger.info(f"📋 Fetching metadata for URL: {url}")
-
-        # Initialize cache
-        cache = MetadataCache(redis_client)
-
-        # Check cache first with performance logging
-        cache_start_time = time.time()
-        cached_metadata = await cache.get_metadata(url)
-        cache_time = time.time() - cache_start_time
-
-        if cached_metadata:
-            logger.info(
-                f"✅ Cache hit for metadata: {url} (cache lookup: {cache_time:.3f}s)"
-            )
-            metadata = cached_metadata.get("metadata", {})
-            return MetadataResponse(
-                title=metadata.get("title", "Unknown Video"),
-                duration=metadata.get("duration", 0),
-                thumbnail_url=metadata.get("thumbnail_url"),
-                resolutions=metadata.get("resolutions", []),
-            )
-        else:
-            logger.info(
-                f"❌ Cache miss for metadata: {url} (cache lookup: {cache_time:.3f}s)"
-            )
-
         # Extract metadata
         start_time = time.time()
         info = await extract_metadata_with_fallback(url)
@@ -247,12 +256,16 @@ async def get_video_metadata(
             thumbnail_url=thumbnail_url,
             resolutions=resolutions,
         )
-
+    except DownloadError as e:
+        if "HTTP Error 429" in str(e):
+            raise HTTPException(
+                status_code=429, detail="Too many requests to YouTube. Please try again later."
+            )
+        logger.error(f"❌ Failed to extract metadata for {url}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to extract metadata: {e}")
     except Exception as e:
-        logger.error(f"❌ Failed to extract metadata from {request.url}: {str(e)}")
-        raise HTTPException(
-            status_code=400, detail=f"Failed to extract video metadata: {str(e)}"
-        )
+        logger.error(f"❌ An unexpected error occurred for {url}: {e}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
 
 @router.post("/metadata/extract", response_model=VideoMetadata)
@@ -399,8 +412,23 @@ async def extract_video_metadata(
 
         return metadata
 
+    except DownloadError as e:
+        error_str = str(e).lower()
+        if "http error 429" in error_str or "too many requests" in error_str:
+            logger.warning(f"YouTube blocking detected for {request.url}: {e}")
+            raise HTTPException(
+                status_code=429,  # Use 429 directly
+                detail="YouTube is temporarily blocking requests from our server. Please try again in a few minutes.",
+            )
+        else:
+            logger.error(f"DownloadError for {request.url}: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail="The video service is currently unavailable. Please try again later.",
+            )
     except Exception as e:
         logger.error(f"❌ Failed to extract detailed metadata: {str(e)}")
         raise HTTPException(
-            status_code=400, detail=f"Failed to extract video metadata: {str(e)}"
+            status_code=400,
+            detail=f"Failed to extract video metadata. The URL may be invalid or unsupported.",
         )
