@@ -38,14 +38,34 @@ app = FastAPI(
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Log and return detailed validation errors."""
     # Log the full error detail for debugging
-    print(f"❌ Validation error for {request.method} {request.url}: {exc.errors()}")
+    error_messages = []
+    for error in exc.errors():
+        if isinstance(error.get("ctx", {}).get("error"), ValueError):
+            error_messages.append(str(error["ctx"]["error"]))
+        else:
+            error_messages.append(error["msg"])
+
+    print(f"❌ Validation error for {request.method} {request.url}: {error_messages}")
 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
             "detail": "Validation Error",
-            "errors": exc.errors(),
+            "errors": error_messages,
         },
+    )
+
+
+# Custom exception handler for raw ValueErrors from Pydantic validators
+@app.exception_handler(ValueError)
+async def value_error_exception_handler(request: Request, exc: ValueError):
+    """Handle raw ValueErrors, returning a 422 response."""
+    # Log the error for debugging
+    print(f"❌ ValueError caught for {request.method} {request.url}: {exc}")
+
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": str(exc)},
     )
 
 
