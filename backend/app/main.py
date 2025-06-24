@@ -1,8 +1,10 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 # Try to import prometheus components, but continue if not available
 try:
@@ -29,6 +31,22 @@ app = FastAPI(
     redoc_url="/redoc",  # Enable ReDoc as well
     openapi_url="/openapi.json",  # Ensure OpenAPI spec is available
 )
+
+
+# Custom exception handler for validation errors
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Log and return detailed validation errors."""
+    # Log the full error detail for debugging
+    print(f"❌ Validation error for {request.method} {request.url}: {exc.errors()}")
+
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "detail": "Validation Error",
+            "errors": exc.errors(),
+        },
+    )
 
 
 # Startup validation
