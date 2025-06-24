@@ -59,6 +59,10 @@ disallow_any_explicit = false
 disallow_any_generics = false
 disallow_subclassing_any = false
 
+[[tool.mypy.overrides]]
+module = "yt_dlp.*"
+ignore_missing_imports = true
+
 [tool.black]
 line-length = 88
 target-version = ['py312']

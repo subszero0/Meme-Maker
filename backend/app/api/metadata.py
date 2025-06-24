@@ -259,13 +259,16 @@ async def get_video_metadata(
     except DownloadError as e:
         if "HTTP Error 429" in str(e):
             raise HTTPException(
-                status_code=429, detail="Too many requests to YouTube. Please try again later."
+                status_code=429,
+                detail="Too many requests to YouTube. Please try again later.",
             )
         logger.error(f"❌ Failed to extract metadata for {url}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to extract metadata: {e}")
     except Exception as e:
         logger.error(f"❌ An unexpected error occurred for {url}: {e}")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"An unexpected error occurred: {e}"
+        )
 
 
 @router.post("/metadata/extract", response_model=VideoMetadata)
@@ -430,5 +433,5 @@ async def extract_video_metadata(
         logger.error(f"❌ Failed to extract detailed metadata: {str(e)}")
         raise HTTPException(
             status_code=400,
-            detail=f"Failed to extract video metadata. The URL may be invalid or unsupported.",
+            detail="Failed to extract video metadata. The URL may be invalid or unsupported.",
         )
