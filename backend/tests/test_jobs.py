@@ -71,7 +71,7 @@ def test_create_job_duration_too_long(client_with_fake_redis):
     response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
 
     assert response.status_code == 422
-    error_detail = response.json()["detail"]
+    error_detail = response.json()["errors"]
     # Pydantic validation errors are now in list format
     assert any(
         "180" in str(error) or "3 minutes" in str(error) for error in error_detail
@@ -89,7 +89,7 @@ def test_create_job_invalid_duration(client_with_fake_redis):
     response = client_with_fake_redis.post("/api/v1/jobs", json=job_data)
 
     assert response.status_code == 422
-    error_detail = response.json()["detail"]
+    error_detail = response.json()["errors"]
     # Pydantic validation errors are now in list format
     assert any("greater than start time" in str(error) for error in error_detail)
 
