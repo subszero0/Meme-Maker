@@ -13,7 +13,7 @@ const isDevelopment = import.meta.env.MODE === 'development';
 const isStaging = import.meta.env.MODE === 'staging';
 const isProduction = import.meta.env.MODE === 'production';
 
-// Default configuration
+// Default configuration provides a base for all environments.
 const defaultConfig: EnvironmentConfig = {
   API_BASE_URL: 'http://localhost:8000',
   WS_BASE_URL: 'ws://localhost:8000',
@@ -25,28 +25,23 @@ const defaultConfig: EnvironmentConfig = {
   ENVIRONMENT: 'development',
 };
 
-// Environment-specific overrides
+// Environment-specific overrides. Only the properties that differ from the default need to be listed.
 const environmentConfigs: Record<string, Partial<EnvironmentConfig>> = {
   development: {
     API_BASE_URL: 'http://localhost:8000',
     WS_BASE_URL: 'ws://localhost:8000',
-    ENABLE_LOGGING: true,
-    ENABLE_ANALYTICS: false,
-    ENABLE_DEVTOOLS: true,
     ENVIRONMENT: 'development',
   },
   staging: {
     API_BASE_URL: 'https://staging-api.meme-maker.com',
     WS_BASE_URL: 'wss://staging-api.meme-maker.com',
-    ENABLE_LOGGING: true,
     ENABLE_ANALYTICS: true,
     ENABLE_DEVTOOLS: false,
     ENVIRONMENT: 'staging',
   },
   production: {
-    // Use relative URLs for production to work with any domain
-    API_BASE_URL: '',
-    WS_BASE_URL: `${typeof window !== 'undefined' ? (window.location.protocol === 'https:' ? 'wss:' : 'ws:') : 'ws:'}//${typeof window !== 'undefined' ? window.location.host : 'localhost'}/ws`,
+    API_BASE_URL: '', // Use relative paths for API calls in production.
+    WS_BASE_URL: '', // This will be set dynamically at runtime.
     ENABLE_LOGGING: false,
     ENABLE_ANALYTICS: true,
     ENABLE_DEVTOOLS: false,
@@ -54,28 +49,28 @@ const environmentConfigs: Record<string, Partial<EnvironmentConfig>> = {
   },
 };
 
-// Merge default config with environment-specific config
+// Determine the current operating mode.
 const currentMode = import.meta.env.MODE || 'development';
 const envConfig = environmentConfigs[currentMode] || {};
 
-// For production, if we're in a browser, use relative URLs
-const getProductionApiUrl = () => {
-  if (typeof window !== 'undefined') {
-    // In browser, use relative URL to current domain
-    return '';
-  }
-  // Fallback for server-side rendering
-  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-};
-
-export const config: EnvironmentConfig = {
+// Build the final configuration object by merging defaults with environment-specific settings.
+let finalConfig: EnvironmentConfig = {
   ...defaultConfig,
   ...envConfig,
-  // Allow environment variables to override config
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 
-    (isProduction ? getProductionApiUrl() : envConfig.API_BASE_URL) || 
-    defaultConfig.API_BASE_URL,
-  WS_BASE_URL: import.meta.env.VITE_WS_BASE_URL || envConfig.WS_BASE_URL || defaultConfig.WS_BASE_URL,
+};
+
+// For production, the WebSocket URL must be determined at runtime in the browser.
+if (isProduction && typeof window !== 'undefined') {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  finalConfig.WS_BASE_URL = `${protocol}//${window.location.host}/ws`;
+}
+
+// Export the final, clean configuration.
+// It can still be overridden by explicit environment variables (VITE_*) if they are present.
+export const config: EnvironmentConfig = {
+    ...finalConfig,
+    API_BASE_URL: import.meta.env.VITE_API_BASE_URL ?? finalConfig.API_BASE_URL,
+    WS_BASE_URL: import.meta.env.VITE_WS_BASE_URL ?? finalConfig.WS_BASE_URL,
 };
 
 // Environment detection utilities
