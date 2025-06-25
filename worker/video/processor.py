@@ -77,8 +77,10 @@ except ImportError:
     class JobStatus:
         class working:
             value = "working"
-        class completed:
-            value = "completed"
+        class done:
+            value = "done"
+        class error:
+            value = "error"
 
 logger = logging.getLogger(__name__)
 

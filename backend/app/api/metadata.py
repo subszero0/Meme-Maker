@@ -134,11 +134,11 @@ def get_fallback_ydl_opts() -> List[Dict]:
 async def extract_metadata_with_fallback(url: str) -> Dict:
     """Extract metadata with fallback configurations and smart retry for bot detection"""
     configs = [get_optimized_ydl_opts()] + get_fallback_ydl_opts()
-
-    # Smart retry parameters for bot detection
-    max_retries = 3
-    base_wait_time = 120  # Start with 2 minutes
-
+    
+    # Smart retry parameters for bot detection - REDUCED for better UX
+    max_retries = 2  # Reduced from 3 to 2 
+    base_wait_time = 30  # Reduced from 120s to 30s (start with 30s, then 60s)
+    
     for retry_attempt in range(max_retries):
         for i, ydl_opts in enumerate(configs):
             try:
@@ -147,75 +147,51 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
                 )
 
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = await asyncio.to_thread(
-                        ydl.extract_info, url, download=False
-                    )
-
-                    # Handle playlists
-                    if "entries" in info and info["entries"]:
-                        info = info["entries"][0]
-
-                    logger.info(
-                        f"✅ Metadata extraction successful with config {i+1} on retry {retry_attempt + 1}"
-                    )
-                    return info
-
+                    info = ydl.extract_info(url, download=False)
+                    
+                    if info:
+                        logger.info(f"✅ Successfully extracted metadata with config {i+1} (retry {retry_attempt + 1})")
+                        return info
+                    
             except DownloadError as e:
                 error_str = str(e).lower()
-
-                # Check for bot detection patterns
-                is_bot_detection = any(
-                    pattern in error_str
-                    for pattern in [
-                        "sign in",
-                        "confirm you're not a bot",
-                        "please sign in",
-                        "failed to extract any player response",
-                    ]
-                )
-
-                # Check for rate limiting
-                is_rate_limited = "http error 429" in error_str
-
-                if is_bot_detection or is_rate_limited:
-                    if retry_attempt < max_retries - 1:  # Not the last retry
-                        wait_time = base_wait_time * (
-                            2**retry_attempt
-                        )  # Exponential backoff
-                        logger.warning(
-                            f"⚠️ Bot detection/rate limiting with config {i+1} on retry {retry_attempt + 1}. "
-                            f"Waiting {wait_time} seconds before retry..."
-                        )
-                        await asyncio.sleep(wait_time)
-                        break  # Break from config loop to start next retry attempt
-                    else:
-                        logger.error(
-                            f"🚫 Bot detection persists after {max_retries} retries. Giving up."
-                        )
-                        raise  # Re-raise to be caught by the endpoint
-                else:
-                    logger.warning(f"⚠️ DownloadError with config {i+1}: {e}")
-                    if (
-                        i == len(configs) - 1 and retry_attempt == max_retries - 1
-                    ):  # Last config, last retry
-                        raise e
-                    continue
-
-            except Exception as e:
-                logger.warning(f"⚠️ Generic error with config {i+1}: {e}")
+                
+                # Check for bot detection/rate limiting patterns
                 if (
-                    i == len(configs) - 1 and retry_attempt == max_retries - 1
-                ):  # Last config, last retry
-                    raise e
+                    "sign in" in error_str
+                    or "confirm you're not a bot" in error_str
+                    or "too many requests" in error_str
+                    or "http error 429" in error_str
+                ):
+                    logger.warning(f"⚠️ YouTube bot detection triggered (config {i+1}, retry {retry_attempt + 1}): {e}")
+                    
+                    # If this is the last config and not the last retry, wait before retrying
+                    if i == len(configs) - 1 and retry_attempt < max_retries - 1:
+                        wait_time = base_wait_time * (2 ** retry_attempt)  # 30s, then 60s
+                        logger.info(f"🕒 YouTube rate limit detected. Waiting {wait_time}s before retry {retry_attempt + 2}/{max_retries}...")
+                        logger.info(f"💡 This is normal for YouTube videos - we're working around temporary restrictions")
+                        await asyncio.sleep(wait_time)
+                        break  # Break inner loop to start next retry attempt
+                    
+                    # If this is the last retry, raise the exception
+                    if retry_attempt == max_retries - 1:
+                        logger.error(f"❌ Final retry failed after {max_retries} attempts")
+                        raise
+                    
+                    # Continue to next config
+                    continue
+                    
+                else:
+                    # Other DownloadError - continue to next config
+                    logger.warning(f"⚠️ DownloadError with config {i+1}: {e}")
+                    continue
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Unexpected error with config {i+1}: {e}")
                 continue
-        else:
-            # This else clause executes only if the for loop completed without breaking
-            # If we reach here, all configs failed but no bot detection was found
-            continue
-
-        # If we broke out of the inner loop due to bot detection, continue with next retry
-
-    raise Exception("All metadata extraction attempts failed after retries")
+    
+    # If we get here, all configs and retries failed
+    raise DownloadError("Failed to extract metadata after all retry attempts")
 
 
 @router.post("/metadata", response_model=MetadataResponse)
