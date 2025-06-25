@@ -21,12 +21,15 @@ jobs:
         username: ${{ secrets.DEPLOY_USER }}
         key: ${{ secrets.DEPLOY_SSH_KEY }}
         script: |
+          set -e
           # Navigate to the project directory
           cd ~/Meme-Maker
           
-          # Pull the latest changes from the master branch
-          git pull origin master
-          echo "✅ Pulled latest changes from GitHub"
+          # Fetch the latest changes and forcefully reset the local branch
+          # This ensures the server is an exact mirror of the repository
+          git fetch origin
+          git reset --hard origin/master
+          echo "✅ Force-pulled latest changes from GitHub"
           
           # Stop the current services
           docker-compose down
