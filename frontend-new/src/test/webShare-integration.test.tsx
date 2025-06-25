@@ -19,6 +19,8 @@ vi.mock("../lib/webShareService", () => ({
       public code: string,
     ) {
       super(message);
+      this.name = "WebShareError";
+      Object.setPrototypeOf(this, WebShareError.prototype);
     }
   },
   detectPlatformCapabilities: vi.fn(() => ({
@@ -28,6 +30,7 @@ vi.mock("../lib/webShareService", () => ({
     supportsWebShare: true,
     supportsFileShare: true,
     recommendedApproach: "web-share",
+    platforms: ["whatsapp", "telegram", "twitter"],
   })),
 }));
 
@@ -35,6 +38,7 @@ vi.mock("../lib/webShareService", () => ({
 vi.mock("../hooks/use-toast", () => ({
   useToast: vi.fn(() => ({
     toast: vi.fn(),
+    toasts: [],
   })),
 }));
 
@@ -59,6 +63,7 @@ const TestProvider: React.FC<{ children: React.ReactNode }> = ({
 describe("Web Share Integration Tests", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   const renderWithProviders = (component: React.ReactElement) => {

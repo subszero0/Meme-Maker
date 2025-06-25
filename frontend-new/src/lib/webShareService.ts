@@ -25,6 +25,7 @@ export class WebShareError extends Error {
   ) {
     super(message);
     this.name = "WebShareError";
+    Object.setPrototypeOf(this, WebShareError.prototype);
   }
 }
 
@@ -188,7 +189,7 @@ export class WebShareService {
       url: downloadUrl,
     };
 
-    if (this.isSupported() && navigator.canShare?.(shareData)) {
+    if (this.isSupported() && navigator.share) {
       await navigator.share(shareData);
     } else {
       // Platform-specific fallback
@@ -219,8 +220,10 @@ export class WebShareService {
    */
   private static sanitizeFileName(title: string): string {
     return title
-      .replace(/[^a-z0-9\s\-_]/gi, "") // Remove special characters
-      .replace(/\s+/g, "_") // Replace spaces with underscores
+      .trim()
+      .replace(/[^a-z0-9\-_]+/gi, "_") // Replace any sequence of invalid chars with a single underscore
+      .replace(/_+/g, "_") // Collapse multiple underscores
+      .replace(/_$/, "") // Remove trailing underscore
       .toLowerCase()
       .substring(0, 50); // Limit length
   }

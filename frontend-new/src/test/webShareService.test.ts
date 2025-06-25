@@ -72,25 +72,25 @@ describe("WebShareService", () => {
 
   describe("shareVideoFile", () => {
     const mockBlob = new Blob(["video data"], { type: "video/mp4" });
-    const mockResponse = {
-      ok: true,
-      headers: {
-        get: vi.fn().mockReturnValue("1000"), // Content-Length
-      },
-      body: {
-        getReader: vi.fn().mockReturnValue({
-          read: vi
-            .fn()
-            .mockResolvedValueOnce({
-              done: false,
-              value: new Uint8Array([1, 2, 3]),
-            })
-            .mockResolvedValueOnce({ done: true }),
-        }),
-      },
-    };
 
     beforeEach(() => {
+      const mockResponse = {
+        ok: true,
+        headers: {
+          get: vi.fn().mockReturnValue("1000"), // Content-Length
+        },
+        body: {
+          getReader: vi.fn().mockReturnValue({
+            read: vi
+              .fn()
+              .mockResolvedValueOnce({
+                done: false,
+                value: new Uint8Array([1, 2, 3]),
+              })
+              .mockResolvedValueOnce({ done: true, value: undefined }),
+          }),
+        },
+      };
       (fetch as any).mockResolvedValue(mockResponse);
       mockNavigator.share.mockResolvedValue(undefined);
       mockNavigator.canShare.mockReturnValue(true);
@@ -212,7 +212,7 @@ describe("WebShareService", () => {
 
       const shareCall = mockNavigator.share.mock.calls[0][0];
       const sharedFile = shareCall.files[0];
-      expect(sharedFile.name).toBe("test_video_special__characters.mp4");
+      expect(sharedFile.name).toBe("test_video_special_characters.mp4");
     });
   });
 
