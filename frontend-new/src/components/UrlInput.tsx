@@ -1,19 +1,19 @@
-
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Link2, Loader2, AlertCircle } from 'lucide-react';
-import { useVideoMetadata } from '../hooks/useApi';
-import { useDebounce } from 'use-debounce';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Link2, Loader2, AlertCircle } from "lucide-react";
+import { useVideoMetadata } from "../hooks/useApi";
+import { useDebounce } from "use-debounce";
+import type { MetadataResponse } from "@/lib/api";
 
 interface UrlInputProps {
-  onSubmit: (url: string, metadata: any) => void;
+  onSubmit: (url: string, metadata: MetadataResponse) => void;
 }
 
 export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
-  const [url, setUrl] = useState('');
-  const [submittedUrl, setSubmittedUrl] = useState('');
-  const [validationError, setValidationError] = useState('');
+  const [url, setUrl] = useState("");
+  const [submittedUrl, setSubmittedUrl] = useState("");
+  const [validationError, setValidationError] = useState("");
 
   // Debounce URL for validation
   const [debouncedUrl] = useDebounce(url, 500);
@@ -23,40 +23,42 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
     data: metadata,
     isLoading,
     error: metadataError,
-    isError
+    isError,
   } = useVideoMetadata(submittedUrl, !!submittedUrl && !validationError);
 
   const validateUrl = (inputUrl: string): boolean => {
     if (!inputUrl.trim()) {
-      setValidationError('');
+      setValidationError("");
       return false;
     }
 
     try {
       const urlObj = new URL(inputUrl);
       const supportedDomains = [
-        'youtube.com',
-        'youtu.be',
-        'facebook.com',
-        'fb.watch',
-        'instagram.com',
-        'threads.net',
-        'whatsapp.com'
+        "youtube.com",
+        "youtu.be",
+        "facebook.com",
+        "fb.watch",
+        "instagram.com",
+        "threads.net",
+        "whatsapp.com",
       ];
 
-      const isSupported = supportedDomains.some(domain => 
-        urlObj.hostname.includes(domain)
+      const isSupported = supportedDomains.some((domain) =>
+        urlObj.hostname.includes(domain),
       );
 
       if (!isSupported) {
-        setValidationError('Please enter a valid URL from YouTube, Instagram, Facebook, WhatsApp, or Threads');
+        setValidationError(
+          "Please enter a valid URL from YouTube, Instagram, Facebook, WhatsApp, or Threads",
+        );
         return false;
       }
 
-      setValidationError('');
+      setValidationError("");
       return true;
     } catch {
-      setValidationError('Please enter a valid URL');
+      setValidationError("Please enter a valid URL");
       return false;
     }
   };
@@ -64,9 +66,9 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedUrl = url.trim();
-    
+
     if (!trimmedUrl) {
-      setValidationError('Please enter a video URL');
+      setValidationError("Please enter a video URL");
       return;
     }
 
@@ -89,7 +91,8 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
           Start Your Creative Journey
         </h2>
         <p className="text-gray-600">
-          Paste any video link from YouTube, Instagram, Facebook, WhatsApp, or Threads
+          Paste any video link from YouTube, Instagram, Facebook, WhatsApp, or
+          Threads
         </p>
       </div>
 
@@ -101,9 +104,9 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://youtube.com/watch?v=... or any video URL"
             className={`w-full p-4 pr-12 border-2 rounded-2xl focus:ring-4 focus:ring-orange-100 outline-none text-lg bg-orange-50/30 transition-colors ${
-              validationError 
-                ? 'border-red-300 focus:border-red-400' 
-                : 'border-orange-200 focus:border-orange-400'
+              validationError
+                ? "border-red-300 focus:border-red-400"
+                : "border-orange-200 focus:border-orange-400"
             }`}
             disabled={isLoading}
           />
@@ -127,14 +130,18 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {metadataError instanceof Error && metadataError.message 
-                ? metadataError.message.includes('Sign in to confirm')
-                  ? 'YouTube is temporarily blocking automated requests. Please try again in a few minutes or try a different video.'
-                  : metadataError.message.includes('Failed to extract video metadata')
-                    ? metadataError.message.replace('Failed to extract video metadata: ', '')
+              {metadataError instanceof Error && metadataError.message
+                ? metadataError.message.includes("Sign in to confirm")
+                  ? "YouTube is temporarily blocking automated requests. Please try again in a few minutes or try a different video."
+                  : metadataError.message.includes(
+                        "Failed to extract video metadata",
+                      )
+                    ? metadataError.message.replace(
+                        "Failed to extract video metadata: ",
+                        "",
+                      )
                     : metadataError.message
-                : 'Failed to fetch video information. Please check the URL and try again.'
-              }
+                : "Failed to fetch video information. Please check the URL and try again."}
             </AlertDescription>
           </Alert>
         )}
@@ -150,7 +157,7 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
               Fetching Video...
             </>
           ) : (
-            '🚀 Let\'s Go!'
+            "🚀 Let's Go!"
           )}
         </Button>
       </form>

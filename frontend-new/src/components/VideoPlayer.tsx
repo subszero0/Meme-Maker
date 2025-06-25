@@ -1,10 +1,17 @@
-
-import React, { useState, useRef, useEffect } from 'react';
-import ReactPlayer from 'react-player';
-import { Play, Pause, SkipBack, SkipForward, Maximize2, Volume2, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from './ui/alert';
-import { formatDuration } from '../lib/api';
-import type { MetadataResponse } from '../lib/api';
+import React, { useState, useRef, useEffect } from "react";
+import ReactPlayer from "react-player";
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Maximize2,
+  Volume2,
+  AlertCircle,
+} from "lucide-react";
+import { Alert, AlertDescription } from "./ui/alert";
+import { formatDuration } from "../lib/api";
+import type { MetadataResponse } from "../lib/api";
 
 interface VideoPlayerProps {
   videoUrl: string;
@@ -13,11 +20,11 @@ interface VideoPlayerProps {
   onCurrentTimeChange?: (time: number) => void;
 }
 
-export const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
-  videoUrl, 
-  metadata, 
-  onDurationChange, 
-  onCurrentTimeChange 
+export const VideoPlayer: React.FC<VideoPlayerProps> = ({
+  videoUrl,
+  metadata,
+  onDurationChange,
+  onCurrentTimeChange,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -50,14 +57,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const skipSeconds = (seconds: number) => {
     if (playerRef.current) {
       const newTime = Math.max(0, Math.min(duration, currentTime + seconds));
-      playerRef.current.seekTo(newTime, 'seconds');
+      playerRef.current.seekTo(newTime, "seconds");
       setCurrentTime(newTime);
     }
   };
 
   const handleSeek = (time: number) => {
     if (playerRef.current) {
-      playerRef.current.seekTo(time, 'seconds');
+      playerRef.current.seekTo(time, "seconds");
       setCurrentTime(time);
     }
   };
@@ -76,8 +83,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setError(null);
   };
 
-  const handleError = (error: any) => {
-    setError('Failed to load video. Please check the URL and try again.');
+  const handleError = (error: Error | string | unknown) => {
+    setError("Failed to load video. Please check the URL and try again.");
     setIsReady(false);
   };
 
@@ -95,7 +102,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       {/* Video Thumbnail (before ready) */}
       {!isReady && metadata?.thumbnail_url && (
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${metadata.thumbnail_url})` }}
         >
@@ -117,8 +124,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         onError={handleError}
         config={{
           youtube: {
-            playerVars: { showinfo: 0, controls: 0, modestbranding: 1 }
-          }
+            playerVars: { showinfo: 0, controls: 0, modestbranding: 1 },
+          },
         }}
       />
 
@@ -155,7 +162,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <div className="absolute bottom-0 left-0 right-0 p-4 space-y-3">
             {/* Progress Bar */}
             <div className="w-full">
-              <div 
+              <div
                 className="relative h-2 bg-white/20 rounded-full cursor-pointer"
                 onClick={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -164,11 +171,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   handleSeek(newTime);
                 }}
               >
-                <div 
+                <div
                   className="absolute h-full bg-gradient-to-r from-orange-400 to-red-400 rounded-full transition-all duration-300"
                   style={{ width: `${(currentTime / duration) * 100}%` }}
                 />
-                <div 
+                <div
                   className="absolute w-4 h-4 bg-white rounded-full shadow-lg top-1/2 transform -translate-y-1/2 transition-all duration-300"
                   style={{ left: `${(currentTime / duration) * 100}%` }}
                 />
@@ -184,14 +191,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 >
                   <SkipBack className="w-5 h-5" />
                 </button>
-                
+
                 <button
                   onClick={togglePlay}
                   className="p-2 hover:bg-white/20 rounded-full transition-all duration-200"
                 >
-                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                  {isPlaying ? (
+                    <Pause className="w-5 h-5" />
+                  ) : (
+                    <Play className="w-5 h-5" />
+                  )}
                 </button>
-                
+
                 <button
                   onClick={() => skipSeconds(10)}
                   className="p-2 hover:bg-white/20 rounded-full transition-all duration-200"

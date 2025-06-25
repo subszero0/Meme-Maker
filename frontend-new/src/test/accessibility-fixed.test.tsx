@@ -1,14 +1,14 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Import components to test
-import { UrlInput } from '../components/UrlInput';
-import { LoadingAnimation } from '../components/LoadingAnimation';
+import { UrlInput } from "../components/UrlInput";
+import { LoadingAnimation } from "../components/LoadingAnimation";
 
 // Mock all external dependencies to avoid hanging
-vi.mock('../hooks/useApi', () => ({
+vi.mock("../hooks/useApi", () => ({
   useVideoMetadata: vi.fn(() => ({
     data: null,
     isLoading: false,
@@ -25,22 +25,26 @@ vi.mock('../hooks/useApi', () => ({
   })),
 }));
 
-vi.mock('use-debounce', () => ({
+vi.mock("use-debounce", () => ({
   useDebounce: vi.fn((value) => [value]),
 }));
 
-vi.mock('../lib/api', () => ({
+vi.mock("../lib/api", () => ({
   metadataApi: {
-    getBasicMetadata: vi.fn(() => Promise.resolve({ title: 'Test Video', duration: 120 })),
+    getBasicMetadata: vi.fn(() =>
+      Promise.resolve({ title: "Test Video", duration: 120 }),
+    ),
   },
   jobsApi: {
-    createJob: vi.fn(() => Promise.resolve({ id: 'test-job', status: 'queued' })),
+    createJob: vi.fn(() =>
+      Promise.resolve({ id: "test-job", status: "queued" }),
+    ),
   },
   JobStatus: {
-    QUEUED: 'queued',
-    WORKING: 'working',
-    DONE: 'completed',
-    ERROR: 'error',
+    QUEUED: "queued",
+    WORKING: "working",
+    DONE: "completed",
+    ERROR: "error",
   },
 }));
 
@@ -54,9 +58,7 @@ const createWrapper = () => {
   });
 
   return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 };
 
@@ -66,31 +68,31 @@ const renderWithProviders = (component: React.ReactElement) => {
   return render(<Wrapper>{component}</Wrapper>);
 };
 
-describe('Accessibility Fixed Tests', () => {
+describe("Accessibility Fixed Tests", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('Basic Accessibility Testing', () => {
-    it('should render UrlInput component accessibly', () => {
+  describe("Basic Accessibility Testing", () => {
+    it("should render UrlInput component accessibly", () => {
       const mockOnSubmit = vi.fn();
       renderWithProviders(<UrlInput onSubmit={mockOnSubmit} />);
 
       // Check the actual structure of the component
       const input = screen.getByPlaceholderText(/https.*youtube.*watch/i);
-      expect(input).toHaveAttribute('type', 'url');
+      expect(input).toHaveAttribute("type", "url");
       expect(input).not.toBeDisabled();
 
-      const button = screen.getByRole('button', { name: /let's go/i });
+      const button = screen.getByRole("button", { name: /let's go/i });
       expect(button).toBeInTheDocument();
-      expect(button).toHaveAttribute('type', 'submit');
+      expect(button).toHaveAttribute("type", "submit");
 
       // Check for proper heading structure
-      const heading = screen.getByRole('heading', { level: 2 });
+      const heading = screen.getByRole("heading", { level: 2 });
       expect(heading).toHaveTextContent(/start your creative journey/i);
     });
 
-    it('should render LoadingAnimation component accessibly', () => {
+    it("should render LoadingAnimation component accessibly", () => {
       renderWithProviders(<LoadingAnimation jobId="test-job-123" />);
 
       // Check for main heading
@@ -98,95 +100,95 @@ describe('Accessibility Fixed Tests', () => {
       expect(heading).toBeInTheDocument();
 
       // Check for progress indicators (SVG elements)
-      const svgElements = document.querySelectorAll('svg');
+      const svgElements = document.querySelectorAll("svg");
       expect(svgElements.length).toBeGreaterThan(0);
     });
 
-    it('should have proper keyboard navigation support', () => {
+    it("should have proper keyboard navigation support", () => {
       const mockOnSubmit = vi.fn();
       renderWithProviders(<UrlInput onSubmit={mockOnSubmit} />);
 
       // Test tab order and keyboard accessibility
       const focusableElements = document.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
       );
 
       expect(focusableElements.length).toBeGreaterThan(0);
 
       // Verify elements can receive focus
-      focusableElements.forEach(element => {
-        expect(element).not.toHaveAttribute('tabindex', '-1');
+      focusableElements.forEach((element) => {
+        expect(element).not.toHaveAttribute("tabindex", "-1");
       });
     });
 
-    it('should have proper semantic HTML structure', () => {
+    it("should have proper semantic HTML structure", () => {
       const mockOnSubmit = vi.fn();
       renderWithProviders(<UrlInput onSubmit={mockOnSubmit} />);
 
       // Check for proper form structure
-      const form = document.querySelector('form');
+      const form = document.querySelector("form");
       expect(form).toBeInTheDocument();
 
       // Check for proper input types
       const urlInput = screen.getByPlaceholderText(/https.*youtube.*watch/i);
-      expect(urlInput).toHaveAttribute('type', 'url');
+      expect(urlInput).toHaveAttribute("type", "url");
 
       // Check for proper button attributes
-      const button = screen.getByRole('button', { name: /let's go/i });
-      expect(button).toHaveAttribute('type', 'submit');
+      const button = screen.getByRole("button", { name: /let's go/i });
+      expect(button).toHaveAttribute("type", "submit");
     });
 
-    it('should support screen readers with live regions', () => {
+    it("should support screen readers with live regions", () => {
       renderWithProviders(<LoadingAnimation jobId="test-job-123" />);
 
       // Look for live regions for dynamic content updates
-      const liveRegions = document.querySelectorAll('[aria-live]');
-      
+      const liveRegions = document.querySelectorAll("[aria-live]");
+
       // Should have at least one live region for status updates
       if (liveRegions.length > 0) {
-        liveRegions.forEach(region => {
-          expect(region).toHaveAttribute('aria-live');
-          const liveValue = region.getAttribute('aria-live');
-          expect(['polite', 'assertive', 'off']).toContain(liveValue);
+        liveRegions.forEach((region) => {
+          expect(region).toHaveAttribute("aria-live");
+          const liveValue = region.getAttribute("aria-live");
+          expect(["polite", "assertive", "off"]).toContain(liveValue);
         });
       }
     });
 
-    it('should provide error feedback accessibly', () => {
+    it("should provide error feedback accessibly", () => {
       renderWithProviders(
         <div role="alert" aria-live="assertive">
           <span>Error: Invalid video URL</span>
-        </div>
+        </div>,
       );
 
       // Verify error states have proper ARIA attributes
-      const errorMessage = screen.getByRole('alert');
+      const errorMessage = screen.getByRole("alert");
       expect(errorMessage).toHaveTextContent(/error/i);
-      expect(errorMessage).toHaveAttribute('aria-live', 'assertive');
+      expect(errorMessage).toHaveAttribute("aria-live", "assertive");
     });
 
-    it('should have proper heading hierarchy', () => {
+    it("should have proper heading hierarchy", () => {
       const mockOnSubmit = vi.fn();
       renderWithProviders(
         <div>
           <h1>Meme Maker</h1>
           <UrlInput onSubmit={mockOnSubmit} />
-        </div>
+        </div>,
       );
 
       // Check heading structure
-      const h1 = screen.getByRole('heading', { level: 1 });
-      expect(h1).toHaveTextContent('Meme Maker');
+      const h1 = screen.getByRole("heading", { level: 1 });
+      expect(h1).toHaveTextContent("Meme Maker");
 
-      const h2 = screen.getByRole('heading', { level: 2 });
+      const h2 = screen.getByRole("heading", { level: 2 });
       expect(h2).toHaveTextContent(/start your creative journey/i);
     });
   });
 
-  describe('Mobile Accessibility', () => {
-    it('should be accessible on smaller viewports', () => {
+  describe("Mobile Accessibility", () => {
+    it("should be accessible on smaller viewports", () => {
       // Simulate mobile viewport
-      Object.defineProperty(window, 'innerWidth', {
+      Object.defineProperty(window, "innerWidth", {
         writable: true,
         configurable: true,
         value: 375,
@@ -196,41 +198,41 @@ describe('Accessibility Fixed Tests', () => {
       renderWithProviders(<UrlInput onSubmit={mockOnSubmit} />);
 
       // Verify touch targets are appropriately sized
-      const buttons = document.querySelectorAll('button');
-      buttons.forEach(button => {
+      const buttons = document.querySelectorAll("button");
+      buttons.forEach((button) => {
         // In test environment, just verify the element exists and is not hidden
-        expect(button).not.toHaveStyle('display: none');
-        expect(button).not.toHaveStyle('visibility: hidden');
+        expect(button).not.toHaveStyle("display: none");
+        expect(button).not.toHaveStyle("visibility: hidden");
       });
     });
   });
 
-  describe('Form Accessibility', () => {
-    it('should properly associate labels with form controls', () => {
+  describe("Form Accessibility", () => {
+    it("should properly associate labels with form controls", () => {
       const mockOnSubmit = vi.fn();
       renderWithProviders(<UrlInput onSubmit={mockOnSubmit} />);
 
       // Check that the input has a meaningful placeholder
       const input = screen.getByPlaceholderText(/https.*youtube.*watch/i);
-      expect(input.getAttribute('placeholder')).toContain('youtube');
-      expect(input.getAttribute('placeholder')).toContain('video URL');
+      expect(input.getAttribute("placeholder")).toContain("youtube");
+      expect(input.getAttribute("placeholder")).toContain("video URL");
     });
 
-    it('should have proper form submission behavior', () => {
+    it("should have proper form submission behavior", () => {
       const mockOnSubmit = vi.fn();
       renderWithProviders(<UrlInput onSubmit={mockOnSubmit} />);
 
       // Check that form has proper structure
-      const form = document.querySelector('form');
+      const form = document.querySelector("form");
       expect(form).toBeInTheDocument();
 
-      const submitButton = screen.getByRole('button', { name: /let's go/i });
-      expect(submitButton).toHaveAttribute('type', 'submit');
+      const submitButton = screen.getByRole("button", { name: /let's go/i });
+      expect(submitButton).toHaveAttribute("type", "submit");
     });
   });
 
-  describe('Performance Test for Accessibility', () => {
-    it('should run accessibility checks efficiently', () => {
+  describe("Performance Test for Accessibility", () => {
+    it("should run accessibility checks efficiently", () => {
       const startTime = performance.now();
 
       const mockOnSubmit = vi.fn();
@@ -238,12 +240,12 @@ describe('Accessibility Fixed Tests', () => {
         <div>
           <UrlInput onSubmit={mockOnSubmit} />
           <LoadingAnimation jobId="test-job-123" />
-        </div>
+        </div>,
       );
 
       // Manual accessibility checks are fast
       const focusableElements = document.querySelectorAll(
-        'button, input, [tabindex]:not([tabindex="-1"])'
+        'button, input, [tabindex]:not([tabindex="-1"])',
       );
       expect(focusableElements.length).toBeGreaterThan(0);
 
@@ -254,4 +256,4 @@ describe('Accessibility Fixed Tests', () => {
       expect(duration).toBeLessThan(1000); // Less than 1 second
     });
   });
-}); 
+});

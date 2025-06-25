@@ -1,10 +1,10 @@
-import React, { ReactElement } from 'react';
-import { render, RenderOptions } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter } from 'react-router-dom';
-import { AppStateProvider } from '../hooks/useAppState';
-import { Toaster } from '../components/ui/toaster';
-import { vi } from 'vitest';
+import React, { ReactElement } from "react";
+import { render, RenderOptions } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter } from "react-router-dom";
+import { AppStateProvider } from "../hooks/useAppState";
+import { Toaster } from "../components/ui/toaster";
+import { vi } from "vitest";
 
 // ===========================
 // Test Providers Wrapper
@@ -16,26 +16,28 @@ interface TestProvidersProps {
   initialRoute?: string;
 }
 
-const TestProviders: React.FC<TestProvidersProps> = ({ 
-  children, 
+const TestProviders: React.FC<TestProvidersProps> = ({
+  children,
   queryClient,
-  initialRoute = '/' 
+  initialRoute = "/",
 }) => {
-  const testQueryClient = queryClient || new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        staleTime: Infinity,
+  const testQueryClient =
+    queryClient ||
+    new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          staleTime: Infinity,
+        },
+        mutations: {
+          retry: false,
+        },
       },
-      mutations: {
-        retry: false,
-      },
-    },
-  });
+    });
 
   // Set initial route if needed
-  if (initialRoute !== '/') {
-    window.history.pushState({}, 'Test page', initialRoute);
+  if (initialRoute !== "/") {
+    window.history.pushState({}, "Test page", initialRoute);
   }
 
   return (
@@ -54,15 +56,12 @@ const TestProviders: React.FC<TestProvidersProps> = ({
 // Custom Render Function
 // ===========================
 
-interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
+interface CustomRenderOptions extends Omit<RenderOptions, "wrapper"> {
   queryClient?: QueryClient;
   initialRoute?: string;
 }
 
-const customRender = (
-  ui: ReactElement,
-  options: CustomRenderOptions = {}
-) => {
+const customRender = (ui: ReactElement, options: CustomRenderOptions = {}) => {
   const { queryClient, initialRoute, ...renderOptions } = options;
 
   const Wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -78,7 +77,7 @@ const customRender = (
 // Test Utilities
 // ===========================
 
-export const createTestQueryClient = () => 
+export const createTestQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: {
@@ -92,25 +91,27 @@ export const createTestQueryClient = () =>
     },
   });
 
-export const waitForLoadingToFinish = () => 
-  new Promise(resolve => setTimeout(resolve, 0));
+export const waitForLoadingToFinish = () =>
+  new Promise((resolve) => setTimeout(resolve, 0));
 
-export const createMockFile = (name = 'test.mp4', size = 1000000) => 
-  new File(['test content'], name, { 
-    type: 'video/mp4',
+export const createMockFile = (name = "test.mp4", size = 1000000) =>
+  new File(["test content"], name, {
+    type: "video/mp4",
     lastModified: Date.now(),
   });
 
-export const createMockUrl = (type: 'youtube' | 'valid' | 'invalid' = 'youtube') => {
+export const createMockUrl = (
+  type: "youtube" | "valid" | "invalid" = "youtube",
+) => {
   switch (type) {
-    case 'youtube':
-      return 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-    case 'valid':
-      return 'https://example.com/video.mp4';
-    case 'invalid':
-      return 'https://invalid-url.com/invalid';
+    case "youtube":
+      return "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+    case "valid":
+      return "https://example.com/video.mp4";
+    case "invalid":
+      return "https://invalid-url.com/invalid";
     default:
-      return 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+      return "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
   }
 };
 
@@ -146,7 +147,10 @@ export const mockResizeObserver = () => {
 // Event Utilities
 // ===========================
 
-export const createMockPointerEvent = (type: string, options: Partial<PointerEvent> = {}) => {
+export const createMockPointerEvent = (
+  type: string,
+  options: Partial<PointerEvent> = {},
+) => {
   return new PointerEvent(type, {
     bubbles: true,
     cancelable: true,
@@ -155,8 +159,11 @@ export const createMockPointerEvent = (type: string, options: Partial<PointerEve
   });
 };
 
-export const createMockKeyboardEvent = (key: string, options: Partial<KeyboardEvent> = {}) => {
-  return new KeyboardEvent('keydown', {
+export const createMockKeyboardEvent = (
+  key: string,
+  options: Partial<KeyboardEvent> = {},
+) => {
+  return new KeyboardEvent("keydown", {
     key,
     bubbles: true,
     cancelable: true,
@@ -168,12 +175,16 @@ export const createMockKeyboardEvent = (key: string, options: Partial<KeyboardEv
 // Async Test Helpers
 // ===========================
 
-export const flushPromises = () => new Promise(resolve => setImmediate(resolve));
+export const flushPromises = () =>
+  new Promise((resolve) => setImmediate(resolve));
 
-export const waitFor = (callback: () => boolean | Promise<boolean>, timeout = 5000) => {
+export const waitFor = (
+  callback: () => boolean | Promise<boolean>,
+  timeout = 5000,
+) => {
   return new Promise<void>((resolve, reject) => {
     const startTime = Date.now();
-    
+
     const check = async () => {
       try {
         const result = await callback();
@@ -184,15 +195,15 @@ export const waitFor = (callback: () => boolean | Promise<boolean>, timeout = 50
       } catch (error) {
         // Continue waiting
       }
-      
+
       if (Date.now() - startTime > timeout) {
         reject(new Error(`waitFor timeout after ${timeout}ms`));
         return;
       }
-      
+
       setTimeout(check, 10);
     };
-    
+
     check();
   });
 };
@@ -205,5 +216,5 @@ export { customRender as render };
 export { TestProviders };
 
 // Re-export everything from testing-library
-export * from '@testing-library/react';
-export { userEvent } from '@testing-library/user-event'; 
+export * from "@testing-library/react";
+export { userEvent } from "@testing-library/user-event";

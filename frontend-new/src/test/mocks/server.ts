@@ -1,5 +1,5 @@
-import { setupServer } from 'msw/node';
-import { http, HttpResponse } from 'msw';
+import { setupServer } from "msw/node";
+import { http, HttpResponse } from "msw";
 
 // Mock data
 const mockVideoMetadata = {
@@ -22,7 +22,7 @@ const mockVideoMetadata = {
       height: 360,
     },
     {
-      format_id: "22", 
+      format_id: "22",
       ext: "mp4",
       resolution: "720p",
       filesize: 52428800,
@@ -50,40 +50,37 @@ const mockJobResponse = {
 // API request handlers
 export const handlers = [
   // Health check endpoint
-  http.get('http://localhost:8000/health', () => {
-    return HttpResponse.json({ status: 'ok' });
+  http.get("http://localhost:8000/health", () => {
+    return HttpResponse.json({ status: "ok" });
   }),
 
   // Metadata endpoint
-  http.get('http://localhost:8000/api/metadata', ({ request }) => {
+  http.get("http://localhost:8000/api/metadata", ({ request }) => {
     const url = new URL(request.url);
-    const videoUrl = url.searchParams.get('url');
-    
+    const videoUrl = url.searchParams.get("url");
+
     if (!videoUrl) {
       return HttpResponse.json(
-        { error: 'URL parameter is required' },
-        { status: 400 }
+        { error: "URL parameter is required" },
+        { status: 400 },
       );
     }
 
-    if (videoUrl.includes('invalid')) {
-      return HttpResponse.json(
-        { error: 'Invalid video URL' },
-        { status: 400 }
-      );
+    if (videoUrl.includes("invalid")) {
+      return HttpResponse.json({ error: "Invalid video URL" }, { status: 400 });
     }
 
     return HttpResponse.json(mockVideoMetadata);
   }),
 
   // Create clip job endpoint
-  http.post('http://localhost:8000/api/clips', async ({ request }) => {
-    const body = await request.json() as any;
-    
+  http.post("http://localhost:8000/api/clips", async ({ request }) => {
+    const body = (await request.json()) as any;
+
     if (!body.url || !body.in_ts || !body.out_ts || !body.format_id) {
       return HttpResponse.json(
-        { error: 'Missing required parameters' },
-        { status: 400 }
+        { error: "Missing required parameters" },
+        { status: 400 },
       );
     }
 
@@ -97,34 +94,31 @@ export const handlers = [
   }),
 
   // Get job status endpoint
-  http.get('http://localhost:8000/api/jobs/:jobId', ({ params }) => {
+  http.get("http://localhost:8000/api/jobs/:jobId", ({ params }) => {
     const { jobId } = params;
-    
-    if (jobId === 'not-found') {
-      return HttpResponse.json(
-        { error: 'Job not found' },
-        { status: 404 }
-      );
+
+    if (jobId === "not-found") {
+      return HttpResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
     // Simulate different job statuses based on jobId
-    let status = 'completed';
+    let status = "completed";
     let progress = 100;
     let download_url = null;
 
-    if (jobId === 'queued-job') {
-      status = 'queued';
+    if (jobId === "queued-job") {
+      status = "queued";
       progress = 0;
-    } else if (jobId === 'processing-job') {
-      status = 'processing';
+    } else if (jobId === "processing-job") {
+      status = "processing";
       progress = 50;
-    } else if (jobId === 'error-job') {
-      status = 'error';
+    } else if (jobId === "error-job") {
+      status = "error";
       progress = 0;
-    } else if (jobId === 'completed-job') {
-      status = 'completed';
+    } else if (jobId === "completed-job") {
+      status = "completed";
       progress = 100;
-      download_url = 'https://example.com/download/test-clip.mp4';
+      download_url = "https://example.com/download/test-clip.mp4";
     }
 
     return HttpResponse.json({
@@ -137,33 +131,30 @@ export const handlers = [
   }),
 
   // Cancel job endpoint
-  http.post('http://localhost:8000/api/jobs/:jobId/cancel', ({ params }) => {
+  http.post("http://localhost:8000/api/jobs/:jobId/cancel", ({ params }) => {
     const { jobId } = params;
-    
+
     return HttpResponse.json({
       ...mockJobResponse,
       id: jobId,
-      status: 'cancelled',
+      status: "cancelled",
       progress: 0,
     });
   }),
 
   // Download cleanup endpoint
-  http.delete('http://localhost:8000/api/clips/:filename', ({ params }) => {
+  http.delete("http://localhost:8000/api/clips/:filename", ({ params }) => {
     const { filename } = params;
-    
-    if (filename === 'not-found.mp4') {
-      return HttpResponse.json(
-        { error: 'File not found' },
-        { status: 404 }
-      );
+
+    if (filename === "not-found.mp4") {
+      return HttpResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    return HttpResponse.json({ 
-      message: 'File deleted successfully' 
+    return HttpResponse.json({
+      message: "File deleted successfully",
     });
   }),
 ];
 
 // Create MSW server
-export const server = setupServer(...handlers); 
+export const server = setupServer(...handlers);
