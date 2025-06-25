@@ -6,8 +6,10 @@ import {
   RefreshCw,
   CheckCircle,
   X,
+  Smartphone,
 } from "lucide-react";
 import { useDeleteClip } from "@/hooks/useApi";
+import { NativeShareButton } from "./NativeShareButton";
 
 interface SharingOptionsProps {
   downloadUrl: string;
@@ -300,6 +302,35 @@ export const SharingOptions: React.FC<SharingOptionsProps> = ({
             </h4>
             <p className="text-gray-600 text-sm">
               Share directly to social platforms
+            </p>
+          </div>
+
+          {/* Native Share Button - Primary Option */}
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-2xl border border-blue-200">
+            <div className="text-center space-y-3">
+              <div className="flex items-center justify-center space-x-2">
+                <Smartphone className="w-5 h-5 text-blue-600" />
+                <h5 className="font-semibold text-gray-800">
+                  Native Sharing
+                </h5>
+              </div>
+              <p className="text-gray-600 text-sm">
+                Share video file directly to apps on your device
+              </p>
+              
+              <NativeShareButton
+                downloadUrl={downloadUrl}
+                videoTitle={videoTitle}
+                size="lg"
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          {/* Alternative Sharing Methods */}
+          <div className="text-center">
+            <p className="text-gray-500 text-sm mb-4">
+              Or choose a specific platform:
             </p>
           </div>
 
