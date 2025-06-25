@@ -350,10 +350,11 @@ export const useRetry = (options: UseRetryOptions = {}) => {
   const [isRetrying, setIsRetrying] = React.useState(false);
   const [retryCount, setRetryCount] = React.useState(0);
 
-  const retry = React.useCallback(async <T>(
-    operation: () => Promise<T>,
-    customMaxRetries?: number
-  ): Promise<T> => {
+  const retry = React.useCallback(
+    async function <T>(
+      operation: () => Promise<T>,
+      customMaxRetries?: number
+    ): Promise<T> {
     const maxAttempts = customMaxRetries ?? maxRetries;
     let lastError: Error;
 
@@ -382,7 +383,9 @@ export const useRetry = (options: UseRetryOptions = {}) => {
     }
 
     throw lastError!;
-  }, [maxRetries, retryDelay, onError]);
+  },
+  [maxRetries, retryDelay, onError]
+  );
 
   return { retry, isRetrying, retryCount };
 };

@@ -54,7 +54,7 @@ const currentMode = import.meta.env.MODE || 'development';
 const envConfig = environmentConfigs[currentMode] || {};
 
 // Build the final configuration object by merging defaults with environment-specific settings.
-let finalConfig: EnvironmentConfig = {
+const finalConfig: EnvironmentConfig = {
   ...defaultConfig,
   ...envConfig,
 };
