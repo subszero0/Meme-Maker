@@ -97,15 +97,18 @@ jobs:
     - name: Deploy to Lightsail via SSH
       uses: appleboy/ssh-action@v1.0.3
       with:
-        host: ${{ secrets.LIGHTSAIL_HOST }}
-        username: ${{ secrets.LIGHTSAIL_USER }}
-        key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
         script: |
+          set -e
           # Navigate to the project directory
           cd /home/ubuntu/Meme-Maker
           
-          # Pull the latest changes from the master branch
-          git pull origin master
+          # Forcefully pull the latest changes
+          git fetch origin
+          git reset --hard origin/master
+          echo "✅ Force-pulled latest changes from GitHub"
           
           # Rebuild and restart containers in detached mode
           docker-compose down
