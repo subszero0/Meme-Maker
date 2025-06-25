@@ -24,6 +24,11 @@ RUN npm ci --silent --ignore-scripts && \
 # Copy source code
 COPY . .
 
+# Set production environment variables for build
+ENV NODE_ENV=production
+ENV MODE=production
+ENV VITE_MODE=production
+
 # Build the application
 RUN npm run build:production
 
