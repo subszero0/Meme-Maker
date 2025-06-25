@@ -110,11 +110,16 @@ jobs:
           git reset --hard origin/master
           echo "✅ Force-pulled latest changes from GitHub"
           
-          # Forcefully remove the specific container to avoid state issues
-          docker-compose rm -f -s -v backend || echo "Backend container did not exist, continuing."
+          # Gracefully stop all services to prevent state corruption
+          echo "🛑 Gracefully stopping all services..."
+          docker-compose stop || echo "Could not stop containers, continuing with forceful removal."
           
-          # Rebuild and restart containers in detached mode, removing old volumes
-          docker-compose down --volumes
+          # Forcefully remove all containers and their volumes to ensure a clean state
+          echo "🗑️ Forcefully removing all containers..."
+          docker-compose rm -f -s -v || echo "No containers to remove."
+          
+          # Rebuild and restart containers in detached mode
+          echo "🚀 Building and starting fresh containers..."
           docker-compose build --no-cache
           docker-compose up -d
           
