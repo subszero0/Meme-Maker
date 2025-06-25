@@ -257,17 +257,29 @@ async def get_video_metadata(
             resolutions=resolutions,
         )
     except DownloadError as e:
-        if "HTTP Error 429" in str(e):
+        error_str = str(e).lower()
+        # More comprehensive check for bot detection/rate limiting
+        if (
+            "http error 429" in error_str
+            or "too many requests" in error_str
+            or "sign in" in error_str
+            or "confirm you're not a bot" in error_str
+        ):
+            logger.warning(f"YouTube bot detection or rate limiting for {url}: {e}")
             raise HTTPException(
                 status_code=429,
-                detail="Too many requests to YouTube. Please try again later.",
+                detail="YouTube is temporarily blocking automated requests. Please try again later or use a different video.",
             )
         logger.error(f"❌ Failed to extract metadata for {url}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to extract metadata: {e}")
+        # Return 503 as service is unavailable from our end
+        raise HTTPException(
+            status_code=503,
+            detail="The video service is currently unavailable. Please try again later.",
+        )
     except Exception as e:
         logger.error(f"❌ An unexpected error occurred for {url}: {e}")
         raise HTTPException(
-            status_code=500, detail=f"An unexpected error occurred: {e}"
+            status_code=500, detail="An unexpected server error occurred."
         )
 
 
