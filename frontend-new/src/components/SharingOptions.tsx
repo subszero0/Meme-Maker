@@ -310,14 +310,12 @@ export const SharingOptions: React.FC<SharingOptionsProps> = ({
             <div className="text-center space-y-3">
               <div className="flex items-center justify-center space-x-2">
                 <Smartphone className="w-5 h-5 text-blue-600" />
-                <h5 className="font-semibold text-gray-800">
-                  Native Sharing
-                </h5>
+                <h5 className="font-semibold text-gray-800">Native Sharing</h5>
               </div>
               <p className="text-gray-600 text-sm">
                 Share video file directly to apps on your device
               </p>
-              
+
               <NativeShareButton
                 downloadUrl={downloadUrl}
                 videoTitle={videoTitle}

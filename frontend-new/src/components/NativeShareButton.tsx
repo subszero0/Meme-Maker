@@ -1,55 +1,64 @@
-import React from 'react';
-import { Share2, Smartphone, Download, ExternalLink, Loader2 } from 'lucide-react';
-import { useWebShare } from '../hooks/useWebShare';
-import { Button } from './ui/button';
-import { Progress } from './ui/progress';
+import React from "react";
+import {
+  Share2,
+  Smartphone,
+  Download,
+  ExternalLink,
+  Loader2,
+} from "lucide-react";
+import { useWebShare } from "../hooks/useWebShare";
+import { Button } from "./ui/button";
+import { Progress } from "./ui/progress";
 
 interface NativeShareButtonProps {
   downloadUrl: string;
   videoTitle: string;
   className?: string;
-  variant?: 'default' | 'outline' | 'secondary';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "default" | "outline" | "secondary";
+  size?: "sm" | "md" | "lg";
   showCapabilities?: boolean;
 }
 
 export const NativeShareButton: React.FC<NativeShareButtonProps> = ({
   downloadUrl,
   videoTitle,
-  className = '',
-  variant = 'default',
-  size = 'md',
+  className = "",
+  variant = "default",
+  size = "md",
   showCapabilities = true,
 }) => {
-  const { 
-    isSharing, 
-    progress, 
-    error, 
-    capabilities, 
-    shareVideoFile, 
+  const {
+    isSharing,
+    progress,
+    error,
+    capabilities,
+    shareVideoFile,
     shareAsLink,
-    reset 
+    reset,
   } = useWebShare();
 
   const getSizeClasses = () => {
     switch (size) {
-      case 'sm': return 'px-3 py-2 text-sm';
-      case 'lg': return 'px-8 py-4 text-lg';
-      default: return 'px-6 py-3';
+      case "sm":
+        return "px-3 py-2 text-sm";
+      case "lg":
+        return "px-8 py-4 text-lg";
+      default:
+        return "px-6 py-3";
     }
   };
 
   const getButtonText = () => {
     if (isSharing) {
-      return progress > 0 ? `Downloading ${progress}%` : 'Preparing...';
+      return progress > 0 ? `Downloading ${progress}%` : "Preparing...";
     }
-    
+
     if (capabilities.supportsFileShare) {
-      return 'Share Video File';
+      return "Share Video File";
     } else if (capabilities.supportsWebShare) {
-      return 'Share Link';
+      return "Share Link";
     } else {
-      return 'Share to WhatsApp';
+      return "Share to WhatsApp";
     }
   };
 
@@ -57,7 +66,7 @@ export const NativeShareButton: React.FC<NativeShareButtonProps> = ({
     if (isSharing) {
       return <Loader2 className="w-4 h-4 animate-spin" />;
     }
-    
+
     if (capabilities.supportsFileShare) {
       return <Smartphone className="w-4 h-4" />;
     } else if (capabilities.supportsWebShare) {
@@ -69,20 +78,20 @@ export const NativeShareButton: React.FC<NativeShareButtonProps> = ({
 
   const getButtonVariant = () => {
     if (capabilities.supportsFileShare) {
-      return 'default'; // Primary for best experience
+      return "default"; // Primary for best experience
     } else if (capabilities.supportsWebShare) {
-      return 'secondary'; // Secondary for good experience
+      return "secondary"; // Secondary for good experience
     } else {
-      return 'outline'; // Outline for fallback
+      return "outline"; // Outline for fallback
     }
   };
 
   const handleShare = async () => {
     if (isSharing) return;
-    
+
     reset(); // Clear any previous errors
-    
-    if (capabilities.recommendedApproach === 'web-share') {
+
+    if (capabilities.recommendedApproach === "web-share") {
       await shareVideoFile(downloadUrl, videoTitle);
     } else {
       await shareAsLink(downloadUrl, videoTitle);
@@ -119,35 +128,41 @@ export const NativeShareButton: React.FC<NativeShareButtonProps> = ({
         <div className="text-xs text-gray-600 space-y-1">
           <div className="flex items-center justify-center space-x-4">
             <div className="flex items-center space-x-1">
-              <div className={`w-2 h-2 rounded-full ${
-                capabilities.supportsFileShare ? 'bg-green-500' : 'bg-gray-300'
-              }`} />
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  capabilities.supportsFileShare
+                    ? "bg-green-500"
+                    : "bg-gray-300"
+                }`}
+              />
               <span>File sharing</span>
             </div>
             <div className="flex items-center space-x-1">
-              <div className={`w-2 h-2 rounded-full ${
-                capabilities.supportsWebShare ? 'bg-green-500' : 'bg-gray-300'
-              }`} />
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  capabilities.supportsWebShare ? "bg-green-500" : "bg-gray-300"
+                }`}
+              />
               <span>Web Share API</span>
             </div>
             <div className="flex items-center space-x-1">
-              <div className={`w-2 h-2 rounded-full ${
-                capabilities.isMobile ? 'bg-blue-500' : 'bg-gray-300'
-              }`} />
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  capabilities.isMobile ? "bg-blue-500" : "bg-gray-300"
+                }`}
+              />
               <span>Mobile</span>
             </div>
           </div>
-          
+
           <p className="text-center text-gray-500">
-            {capabilities.supportsFileShare && (
-              "🎉 Best experience: Native file sharing available"
-            )}
-            {!capabilities.supportsFileShare && capabilities.supportsWebShare && (
-              "📱 Good experience: Native link sharing available"
-            )}
-            {!capabilities.supportsWebShare && (
-              "🔗 Fallback: Will open platform-specific share"
-            )}
+            {capabilities.supportsFileShare &&
+              "🎉 Best experience: Native file sharing available"}
+            {!capabilities.supportsFileShare &&
+              capabilities.supportsWebShare &&
+              "📱 Good experience: Native link sharing available"}
+            {!capabilities.supportsWebShare &&
+              "🔗 Fallback: Will open platform-specific share"}
           </p>
         </div>
       )}
@@ -185,12 +200,13 @@ export const NativeShareButton: React.FC<NativeShareButtonProps> = ({
 export const CompactNativeShareButton: React.FC<NativeShareButtonProps> = ({
   downloadUrl,
   videoTitle,
-  className = '',
+  className = "",
 }) => {
-  const { isSharing, capabilities, shareVideoFile, shareAsLink } = useWebShare();
+  const { isSharing, capabilities, shareVideoFile, shareAsLink } =
+    useWebShare();
 
   const handleShare = async () => {
-    if (capabilities.recommendedApproach === 'web-share') {
+    if (capabilities.recommendedApproach === "web-share") {
       await shareVideoFile(downloadUrl, videoTitle);
     } else {
       await shareAsLink(downloadUrl, videoTitle);
@@ -212,4 +228,4 @@ export const CompactNativeShareButton: React.FC<NativeShareButtonProps> = ({
       )}
     </Button>
   );
-}; 
+};
