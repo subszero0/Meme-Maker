@@ -35,6 +35,8 @@ export const useWebShare = (): UseWebShareState & UseWebShareActions => {
 
   const shareVideoFile = useCallback(
     async (downloadUrl: string, videoTitle: string) => {
+      const absoluteUrl = new URL(downloadUrl, window.location.origin).href;
+
       try {
         setIsSharing(true);
         setProgress(0);
@@ -53,7 +55,7 @@ export const useWebShare = (): UseWebShareState & UseWebShareActions => {
           });
         }
 
-        await WebShareService.shareVideoFile(downloadUrl, videoTitle, {
+        await WebShareService.shareVideoFile(absoluteUrl, videoTitle, {
           fallbackToLink: true,
           showProgress: true,
           onProgress: (loaded, total) => {
@@ -104,6 +106,8 @@ export const useWebShare = (): UseWebShareState & UseWebShareActions => {
 
   const shareAsLink = useCallback(
     async (downloadUrl: string, videoTitle: string) => {
+      const absoluteUrl = new URL(downloadUrl, window.location.origin).href;
+
       try {
         setIsSharing(true);
         setError(null);
@@ -112,7 +116,7 @@ export const useWebShare = (): UseWebShareState & UseWebShareActions => {
           await navigator.share({
             title: videoTitle,
             text: "Check out this video clip!",
-            url: downloadUrl,
+            url: absoluteUrl,
           });
 
           toast({
@@ -121,7 +125,9 @@ export const useWebShare = (): UseWebShareState & UseWebShareActions => {
           });
         } else {
           // Fallback to WhatsApp
-          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${videoTitle}\n${downloadUrl}`)}`;
+          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(
+            `${videoTitle}\n${absoluteUrl}`,
+          )}`;
           window.open(whatsappUrl, "_blank", "width=600,height=400");
 
           toast({
