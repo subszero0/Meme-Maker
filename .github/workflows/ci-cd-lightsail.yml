@@ -110,13 +110,13 @@ jobs:
           git reset --hard origin/master
           echo "✅ Force-pulled latest changes from GitHub"
           
-          # Gracefully stop all services to prevent state corruption
-          echo "🛑 Gracefully stopping all services..."
-          docker-compose stop || echo "Could not stop containers, continuing with forceful removal."
+          # Forcefully stop and tear down all services and volumes
+          echo "🛑 Tearing down existing services..."
+          docker-compose down --volumes --remove-orphans || echo "No services to tear down."
           
-          # Forcefully remove all containers and their volumes to ensure a clean state
-          echo "🗑️ Forcefully removing all containers..."
-          docker-compose rm -f -s -v || echo "No containers to remove."
+          # Aggressively prune the entire Docker system to remove any corrupted state
+          echo "🗑️ Pruning Docker system..."
+          docker system prune -af
           
           # Rebuild and restart containers in detached mode
           echo "🚀 Building and starting fresh containers..."
