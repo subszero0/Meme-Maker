@@ -1,6 +1,10 @@
-import { useState, useCallback } from 'react';
-import { WebShareService, WebShareError, detectPlatformCapabilities } from '../lib/webShareService';
-import { useToast } from './use-toast';
+import { useState, useCallback } from "react";
+import {
+  WebShareService,
+  WebShareError,
+  detectPlatformCapabilities,
+} from "../lib/webShareService";
+import { useToast } from "./use-toast";
 
 export interface UseWebShareState {
   isSharing: boolean;
@@ -20,7 +24,7 @@ export const useWebShare = (): UseWebShareState & UseWebShareActions => {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [capabilities] = useState(() => detectPlatformCapabilities());
-  
+
   const { toast } = useToast();
 
   const reset = useCallback(() => {
@@ -29,110 +33,116 @@ export const useWebShare = (): UseWebShareState & UseWebShareActions => {
     setError(null);
   }, []);
 
-  const shareVideoFile = useCallback(async (downloadUrl: string, videoTitle: string) => {
-    try {
-      setIsSharing(true);
-      setProgress(0);
-      setError(null);
+  const shareVideoFile = useCallback(
+    async (downloadUrl: string, videoTitle: string) => {
+      try {
+        setIsSharing(true);
+        setProgress(0);
+        setError(null);
 
-      // Show initial toast based on platform capabilities
-      if (capabilities.supportsFileShare) {
-        toast({
-          title: "Preparing to share",
-          description: "Downloading video file for native sharing...",
-        });
-      } else if (capabilities.supportsWebShare) {
-        toast({
-          title: "Preparing to share",
-          description: "Preparing share link...",
-        });
-      }
-
-      await WebShareService.shareVideoFile(downloadUrl, videoTitle, {
-        fallbackToLink: true,
-        showProgress: true,
-        onProgress: (loaded, total) => {
-          const progressPercent = Math.round((loaded / total) * 100);
-          setProgress(progressPercent);
-        },
-        onSuccess: () => {
+        // Show initial toast based on platform capabilities
+        if (capabilities.supportsFileShare) {
           toast({
-            title: "Shared successfully!",
-            description: capabilities.supportsFileShare 
-              ? "Video file shared to your chosen app." 
-              : "Share link opened successfully.",
+            title: "Preparing to share",
+            description: "Downloading video file for native sharing...",
           });
-        },
-        onError: (error: Error) => {
-          const message = error instanceof WebShareError 
-            ? WebShareService.getErrorMessage(error)
-            : 'Failed to share video';
-          
-          setError(message);
+        } else if (capabilities.supportsWebShare) {
           toast({
-            title: "Share failed",
-            description: message,
-            variant: "destructive",
+            title: "Preparing to share",
+            description: "Preparing share link...",
           });
         }
-      });
 
-    } catch (error) {
-      const message = error instanceof WebShareError 
-        ? WebShareService.getErrorMessage(error)
-        : 'Failed to share video';
-      
-      setError(message);
-      toast({
-        title: "Share failed",
-        description: message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSharing(false);
-      setProgress(0);
-    }
-  }, [capabilities, toast]);
+        await WebShareService.shareVideoFile(downloadUrl, videoTitle, {
+          fallbackToLink: true,
+          showProgress: true,
+          onProgress: (loaded, total) => {
+            const progressPercent = Math.round((loaded / total) * 100);
+            setProgress(progressPercent);
+          },
+          onSuccess: () => {
+            toast({
+              title: "Shared successfully!",
+              description: capabilities.supportsFileShare
+                ? "Video file shared to your chosen app."
+                : "Share link opened successfully.",
+            });
+          },
+          onError: (error: Error) => {
+            const message =
+              error instanceof WebShareError
+                ? WebShareService.getErrorMessage(error)
+                : "Failed to share video";
 
-  const shareAsLink = useCallback(async (downloadUrl: string, videoTitle: string) => {
-    try {
-      setIsSharing(true);
-      setError(null);
-
-      if (WebShareService.isSupported()) {
-        await navigator.share({
-          title: videoTitle,
-          text: 'Check out this video clip!',
-          url: downloadUrl
+            setError(message);
+            toast({
+              title: "Share failed",
+              description: message,
+              variant: "destructive",
+            });
+          },
         });
-        
+      } catch (error) {
+        const message =
+          error instanceof WebShareError
+            ? WebShareService.getErrorMessage(error)
+            : "Failed to share video";
+
+        setError(message);
         toast({
-          title: "Shared successfully!",
-          description: "Share link opened successfully.",
+          title: "Share failed",
+          description: message,
+          variant: "destructive",
         });
-      } else {
-        // Fallback to WhatsApp
-        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${videoTitle}\n${downloadUrl}`)}`;
-        window.open(whatsappUrl, '_blank', 'width=600,height=400');
-        
-        toast({
-          title: "Opening WhatsApp",
-          description: "Share link prepared for WhatsApp.",
-        });
+      } finally {
+        setIsSharing(false);
+        setProgress(0);
       }
+    },
+    [capabilities, toast],
+  );
 
-    } catch (error) {
-      const message = 'Failed to open share dialog';
-      setError(message);
-      toast({
-        title: "Share failed",
-        description: message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSharing(false);
-    }
-  }, [toast]);
+  const shareAsLink = useCallback(
+    async (downloadUrl: string, videoTitle: string) => {
+      try {
+        setIsSharing(true);
+        setError(null);
+
+        if (WebShareService.isSupported()) {
+          await navigator.share({
+            title: videoTitle,
+            text: "Check out this video clip!",
+            url: downloadUrl,
+          });
+
+          toast({
+            title: "Shared successfully!",
+            description: "Share link opened successfully.",
+          });
+        } else {
+          // Fallback to WhatsApp
+          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${videoTitle}\n${downloadUrl}`)}`;
+          window.open(whatsappUrl, "_blank", "width=600,height=400");
+
+          toast({
+            title: "Opening WhatsApp",
+            description: "Share link prepared for WhatsApp.",
+          });
+        }
+      } catch (error) {
+        const message = "Failed to open share dialog";
+        setError(message);
+        toast({
+          title: "Share failed",
+          description: message,
+          variant: "destructive",
+        });
+      } finally {
+        setIsSharing(false);
+      }
+    },
+    [toast],
+  );
 
   return {
     // State
@@ -140,10 +150,10 @@ export const useWebShare = (): UseWebShareState & UseWebShareActions => {
     progress,
     error,
     capabilities,
-    
+
     // Actions
     shareVideoFile,
     shareAsLink,
     reset,
   };
-}; 
+};
