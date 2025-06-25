@@ -156,7 +156,13 @@ class LocalStorageManager:
 
     def get_download_url(self, job_id: str, filename: str) -> str:
         """Generate download URL for job"""
-        return f"{settings.base_url}/api/v1/jobs/{job_id}/download"
+        # Use relative URLs in production to work with any domain/IP
+        if settings.base_url and not (
+            "localhost" in settings.base_url or "127.0.0.1" in settings.base_url
+        ):
+            return f"/api/v1/jobs/{job_id}/download"
+        else:
+            return f"{settings.base_url}/api/v1/jobs/{job_id}/download"
 
     async def validate_file_integrity(
         self, file_path: Path, expected_sha256: str
