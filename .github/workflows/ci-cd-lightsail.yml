@@ -110,9 +110,10 @@ jobs:
           git reset --hard origin/master
           echo "✅ Force-pulled latest changes from GitHub"
           
-          # Forcefully stop and tear down all services and volumes
-          echo "🛑 Tearing down existing services..."
-          docker-compose down --volumes --remove-orphans || echo "No services to tear down."
+          # Restart the Docker daemon to clear any in-memory corruption
+          echo "🔄 Restarting Docker daemon..."
+          sudo systemctl restart docker
+          echo "✅ Docker daemon restarted."
           
           # Aggressively prune the entire Docker system to remove any corrupted state
           echo "🗑️ Pruning Docker system..."
