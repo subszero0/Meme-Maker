@@ -82,6 +82,8 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - CLIPS_DIR=/app/clips
+      - BASE_URL=https://memeit.pro
+      - ENVIRONMENT=production
     volumes:
       - ./storage:/app/clips
 
