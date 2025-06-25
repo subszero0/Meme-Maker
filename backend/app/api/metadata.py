@@ -134,11 +134,11 @@ def get_fallback_ydl_opts() -> List[Dict]:
 async def extract_metadata_with_fallback(url: str) -> Dict:
     """Extract metadata with fallback configurations and smart retry for bot detection"""
     configs = [get_optimized_ydl_opts()] + get_fallback_ydl_opts()
-    
+
     # Smart retry parameters for bot detection - REDUCED for better UX
-    max_retries = 2  # Reduced from 3 to 2 
+    max_retries = 2  # Reduced from 3 to 2
     base_wait_time = 30  # Reduced from 120s to 30s (start with 30s, then 60s)
-    
+
     for retry_attempt in range(max_retries):
         for i, ydl_opts in enumerate(configs):
             try:
@@ -148,14 +148,16 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
 
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=False)
-                    
+
                     if info:
-                        logger.info(f"✅ Successfully extracted metadata with config {i+1} (retry {retry_attempt + 1})")
+                        logger.info(
+                            f"✅ Successfully extracted metadata with config {i+1} (retry {retry_attempt + 1})"
+                        )
                         return info
-                    
+
             except DownloadError as e:
                 error_str = str(e).lower()
-                
+
                 # Check for bot detection/rate limiting patterns
                 if (
                     "sign in" in error_str
@@ -163,33 +165,43 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
                     or "too many requests" in error_str
                     or "http error 429" in error_str
                 ):
-                    logger.warning(f"⚠️ YouTube bot detection triggered (config {i+1}, retry {retry_attempt + 1}): {e}")
-                    
+                    logger.warning(
+                        f"⚠️ YouTube bot detection triggered (config {i+1}, retry {retry_attempt + 1}): {e}"
+                    )
+
                     # If this is the last config and not the last retry, wait before retrying
                     if i == len(configs) - 1 and retry_attempt < max_retries - 1:
-                        wait_time = base_wait_time * (2 ** retry_attempt)  # 30s, then 60s
-                        logger.info(f"🕒 YouTube rate limit detected. Waiting {wait_time}s before retry {retry_attempt + 2}/{max_retries}...")
-                        logger.info(f"💡 This is normal for YouTube videos - we're working around temporary restrictions")
+                        wait_time = base_wait_time * (
+                            2**retry_attempt
+                        )  # 30s, then 60s
+                        logger.info(
+                            f"🕒 YouTube rate limit detected. Waiting {wait_time}s before retry {retry_attempt + 2}/{max_retries}..."
+                        )
+                        logger.info(
+                            "💡 This is normal for YouTube videos - we're working around temporary restrictions"
+                        )
                         await asyncio.sleep(wait_time)
                         break  # Break inner loop to start next retry attempt
-                    
+
                     # If this is the last retry, raise the exception
                     if retry_attempt == max_retries - 1:
-                        logger.error(f"❌ Final retry failed after {max_retries} attempts")
+                        logger.error(
+                            f"❌ Final retry failed after {max_retries} attempts"
+                        )
                         raise
-                    
+
                     # Continue to next config
                     continue
-                    
+
                 else:
                     # Other DownloadError - continue to next config
                     logger.warning(f"⚠️ DownloadError with config {i+1}: {e}")
                     continue
-                    
+
             except Exception as e:
                 logger.warning(f"⚠️ Unexpected error with config {i+1}: {e}")
                 continue
-    
+
     # If we get here, all configs and retries failed
     raise DownloadError("Failed to extract metadata after all retry attempts")
 
