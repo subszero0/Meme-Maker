@@ -90,15 +90,14 @@ describe("Component Fixed Tests", () => {
       expect(screen.getByText(/paste any video link/i)).toBeInTheDocument();
     });
 
-    it("should render platform badges", () => {
+    it("should mention supported platforms in description", () => {
       const mockOnSubmit = vi.fn();
       renderWithProviders(<UrlInput onSubmit={mockOnSubmit} />);
 
-      expect(screen.getByText("YouTube")).toBeInTheDocument();
-      expect(screen.getByText("Facebook")).toBeInTheDocument();
-      expect(screen.getByText("Instagram")).toBeInTheDocument();
-      expect(screen.getByText("WhatsApp")).toBeInTheDocument();
-      expect(screen.getByText("Threads")).toBeInTheDocument();
+      // Check that the component mentions the supported platforms in the description text
+      expect(
+        screen.getByText(/YouTube, Instagram, Facebook, WhatsApp, or Threads/i),
+      ).toBeInTheDocument();
     });
   });
 
