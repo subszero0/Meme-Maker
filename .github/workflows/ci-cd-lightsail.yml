@@ -110,16 +110,23 @@ jobs:
           git reset --hard origin/master
           echo "✅ Force-pulled latest changes from GitHub"
           
-          # Restart the Docker daemon to clear any in-memory corruption
+          # === STAGE 1: Restart Docker Daemon ===
+          # This clears any in-memory corruption in the Docker engine itself.
           echo "🔄 Restarting Docker daemon..."
           sudo systemctl restart docker
           echo "✅ Docker daemon restarted."
-          
-          # Aggressively prune the entire Docker system to remove any corrupted state
+
+          # === STAGE 2: Full Docker Compose Teardown ===
+          # This removes all resources managed by the previous deployment.
+          echo "🛑 Tearing down all old services and volumes..."
+          docker-compose down --volumes --remove-orphans || echo "No services to tear down."
+
+          # === STAGE 3: Aggressive System Prune ===
+          # This removes any remaining lingering Docker artifacts (cache, etc.).
           echo "🗑️ Pruning Docker system..."
           docker system prune -af
           
-          # Rebuild and restart containers in detached mode
+          # === STAGE 4: Fresh Build and Deploy ===
           echo "🚀 Building and starting fresh containers..."
           docker-compose build --no-cache
           docker-compose up -d
