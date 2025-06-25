@@ -31,9 +31,9 @@ jobs:
           git reset --hard origin/master
           echo "✅ Force-pulled latest changes from GitHub"
           
-          # Stop the current services
-          docker-compose down
-          echo "✅ Services stopped"
+          # Stop the current services and remove volumes
+          docker-compose down --volumes
+          echo "✅ Services stopped and volumes removed"
           
           # Rebuild all services without cache to ensure fresh build
           docker-compose build --no-cache
