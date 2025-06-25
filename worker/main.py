@@ -29,15 +29,12 @@ class WorkerSettings:
 # Initialize worker settings
 worker_settings = WorkerSettings()
 
+# Import from backend app for consistent JobStatus values
+sys.path.append('/app/backend')
+from app.models import JobStatus
+
 # Redis connection (will be initialized later)
 redis = None
-
-# Job status constants
-class JobStatus:
-    queued = "queued"
-    working = "working"
-    completed = "completed"
-    error = "error"
 
 def init_worker_redis():
     """Initialize Redis connection specifically for worker"""
