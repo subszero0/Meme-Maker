@@ -15,6 +15,9 @@ COPY backend/pyproject.toml backend/poetry.lock* ./
 RUN poetry config virtualenvs.create false \
     && poetry install --without dev --no-interaction --no-ansi
 
+# Update yt-dlp to latest version for YouTube fixes (force latest even if pyproject.toml has older version)
+RUN pip install --upgrade --force-reinstall yt-dlp
+
 # Copy application code
 COPY backend/app ./app
 
