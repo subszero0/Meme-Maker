@@ -134,11 +134,11 @@ def get_fallback_ydl_opts() -> List[Dict]:
 async def extract_metadata_with_fallback(url: str) -> Dict:
     """Extract metadata with fallback configurations and smart retry for bot detection"""
     configs = [get_optimized_ydl_opts()] + get_fallback_ydl_opts()
-    
+
     # Smart retry parameters for bot detection
     max_retries = 3
     base_wait_time = 120  # Start with 2 minutes
-    
+
     for retry_attempt in range(max_retries):
         for i, ydl_opts in enumerate(configs):
             try:
@@ -147,32 +147,41 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
                 )
 
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = await asyncio.to_thread(ydl.extract_info, url, download=False)
+                    info = await asyncio.to_thread(
+                        ydl.extract_info, url, download=False
+                    )
 
                     # Handle playlists
                     if "entries" in info and info["entries"]:
                         info = info["entries"][0]
 
-                    logger.info(f"✅ Metadata extraction successful with config {i+1} on retry {retry_attempt + 1}")
+                    logger.info(
+                        f"✅ Metadata extraction successful with config {i+1} on retry {retry_attempt + 1}"
+                    )
                     return info
 
             except DownloadError as e:
                 error_str = str(e).lower()
-                
+
                 # Check for bot detection patterns
-                is_bot_detection = any(pattern in error_str for pattern in [
-                    "sign in", 
-                    "confirm you're not a bot", 
-                    "please sign in",
-                    "failed to extract any player response"
-                ])
-                
+                is_bot_detection = any(
+                    pattern in error_str
+                    for pattern in [
+                        "sign in",
+                        "confirm you're not a bot",
+                        "please sign in",
+                        "failed to extract any player response",
+                    ]
+                )
+
                 # Check for rate limiting
                 is_rate_limited = "http error 429" in error_str
-                
+
                 if is_bot_detection or is_rate_limited:
                     if retry_attempt < max_retries - 1:  # Not the last retry
-                        wait_time = base_wait_time * (2 ** retry_attempt)  # Exponential backoff
+                        wait_time = base_wait_time * (
+                            2**retry_attempt
+                        )  # Exponential backoff
                         logger.warning(
                             f"⚠️ Bot detection/rate limiting with config {i+1} on retry {retry_attempt + 1}. "
                             f"Waiting {wait_time} seconds before retry..."
@@ -180,24 +189,30 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
                         await asyncio.sleep(wait_time)
                         break  # Break from config loop to start next retry attempt
                     else:
-                        logger.error(f"🚫 Bot detection persists after {max_retries} retries. Giving up.")
+                        logger.error(
+                            f"🚫 Bot detection persists after {max_retries} retries. Giving up."
+                        )
                         raise  # Re-raise to be caught by the endpoint
                 else:
                     logger.warning(f"⚠️ DownloadError with config {i+1}: {e}")
-                    if i == len(configs) - 1 and retry_attempt == max_retries - 1:  # Last config, last retry
+                    if (
+                        i == len(configs) - 1 and retry_attempt == max_retries - 1
+                    ):  # Last config, last retry
                         raise e
                     continue
-                    
+
             except Exception as e:
                 logger.warning(f"⚠️ Generic error with config {i+1}: {e}")
-                if i == len(configs) - 1 and retry_attempt == max_retries - 1:  # Last config, last retry
+                if (
+                    i == len(configs) - 1 and retry_attempt == max_retries - 1
+                ):  # Last config, last retry
                     raise e
                 continue
         else:
             # This else clause executes only if the for loop completed without breaking
             # If we reach here, all configs failed but no bot detection was found
             continue
-            
+
         # If we broke out of the inner loop due to bot detection, continue with next retry
 
     raise Exception("All metadata extraction attempts failed after retries")
@@ -234,10 +249,10 @@ async def get_video_metadata(
         logger.info(
             f"❌ Cache miss for metadata: {url} (cache lookup: {cache_time:.3f}s)"
         )
-    
+
     # Anti-bot detection: Add small delay for non-cached requests
     await asyncio.sleep(2)  # 2-second delay to appear more human-like
-    
+
     try:
         # Extract metadata
         start_time = time.time()
