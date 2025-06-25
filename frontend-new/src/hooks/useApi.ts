@@ -1,12 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { metadataApi, jobsApi, healthApi, clipsApi, JobStatus } from '../lib/api';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  metadataApi,
+  jobsApi,
+  healthApi,
+  clipsApi,
+  JobStatus,
+} from "../lib/api";
 import type {
   MetadataResponse,
   VideoMetadata,
   JobCreate,
   JobResponse,
   HealthResponse,
-} from '../lib/api';
+} from "../lib/api";
 
 // ===========================
 // Query Keys Factory
@@ -14,15 +20,15 @@ import type {
 
 export const queryKeys = {
   // Metadata queries
-  basicMetadata: (url: string) => ['metadata', 'basic', url] as const,
-  detailedMetadata: (url: string) => ['metadata', 'detailed', url] as const,
-  
+  basicMetadata: (url: string) => ["metadata", "basic", url] as const,
+  detailedMetadata: (url: string) => ["metadata", "detailed", url] as const,
+
   // Job queries
-  job: (jobId: string) => ['jobs', jobId] as const,
-  allJobs: () => ['jobs'] as const,
-  
+  job: (jobId: string) => ["jobs", jobId] as const,
+  allJobs: () => ["jobs"] as const,
+
   // Health queries
-  health: () => ['health'] as const,
+  health: () => ["health"] as const,
 } as const;
 
 // ===========================
@@ -72,20 +78,20 @@ export function useCreateJob() {
 
   return useMutation({
     mutationFn: async (jobData: JobCreate): Promise<JobResponse> => {
-      console.log('🎬 useCreateJob: Creating job with data:', jobData);
+      console.log("🎬 useCreateJob: Creating job with data:", jobData);
       const response = await jobsApi.createJob(jobData);
-      console.log('🎬 useCreateJob: Job created with ID:', response.id);
+      console.log("🎬 useCreateJob: Job created with ID:", response.id);
       return response;
     },
     onSuccess: (jobResponse) => {
       // Cache the job data immediately
       queryClient.setQueryData(queryKeys.job(jobResponse.id), jobResponse);
-      
+
       // Invalidate all jobs query if it exists
       queryClient.invalidateQueries({ queryKey: queryKeys.allJobs() });
     },
     onError: (error) => {
-      console.error('🎬 useCreateJob: Failed to create job:', error);
+      console.error("🎬 useCreateJob: Failed to create job:", error);
     },
   });
 }
@@ -93,9 +99,12 @@ export function useCreateJob() {
 /**
  * Hook to get job status with manual refresh
  */
-export function useJobStatus(jobId: string, options?: {
-  enabled?: boolean;
-}) {
+export function useJobStatus(
+  jobId: string,
+  options?: {
+    enabled?: boolean;
+  },
+) {
   const { enabled = true } = options || {};
 
   return useQuery({
@@ -110,28 +119,39 @@ export function useJobStatus(jobId: string, options?: {
 /**
  * Hook for polling job status with automatic updates
  */
-export function useJobStatusWithPolling(jobId: string, options?: {
-  enabled?: boolean;
-  pollingInterval?: number;
-}) {
+export function useJobStatusWithPolling(
+  jobId: string,
+  options?: {
+    enabled?: boolean;
+    pollingInterval?: number;
+  },
+) {
   const {
     enabled = true,
-    pollingInterval = parseInt(import.meta.env.VITE_POLLING_INTERVAL || '2000'),
+    pollingInterval = parseInt(import.meta.env.VITE_POLLING_INTERVAL || "2000"),
   } = options || {};
 
   return useQuery({
     queryKey: queryKeys.job(jobId),
     queryFn: async () => {
-      console.log('🔄 Polling job status for:', jobId);
+      console.log("🔄 Polling job status for:", jobId);
       const response = await jobsApi.getJob(jobId);
-      console.log('🔄 Job status:', response.status, 'Progress:', response.progress);
+      console.log(
+        "🔄 Job status:",
+        response.status,
+        "Progress:",
+        response.progress,
+      );
       return response;
     },
     enabled: enabled && !!jobId,
     refetchInterval: (query) => {
       // Only poll if job is still in progress
       const data = query.state.data;
-      if (data?.status === JobStatus.QUEUED || data?.status === JobStatus.WORKING) {
+      if (
+        data?.status === JobStatus.QUEUED ||
+        data?.status === JobStatus.WORKING
+      ) {
         return pollingInterval;
       }
       // Stop polling when job is done or errored
@@ -168,17 +188,24 @@ export function useCancelJob() {
     mutationFn: async (jobId: string) => {
       // TODO: Implement cancel endpoint when backend supports it
       // For now, just simulate cancellation
-      console.log('🛑 Cancel requested for job:', jobId);
-      throw new Error('Job cancellation not implemented in backend');
+      console.log("🛑 Cancel requested for job:", jobId);
+      throw new Error("Job cancellation not implemented in backend");
     },
     onSuccess: (data, jobId) => {
       // Update job status to indicate cancellation
-      queryClient.setQueryData(queryKeys.job(jobId), (oldData: JobResponse | undefined) => {
-        if (oldData) {
-          return { ...oldData, status: JobStatus.ERROR, error_code: 'CANCELLED' };
-        }
-        return oldData;
-      });
+      queryClient.setQueryData(
+        queryKeys.job(jobId),
+        (oldData: JobResponse | undefined) => {
+          if (oldData) {
+            return {
+              ...oldData,
+              status: JobStatus.ERROR,
+              error_code: "CANCELLED",
+            };
+          }
+          return oldData;
+        },
+      );
     },
   });
 }
@@ -226,7 +253,9 @@ export function useInvalidateQueries() {
   return {
     invalidateMetadata: (url: string) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.basicMetadata(url) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.detailedMetadata(url) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.detailedMetadata(url),
+      });
     },
     invalidateJob: (jobId: string) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.job(jobId) });
@@ -249,4 +278,4 @@ export function useClearCache() {
   return () => {
     queryClient.clear();
   };
-} 
+}

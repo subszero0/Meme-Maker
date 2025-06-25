@@ -1,7 +1,15 @@
-import React, { useMemo } from 'react';
-import { Scissors, Zap, Download, X, AlertCircle, CheckCircle, Clock } from 'lucide-react';
-import { useJobStatusWithPolling, useCancelJob } from '@/hooks/useApi';
-import { JobStatus } from '@/lib/api';
+import React, { useMemo } from "react";
+import {
+  Scissors,
+  Zap,
+  Download,
+  X,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+} from "lucide-react";
+import { useJobStatusWithPolling, useCancelJob } from "@/hooks/useApi";
+import { JobStatus } from "@/lib/api";
 
 interface LoadingAnimationProps {
   jobId: string;
@@ -17,7 +25,11 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
   onCancel,
 }) => {
   // Poll job status
-  const { data: jobData, error: jobError, isLoading } = useJobStatusWithPolling(jobId, {
+  const {
+    data: jobData,
+    error: jobError,
+    isLoading,
+  } = useJobStatusWithPolling(jobId, {
     enabled: !!jobId,
     pollingInterval: 2000,
   });
@@ -31,7 +43,7 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
       return {
         status: JobStatus.QUEUED,
         progress: 0,
-        stage: 'Initializing...',
+        stage: "Initializing...",
         canCancel: true,
       };
     }
@@ -39,7 +51,8 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
     const progress = jobData.progress || 0;
     const status = jobData.status;
     const stage = jobData.stage || getDefaultStageText(status, progress);
-    const canCancel = status === JobStatus.QUEUED || status === JobStatus.WORKING;
+    const canCancel =
+      status === JobStatus.QUEUED || status === JobStatus.WORKING;
 
     return { status, progress, stage, canCancel };
   }, [jobData, isLoading]);
@@ -47,13 +60,14 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
   // Handle job completion
   React.useEffect(() => {
     if (jobData?.status === JobStatus.DONE && jobData.download_url) {
-      console.log('🎉 Job completed successfully:', jobData.download_url);
+      console.log("🎉 Job completed successfully:", jobData.download_url);
       onComplete?.(jobData.download_url);
     } else if (jobData?.status === JobStatus.ERROR) {
-      const errorMessage = jobData.error_code === 'QUEUE_FULL' 
-        ? 'Server is too busy right now. Please try again in a few minutes.'
-        : `Processing failed: ${jobData.error_code || 'Unknown error'}`;
-      console.error('❌ Job failed:', errorMessage);
+      const errorMessage =
+        jobData.error_code === "QUEUE_FULL"
+          ? "Server is too busy right now. Please try again in a few minutes."
+          : `Processing failed: ${jobData.error_code || "Unknown error"}`;
+      console.error("❌ Job failed:", errorMessage);
       onError?.(errorMessage);
     }
   }, [jobData, onComplete, onError]);
@@ -61,15 +75,15 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
   // Handle job polling errors
   React.useEffect(() => {
     if (jobError) {
-      console.error('❌ Job polling error:', jobError);
-      onError?.('Failed to track job progress. Please refresh the page.');
+      console.error("❌ Job polling error:", jobError);
+      onError?.("Failed to track job progress. Please refresh the page.");
     }
   }, [jobError, onError]);
 
   // Handle cancel button click
   const handleCancel = () => {
     if (jobState.canCancel) {
-      console.log('🛑 User requested job cancellation');
+      console.log("🛑 User requested job cancellation");
       onCancel?.();
       // Note: Backend cancellation not implemented yet
       // cancelJobMutation.mutate(jobId);
@@ -78,31 +92,31 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
 
   // Define processing steps with dynamic progress ranges
   const steps = [
-    { 
-      icon: Clock, 
-      text: 'Queued for processing...', 
-      color: 'text-blue-500',
+    {
+      icon: Clock,
+      text: "Queued for processing...",
+      color: "text-blue-500",
       progressRange: [0, 5],
       status: [JobStatus.QUEUED],
     },
-    { 
-      icon: Scissors, 
-      text: 'Analyzing video content...', 
-      color: 'text-orange-500',
+    {
+      icon: Scissors,
+      text: "Analyzing video content...",
+      color: "text-orange-500",
       progressRange: [5, 35],
       status: [JobStatus.WORKING],
     },
-    { 
-      icon: Zap, 
-      text: 'Processing your clip...', 
-      color: 'text-red-500',
+    {
+      icon: Zap,
+      text: "Processing your clip...",
+      color: "text-red-500",
       progressRange: [35, 85],
       status: [JobStatus.WORKING],
     },
-    { 
-      icon: Download, 
-      text: 'Preparing for download...', 
-      color: 'text-green-500',
+    {
+      icon: Download,
+      text: "Preparing for download...",
+      color: "text-green-500",
       progressRange: [85, 100],
       status: [JobStatus.WORKING, JobStatus.DONE],
     },
@@ -125,7 +139,10 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
       }
     }
 
-    return Math.min(Math.floor((progress / 100) * steps.length), steps.length - 1);
+    return Math.min(
+      Math.floor((progress / 100) * steps.length),
+      steps.length - 1,
+    );
   }, [jobState.progress, jobState.status, steps.length]);
 
   // Error state
@@ -137,18 +154,19 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
             <AlertCircle className="w-12 h-12 text-red-500" />
           </div>
         </div>
-        
+
         <div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-2">Processing Failed</h3>
+          <h3 className="text-2xl font-bold text-gray-800 mb-2">
+            Processing Failed
+          </h3>
           <p className="text-gray-600">{jobState.stage}</p>
         </div>
 
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-600 text-sm">
-            {jobData?.error_code === 'QUEUE_FULL' 
-              ? '🚦 The server is experiencing high traffic. Please try again in a few minutes.'
-              : '⚠️ Something went wrong during processing. Please try again with a different video or contact support.'
-            }
+            {jobData?.error_code === "QUEUE_FULL"
+              ? "🚦 The server is experiencing high traffic. Please try again in a few minutes."
+              : "⚠️ Something went wrong during processing. Please try again with a different video or contact support."}
           </p>
         </div>
       </div>
@@ -164,15 +182,18 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
             <CheckCircle className="w-12 h-12 text-green-500" />
           </div>
         </div>
-        
+
         <div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-2">Your Clip is Ready! 🎉</h3>
+          <h3 className="text-2xl font-bold text-gray-800 mb-2">
+            Your Clip is Ready! 🎉
+          </h3>
           <p className="text-gray-600">Download will start automatically</p>
         </div>
 
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <p className="text-green-600 text-sm">
-            ✅ Processing completed successfully! Your video clip has been generated and is ready for download.
+            ✅ Processing completed successfully! Your video clip has been
+            generated and is ready for download.
           </p>
         </div>
       </div>
@@ -183,8 +204,12 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
   return (
     <div className="text-center space-y-8">
       <div>
-        <h3 className="text-2xl font-bold text-gray-800 mb-2">Creating Your Masterpiece</h3>
-        <p className="text-gray-600">Hang tight while we process your video ✨</p>
+        <h3 className="text-2xl font-bold text-gray-800 mb-2">
+          Creating Your Masterpiece
+        </h3>
+        <p className="text-gray-600">
+          Hang tight while we process your video ✨
+        </p>
         {jobData?.video_title && (
           <p className="text-sm text-gray-500 mt-1 truncate max-w-md mx-auto">
             {jobData.video_title}
@@ -224,10 +249,12 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
             </linearGradient>
           </defs>
         </svg>
-        
+
         {/* Percentage in center */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-2xl font-bold text-gray-800">{Math.round(jobState.progress)}%</span>
+          <span className="text-2xl font-bold text-gray-800">
+            {Math.round(jobState.progress)}%
+          </span>
         </div>
       </div>
 
@@ -246,30 +273,38 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
           const isActive = index === currentStep;
           const isCompleted = index < currentStep;
           const isPending = index > currentStep;
-          
+
           return (
             <div
               key={index}
               className={`flex items-center justify-center space-x-3 p-4 rounded-2xl transition-all duration-500 ${
                 isActive
-                  ? 'bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 scale-105'
+                  ? "bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 scale-105"
                   : isCompleted
-                  ? 'bg-green-50 border-2 border-green-200'
-                  : 'bg-gray-50 border-2 border-gray-200'
+                    ? "bg-green-50 border-2 border-green-200"
+                    : "bg-gray-50 border-2 border-gray-200"
               }`}
             >
-              <div className={`p-2 rounded-full transition-all duration-300 ${
-                isActive
-                  ? 'bg-gradient-to-r from-orange-400 to-red-400 text-white animate-pulse'
-                  : isCompleted
-                  ? 'bg-green-400 text-white'
-                  : 'bg-gray-300 text-gray-500'
-              }`}>
+              <div
+                className={`p-2 rounded-full transition-all duration-300 ${
+                  isActive
+                    ? "bg-gradient-to-r from-orange-400 to-red-400 text-white animate-pulse"
+                    : isCompleted
+                      ? "bg-green-400 text-white"
+                      : "bg-gray-300 text-gray-500"
+                }`}
+              >
                 <StepIcon className="w-5 h-5" />
               </div>
-              <span className={`font-medium transition-colors duration-300 ${
-                isActive ? 'text-gray-800' : isCompleted ? 'text-green-700' : 'text-gray-500'
-              }`}>
+              <span
+                className={`font-medium transition-colors duration-300 ${
+                  isActive
+                    ? "text-gray-800"
+                    : isCompleted
+                      ? "text-green-700"
+                      : "text-gray-500"
+                }`}
+              >
                 {step.text}
               </span>
               {isCompleted && (
@@ -293,7 +328,9 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
           >
             <X className="w-4 h-4" />
             <span className="text-sm">
-              {cancelJobMutation.isPending ? 'Cancelling...' : 'Cancel Processing'}
+              {cancelJobMutation.isPending
+                ? "Cancelling..."
+                : "Cancel Processing"}
             </span>
           </button>
         </div>
@@ -321,25 +358,25 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
 // Helper function to provide default stage text based on status and progress
 function getDefaultStageText(status: JobStatus, progress: number): string {
   if (status === JobStatus.QUEUED) {
-    return 'Waiting in queue...';
+    return "Waiting in queue...";
   }
-  
+
   if (status === JobStatus.WORKING) {
-    if (progress < 10) return 'Starting video analysis...';
-    if (progress < 30) return 'Extracting video metadata...';
-    if (progress < 60) return 'Processing video clip...';
-    if (progress < 85) return 'Encoding video...';
-    if (progress < 95) return 'Finalizing output...';
-    return 'Almost done...';
+    if (progress < 10) return "Starting video analysis...";
+    if (progress < 30) return "Extracting video metadata...";
+    if (progress < 60) return "Processing video clip...";
+    if (progress < 85) return "Encoding video...";
+    if (progress < 95) return "Finalizing output...";
+    return "Almost done...";
   }
-  
+
   if (status === JobStatus.DONE) {
-    return 'Processing complete!';
+    return "Processing complete!";
   }
-  
+
   if (status === JobStatus.ERROR) {
-    return 'Processing failed';
+    return "Processing failed";
   }
-  
-  return 'Processing...';
+
+  return "Processing...";
 }

@@ -7,6 +7,7 @@ This guide documents the main components in the frontend-new React application a
 ## Architecture Overview
 
 The frontend-new follows a modern React architecture with:
+
 - **Functional Components** with React hooks
 - **ShadCN UI** components for consistent design
 - **TypeScript** for type safety
@@ -18,7 +19,7 @@ The frontend-new follows a modern React architecture with:
 ```
 App
 ├── ErrorBoundary
-├── ToastProvider  
+├── ToastProvider
 └── Index (Main Page)
     ├── UrlInput
     ├── VideoPlayer
@@ -31,6 +32,7 @@ App
 ## Core Components
 
 ### 1. App Component
+
 **Location**: `src/App.tsx`
 
 Main application component that sets up providers and routing.
@@ -56,12 +58,14 @@ export default function App() {
 ```
 
 **Features**:
+
 - React Query provider for API state management
 - Error boundary for graceful error handling
 - Toast notifications system
 - Development tools in development mode
 
 ### 2. ErrorBoundary Component
+
 **Location**: `src/components/ErrorBoundary.tsx`
 
 Catches JavaScript errors in the component tree and displays fallback UI.
@@ -78,12 +82,14 @@ export function ErrorBoundary({ children, fallback: Fallback }: Props) {
 ```
 
 **Features**:
+
 - Catches and logs unhandled errors
 - Provides custom fallback UI
 - Reset functionality to recover from errors
 - Integrates with error reporting services
 
 ### 3. UrlInput Component
+
 **Location**: `src/components/UrlInput.tsx`
 
 Handles video URL input and validation.
@@ -101,6 +107,7 @@ export function UrlInput({ onSubmit, isLoading, error }: UrlInputProps) {
 ```
 
 **Features**:
+
 - URL validation (YouTube, Instagram, etc.)
 - Loading states during metadata fetching
 - Error message display
@@ -108,6 +115,7 @@ export function UrlInput({ onSubmit, isLoading, error }: UrlInputProps) {
 - Paste detection and cleanup
 
 **Supported Platforms**:
+
 - YouTube (youtube.com, youtu.be)
 - Instagram (instagram.com)
 - Facebook (facebook.com)
@@ -115,6 +123,7 @@ export function UrlInput({ onSubmit, isLoading, error }: UrlInputProps) {
 - Reddit (reddit.com)
 
 ### 4. VideoPlayer Component
+
 **Location**: `src/components/VideoPlayer.tsx`
 
 Displays video preview with playback controls.
@@ -129,19 +138,20 @@ interface VideoPlayerProps {
   onTimeUpdate?: (time: number) => void;
 }
 
-export function VideoPlayer({ 
-  url, 
-  thumbnail, 
-  title, 
-  duration, 
-  currentTime, 
-  onTimeUpdate 
+export function VideoPlayer({
+  url,
+  thumbnail,
+  title,
+  duration,
+  currentTime,
+  onTimeUpdate,
 }: VideoPlayerProps) {
   // Video player implementation
 }
 ```
 
 **Features**:
+
 - React Player integration for multiple platforms
 - Thumbnail display before video loads
 - Custom controls overlay
@@ -150,6 +160,7 @@ export function VideoPlayer({
 - Keyboard controls (space, arrow keys)
 
 ### 5. Timeline Component
+
 **Location**: `src/components/Timeline.tsx`
 
 Interactive timeline for selecting video trim points.
@@ -172,13 +183,14 @@ export function Timeline({
   currentTime,
   maxDuration = 180,
   onRangeChange,
-  onCurrentTimeChange
+  onCurrentTimeChange,
 }: TimelineProps) {
   // Timeline implementation
 }
 ```
 
 **Features**:
+
 - Dual-handle range slider for start/end times
 - Current playback position indicator
 - Time format display (MM:SS)
@@ -188,6 +200,7 @@ export function Timeline({
 - Visual feedback for invalid ranges
 
 ### 6. ResolutionSelector Component
+
 **Location**: `src/components/ResolutionSelector.tsx`
 
 Allows users to select video quality/format.
@@ -211,13 +224,14 @@ interface ResolutionSelectorProps {
 export function ResolutionSelector({
   formats,
   selectedFormatId,
-  onFormatChange
+  onFormatChange,
 }: ResolutionSelectorProps) {
   // Resolution selector implementation
 }
 ```
 
 **Features**:
+
 - Displays available video formats from metadata
 - Quality badges (HD, 4K, etc.)
 - File size estimates when available
@@ -226,6 +240,7 @@ export function ResolutionSelector({
 - Responsive dropdown menu
 
 ### 7. LoadingAnimation Component
+
 **Location**: `src/components/LoadingAnimation.tsx`
 
 Shows processing progress during video processing.
@@ -240,13 +255,14 @@ interface LoadingAnimationProps {
 export function LoadingAnimation({
   progress,
   stage,
-  isVisible
+  isVisible,
 }: LoadingAnimationProps) {
   // Loading animation implementation
 }
 ```
 
 **Features**:
+
 - Animated progress bar
 - Stage descriptions ("Downloading", "Processing", "Uploading")
 - Estimated time remaining
@@ -255,6 +271,7 @@ export function LoadingAnimation({
 - Mobile-optimized design
 
 **Processing Stages**:
+
 1. "Initializing" - Job creation
 2. "Downloading" - Video download from source
 3. "Processing" - Video trimming and encoding
@@ -262,6 +279,7 @@ export function LoadingAnimation({
 5. "Completed" - Ready for download
 
 ### 8. SharingOptions Component
+
 **Location**: `src/components/SharingOptions.tsx`
 
 Provides download and sharing functionality.
@@ -278,13 +296,14 @@ export function SharingOptions({
   downloadUrl,
   filename,
   filesize,
-  expiresAt
+  expiresAt,
 }: SharingOptionsProps) {
   // Sharing options implementation
 }
 ```
 
 **Features**:
+
 - Direct download button
 - Copy link functionality
 - File information display (size, expiration)
@@ -295,6 +314,7 @@ export function SharingOptions({
 ## Utility Components
 
 ### UI Components (ShadCN)
+
 **Location**: `src/components/ui/`
 
 Reusable UI components built on Radix UI primitives:
@@ -311,22 +331,23 @@ Reusable UI components built on Radix UI primitives:
 ### Custom Hooks
 
 #### useAppState
+
 **Location**: `src/hooks/useAppState.ts`
 
 Manages global application state.
 
 ```typescript
-export type AppPhase = 
-  | 'input'           // URL input
-  | 'loading'         // Metadata loading
-  | 'video-loaded'    // Video ready for trimming
-  | 'processing'      // Job processing
-  | 'completed'       // Download ready
-  | 'error';          // Error state
+export type AppPhase =
+  | "input" // URL input
+  | "loading" // Metadata loading
+  | "video-loaded" // Video ready for trimming
+  | "processing" // Job processing
+  | "completed" // Download ready
+  | "error"; // Error state
 
 export function useAppState() {
-  const [phase, setPhase] = useState<AppPhase>('input');
-  const [url, setUrl] = useState('');
+  const [phase, setPhase] = useState<AppPhase>("input");
+  const [url, setUrl] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<VideoMetadata | null>(null);
   // ... state management logic
@@ -334,6 +355,7 @@ export function useAppState() {
 ```
 
 #### useApi
+
 **Location**: `src/hooks/useApi.ts`
 
 Custom hooks for API integration (documented in API_INTEGRATION.md).
@@ -373,6 +395,7 @@ Custom hooks for API integration (documented in API_INTEGRATION.md).
 ### Error States
 
 Each phase can transition to error state:
+
 - **Network errors**: Retry functionality
 - **Invalid URLs**: Clear error messages
 - **Processing failures**: Detailed error info
@@ -381,6 +404,7 @@ Each phase can transition to error state:
 ## Styling and Theming
 
 ### Tailwind CSS Classes
+
 The application uses Tailwind CSS with custom design tokens:
 
 ```css
@@ -395,6 +419,7 @@ The application uses Tailwind CSS with custom design tokens:
 ```
 
 ### Responsive Design
+
 All components are mobile-first responsive:
 
 ```typescript
@@ -407,6 +432,7 @@ All components are mobile-first responsive:
 ```
 
 ### Dark Mode Support
+
 Components support system preference dark mode:
 
 ```typescript
@@ -419,31 +445,33 @@ Components support system preference dark mode:
 ## Testing
 
 ### Component Testing
+
 Each component includes comprehensive tests:
 
 ```typescript
 // Example test structure
-describe('UrlInput', () => {
-  test('validates YouTube URLs correctly', () => {
+describe("UrlInput", () => {
+  test("validates YouTube URLs correctly", () => {
     // Test implementation
   });
 
-  test('shows error for invalid URLs', () => {
+  test("shows error for invalid URLs", () => {
     // Test implementation
   });
 
-  test('handles paste events', () => {
+  test("handles paste events", () => {
     // Test implementation
   });
 });
 ```
 
 ### Integration Testing
+
 Components are tested together in realistic user workflows:
 
 ```typescript
 // Example integration test
-test('complete video processing workflow', async () => {
+test("complete video processing workflow", async () => {
   // 1. Enter URL
   // 2. Wait for metadata
   // 3. Adjust trim points
@@ -456,6 +484,7 @@ test('complete video processing workflow', async () => {
 ## Best Practices
 
 ### Component Organization
+
 - Keep components small and focused
 - Use TypeScript interfaces for props
 - Include proper error boundaries
@@ -463,12 +492,14 @@ test('complete video processing workflow', async () => {
 - Add accessibility features
 
 ### Performance
+
 - Use React.memo for expensive components
 - Implement proper key props for lists
 - Lazy load non-critical components
 - Optimize bundle size with code splitting
 
 ### Accessibility
+
 - Proper ARIA labels and roles
 - Keyboard navigation support
 - Screen reader compatibility

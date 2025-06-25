@@ -1,20 +1,20 @@
-import axios, { AxiosResponse, AxiosError } from 'axios';
-import { config } from '../config/environment';
+import axios, { AxiosResponse, AxiosError } from "axios";
+import { config } from "../config/environment";
 
 // ===========================
 // Configuration
 // ===========================
 
 const API_BASE_URL = config.API_BASE_URL;
-const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '30000');
+const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || "30000");
 
 // Create axios instance with default configuration
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: API_TIMEOUT,
   headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    "Content-Type": "application/json",
+    Accept: "application/json",
   },
 });
 
@@ -22,29 +22,34 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     // Add mobile-specific headers if on mobile device
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
+    const isMobile =
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent,
+      );
+
     if (isMobile) {
       // Increase timeout for mobile networks
       config.timeout = Math.max(config.timeout || 30000, 45000);
     }
-    
+
     return config;
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Add response interceptor for better error handling
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.code === 'ECONNABORTED') {
-      console.error('Request timeout - this may be due to slow network connection');
+    if (error.code === "ECONNABORTED") {
+      console.error(
+        "Request timeout - this may be due to slow network connection",
+      );
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // ===========================
@@ -53,10 +58,10 @@ apiClient.interceptors.response.use(
 
 // Job Status Enum
 export enum JobStatus {
-  QUEUED = 'queued',
-  WORKING = 'working',
-  DONE = 'done',
-  ERROR = 'error',
+  QUEUED = "queued",
+  WORKING = "working",
+  DONE = "done",
+  ERROR = "error",
 }
 
 // Video Format Interface
@@ -134,7 +139,7 @@ export class ApiException extends Error {
 
   constructor(message: string, status?: number, code?: string) {
     super(message);
-    this.name = 'ApiException';
+    this.name = "ApiException";
     this.status = status;
     this.code = code;
   }
@@ -145,16 +150,24 @@ function handleApiError(error: AxiosError): never {
   if (error.response) {
     // Server responded with error status
     const status = error.response.status;
-    const data = error.response.data as { detail?: string; message?: string; code?: string };
+    const data = error.response.data as {
+      detail?: string;
+      message?: string;
+      code?: string;
+    };
     const message = data?.detail || data?.message || error.message;
-    
+
     throw new ApiException(message, status, data?.code);
   } else if (error.request) {
     // Request was made but no response received
-    throw new ApiException('Network error: Unable to connect to server', 0, 'NETWORK_ERROR');
+    throw new ApiException(
+      "Network error: Unable to connect to server",
+      0,
+      "NETWORK_ERROR",
+    );
   } else {
     // Something else happened
-    throw new ApiException(error.message, 0, 'UNKNOWN_ERROR');
+    throw new ApiException(error.message, 0, "UNKNOWN_ERROR");
   }
 }
 
@@ -169,14 +182,17 @@ export const metadataApi = {
    */
   async getBasicMetadata(url: string): Promise<MetadataResponse> {
     try {
-      console.log('🔍 Fetching basic metadata for:', url);
-      const response: AxiosResponse<MetadataResponse> = await apiClient.post('/api/v1/metadata', {
-        url,
-      });
-      console.log('✅ Basic metadata received:', response.data);
+      console.log("🔍 Fetching basic metadata for:", url);
+      const response: AxiosResponse<MetadataResponse> = await apiClient.post(
+        "/api/v1/metadata",
+        {
+          url,
+        },
+      );
+      console.log("✅ Basic metadata received:", response.data);
       return response.data;
     } catch (error) {
-      console.error('❌ Basic metadata failed:', error);
+      console.error("❌ Basic metadata failed:", error);
       handleApiError(error as AxiosError);
     }
   },
@@ -186,14 +202,19 @@ export const metadataApi = {
    */
   async getDetailedMetadata(url: string): Promise<VideoMetadata> {
     try {
-      console.log('🔍 Fetching detailed metadata for:', url);
-      const response: AxiosResponse<VideoMetadata> = await apiClient.post('/api/v1/metadata/extract', {
-        url,
-      });
-      console.log(`✅ Detailed metadata received: ${response.data.formats.length} formats`);
+      console.log("🔍 Fetching detailed metadata for:", url);
+      const response: AxiosResponse<VideoMetadata> = await apiClient.post(
+        "/api/v1/metadata/extract",
+        {
+          url,
+        },
+      );
+      console.log(
+        `✅ Detailed metadata received: ${response.data.formats.length} formats`,
+      );
       return response.data;
     } catch (error) {
-      console.error('❌ Detailed metadata failed:', error);
+      console.error("❌ Detailed metadata failed:", error);
       handleApiError(error as AxiosError);
     }
   },
@@ -206,7 +227,10 @@ export const jobsApi = {
    */
   async createJob(jobData: JobCreate): Promise<JobResponse> {
     try {
-      const response: AxiosResponse<JobResponse> = await apiClient.post('/api/v1/jobs', jobData);
+      const response: AxiosResponse<JobResponse> = await apiClient.post(
+        "/api/v1/jobs",
+        jobData,
+      );
       return response.data;
     } catch (error) {
       handleApiError(error as AxiosError);
@@ -218,7 +242,9 @@ export const jobsApi = {
    */
   async getJob(jobId: string): Promise<JobResponse> {
     try {
-      const response: AxiosResponse<JobResponse> = await apiClient.get(`/api/v1/jobs/${jobId}`);
+      const response: AxiosResponse<JobResponse> = await apiClient.get(
+        `/api/v1/jobs/${jobId}`,
+      );
       return response.data;
     } catch (error) {
       handleApiError(error as AxiosError);
@@ -240,7 +266,8 @@ export const clipsApi = {
    */
   async deleteClip(jobId: string): Promise<{ message: string }> {
     try {
-      const response: AxiosResponse<{ message: string }> = await apiClient.delete(`/api/clips/${jobId}.mp4`);
+      const response: AxiosResponse<{ message: string }> =
+        await apiClient.delete(`/api/clips/${jobId}.mp4`);
       return response.data;
     } catch (error) {
       handleApiError(error as AxiosError);
@@ -255,7 +282,8 @@ export const healthApi = {
    */
   async checkHealth(): Promise<HealthResponse> {
     try {
-      const response: AxiosResponse<HealthResponse> = await apiClient.get('/health');
+      const response: AxiosResponse<HealthResponse> =
+        await apiClient.get("/health");
       return response.data;
     } catch (error) {
       handleApiError(error as AxiosError);
@@ -276,9 +304,9 @@ export function formatDuration(seconds: number): string {
   const secs = Math.floor(seconds % 60);
 
   if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   }
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  return `${minutes}:${secs.toString().padStart(2, "0")}`;
 }
 
 /**
@@ -293,16 +321,16 @@ export function parseResolutionHeight(resolution: string): number {
  * Format file size from bytes to human readable
  */
 export function formatFileSize(bytes?: number): string {
-  if (!bytes) return 'Unknown size';
-  
-  const units = ['B', 'KB', 'MB', 'GB'];
+  if (!bytes) return "Unknown size";
+
+  const units = ["B", "KB", "MB", "GB"];
   let size = bytes;
   let unitIndex = 0;
-  
+
   while (size >= 1024 && unitIndex < units.length - 1) {
     size /= 1024;
     unitIndex++;
   }
-  
+
   return `${size.toFixed(1)} ${units[unitIndex]}`;
 }

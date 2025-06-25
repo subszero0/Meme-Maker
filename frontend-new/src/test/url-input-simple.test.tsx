@@ -1,16 +1,16 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { UrlInput } from '../components/UrlInput';
+import { describe, it, expect, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { UrlInput } from "../components/UrlInput";
 
 // Mock the hook that was causing issues
-vi.mock('../hooks/useApi', () => ({
+vi.mock("../hooks/useApi", () => ({
   useVideoMetadata: vi.fn(() => ({
     data: null,
     isLoading: false,
     error: null,
-    isError: false
-  }))
+    isError: false,
+  })),
 }));
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => {
@@ -21,22 +21,20 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => {
     },
   });
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 };
 
-describe('UrlInput Simple Test', () => {
-  it('should render input field', () => {
+describe("UrlInput Simple Test", () => {
+  it("should render input field", () => {
     const mockOnSubmit = vi.fn();
-    
+
     render(
       <TestWrapper>
         <UrlInput onSubmit={mockOnSubmit} />
-      </TestWrapper>
+      </TestWrapper>,
     );
-    
+
     expect(screen.getByPlaceholderText(/video URL/i)).toBeInTheDocument();
   });
-}); 
+});

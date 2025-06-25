@@ -1,9 +1,9 @@
-import '@testing-library/jest-dom';
-import { beforeAll, beforeEach, afterEach, afterAll, vi, expect } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import "@testing-library/jest-dom";
+import { beforeAll, beforeEach, afterEach, afterAll, vi, expect } from "vitest";
+import { cleanup } from "@testing-library/react";
 // import { server } from './mocks/server'; // Temporarily disabled to fix hanging tests
-import { toHaveNoViolations } from 'jest-axe';
-import React from 'react';
+import { toHaveNoViolations } from "jest-axe";
+import React from "react";
 
 // ===========================
 // Accessibility Testing Setup
@@ -34,20 +34,23 @@ afterEach(() => {
 // ===========================
 
 // Mock React Player
-vi.mock('react-player', () => ({
+vi.mock("react-player", () => ({
   default: vi.fn(({ onReady, onDuration, onProgress, onError, ...props }) => {
     // Simulate player behavior
     setTimeout(() => {
       onReady?.();
       onDuration?.(120); // 2 minutes
     }, 100);
-    
-    return React.createElement('div', { 'data-testid': 'react-player', ...props });
+
+    return React.createElement("div", {
+      "data-testid": "react-player",
+      ...props,
+    });
   }),
 }));
 
 // Mock Axios
-vi.mock('axios', () => ({
+vi.mock("axios", () => ({
   default: {
     create: vi.fn(() => ({
       get: vi.fn(),
@@ -64,7 +67,7 @@ vi.mock('axios', () => ({
     isCancel: vi.fn(() => false),
     CancelToken: {
       source: vi.fn(() => ({
-        token: 'mock-token',
+        token: "mock-token",
         cancel: vi.fn(),
       })),
     },
@@ -72,11 +75,11 @@ vi.mock('axios', () => ({
 }));
 
 // Mock environment variables
-Object.defineProperty(window, 'location', {
+Object.defineProperty(window, "location", {
   value: {
     ...window.location,
-    origin: 'http://localhost:3000',
-    href: 'http://localhost:3000',
+    origin: "http://localhost:3000",
+    href: "http://localhost:3000",
   },
   writable: true,
 });
@@ -85,7 +88,7 @@ Object.defineProperty(window, 'location', {
 Object.assign(navigator, {
   clipboard: {
     writeText: vi.fn().mockResolvedValue(void 0),
-    readText: vi.fn().mockResolvedValue(''),
+    readText: vi.fn().mockResolvedValue(""),
   },
 });
 
@@ -104,9 +107,9 @@ global.IntersectionObserver = vi.fn().mockImplementation(() => ({
 }));
 
 // Mock matchMedia
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(window, "matchMedia", {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -146,7 +149,7 @@ export const mockVideoMetadata = {
     },
     {
       format_id: "22",
-      ext: "mp4", 
+      ext: "mp4",
       resolution: "720p",
       filesize: 52428800,
       url: "https://example.com/video_hd.mp4",
@@ -167,15 +170,15 @@ export const mockJobResponse = {
 
 export const createMockElement = (tagName: string) => {
   const element = document.createElement(tagName);
-  
+
   // Mock common methods
   element.click = vi.fn();
   element.scrollIntoView = vi.fn();
-  
-  if (tagName === 'a') {
-    element.setAttribute('download', '');
+
+  if (tagName === "a") {
+    element.setAttribute("download", "");
   }
-  
+
   return element;
 };
 
@@ -183,17 +186,17 @@ export const createMockElement = (tagName: string) => {
 // Custom Test Environment Variables
 // ===========================
 
-process.env.VITE_API_BASE_URL = 'http://localhost:8000';
-process.env.VITE_POLLING_INTERVAL = '1000';
+process.env.VITE_API_BASE_URL = "http://localhost:8000";
+process.env.VITE_POLLING_INTERVAL = "1000";
 
 // Silence specific warnings in tests
 const originalError = console.error;
 beforeAll(() => {
   console.error = (...args: any[]) => {
     if (
-      typeof args[0] === 'string' &&
-      (args[0].includes('Warning: ReactDOM.render is no longer supported') ||
-       args[0].includes('Warning: React.createFactory() is deprecated'))
+      typeof args[0] === "string" &&
+      (args[0].includes("Warning: ReactDOM.render is no longer supported") ||
+        args[0].includes("Warning: React.createFactory() is deprecated"))
     ) {
       return;
     }
@@ -212,20 +215,20 @@ afterAll(() => {
 // Configure viewport for consistent visual testing
 beforeEach(() => {
   // Set consistent viewport for visual regression tests
-  Object.defineProperty(window, 'innerWidth', {
+  Object.defineProperty(window, "innerWidth", {
     writable: true,
     configurable: true,
     value: 1280,
   });
-  
-  Object.defineProperty(window, 'innerHeight', {
+
+  Object.defineProperty(window, "innerHeight", {
     writable: true,
     configurable: true,
     value: 720,
   });
-  
+
   // Trigger resize event
-  window.dispatchEvent(new Event('resize'));
+  window.dispatchEvent(new Event("resize"));
 });
 
 // ===========================
@@ -263,7 +266,7 @@ export const performanceUtils = {
         }, 2000); // 2 second delay
       });
     });
-    
+
     return () => {
       global.fetch = originalFetch;
     };
@@ -279,7 +282,7 @@ export const performanceUtils = {
       jsHeapSizeLimit: 200 * 1024 * 1024, // 200MB
     };
 
-    Object.defineProperty(performance, 'memory', {
+    Object.defineProperty(performance, "memory", {
       value: mockMemoryInfo,
       writable: true,
     });
@@ -299,24 +302,24 @@ export const a11yUtils = {
   getA11yConfig: () => ({
     rules: {
       // Disable color-contrast for design system components
-      'color-contrast': { enabled: false },
+      "color-contrast": { enabled: false },
       // Ensure all interactive elements are accessible
-      'interactive-supports-focus': { enabled: true },
+      "interactive-supports-focus": { enabled: true },
       // Ensure proper heading structure
-      'heading-order': { enabled: true },
+      "heading-order": { enabled: true },
       // Ensure form elements have labels
-      'label': { enabled: true },
+      label: { enabled: true },
       // Ensure images have alt text
-      'image-alt': { enabled: true },
+      "image-alt": { enabled: true },
     },
-    tags: ['wcag2a', 'wcag2aa', 'wcag21aa'],
+    tags: ["wcag2a", "wcag2aa", "wcag21aa"],
   }),
 
   /**
    * Test component accessibility with custom config
    */
   testAccessibility: async (container: HTMLElement) => {
-    const { axe } = await import('jest-axe');
+    const { axe } = await import("jest-axe");
     const results = await axe(container, a11yUtils.getA11yConfig());
     expect(results).toHaveNoViolations();
     return results;
@@ -333,7 +336,7 @@ export const visualUtils = {
    */
   waitForImages: () => {
     return new Promise<void>((resolve) => {
-      const images = document.querySelectorAll('img');
+      const images = document.querySelectorAll("img");
       let loadedCount = 0;
       const totalImages = images.length;
 
@@ -368,14 +371,14 @@ export const visualUtils = {
       '[data-testid="timestamp"]',
       '[data-testid="job-id"]',
       '[data-testid="random-id"]',
-      '.timestamp',
-      '.dynamic-content',
+      ".timestamp",
+      ".dynamic-content",
     ];
 
     dynamicSelectors.forEach((selector) => {
       const elements = document.querySelectorAll(selector);
       elements.forEach((el) => {
-        (el as HTMLElement).style.visibility = 'hidden';
+        (el as HTMLElement).style.visibility = "hidden";
       });
     });
   },
@@ -385,7 +388,7 @@ export const visualUtils = {
    */
   setupVisualEnvironment: () => {
     // Disable animations for consistent snapshots
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.innerHTML = `
       *, *::before, *::after {
         animation-duration: 0s !important;
@@ -397,7 +400,7 @@ export const visualUtils = {
     document.head.appendChild(style);
 
     // Set consistent date for testing
-    vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
+    vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
 
     return () => {
       document.head.removeChild(style);
@@ -413,8 +416,8 @@ export const visualUtils = {
 // Configure global test timeouts
 vi.setConfig({
   testTimeout: 10000, // 10 seconds
-  hookTimeout: 5000,  // 5 seconds
+  hookTimeout: 5000, // 5 seconds
 });
 
 // Export utilities for use in tests
-export { server } from './mocks/server'; 
+export { server } from "./mocks/server";

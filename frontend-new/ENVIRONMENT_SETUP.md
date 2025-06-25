@@ -8,34 +8,34 @@ This guide explains how to configure environment variables for the frontend-new 
 
 ### Core Configuration
 
-| Variable | Description | Default | Required | Example |
-|----------|-------------|---------|----------|---------|
-| `VITE_API_BASE_URL` | Backend API base URL | `http://localhost:8000` | Yes | `https://api.meme-maker.com` |
-| `VITE_ENVIRONMENT` | Current environment | `development` | No | `production` |
+| Variable            | Description          | Default                 | Required | Example                      |
+| ------------------- | -------------------- | ----------------------- | -------- | ---------------------------- |
+| `VITE_API_BASE_URL` | Backend API base URL | `http://localhost:8000` | Yes      | `https://api.meme-maker.com` |
+| `VITE_ENVIRONMENT`  | Current environment  | `development`           | No       | `production`                 |
 
 ### Application Settings
 
-| Variable | Description | Default | Required | Example |
-|----------|-------------|---------|----------|---------|
-| `VITE_APP_VERSION` | Application version | `1.0.0` | No | `2.1.3` |
-| `VITE_MAX_FILE_SIZE` | Max upload size (bytes) | `500000000` | No | `1000000000` |
-| `VITE_MAX_CLIP_DURATION` | Max clip length (seconds) | `180` | No | `300` |
+| Variable                 | Description               | Default     | Required | Example      |
+| ------------------------ | ------------------------- | ----------- | -------- | ------------ |
+| `VITE_APP_VERSION`       | Application version       | `1.0.0`     | No       | `2.1.3`      |
+| `VITE_MAX_FILE_SIZE`     | Max upload size (bytes)   | `500000000` | No       | `1000000000` |
+| `VITE_MAX_CLIP_DURATION` | Max clip length (seconds) | `180`       | No       | `300`        |
 
 ### Feature Flags
 
-| Variable | Description | Default | Required | Example |
-|----------|-------------|---------|----------|---------|
-| `VITE_ENABLE_ANALYTICS` | Enable tracking | `false` | No | `true` |
-| `VITE_ENABLE_SENTRY` | Enable error reporting | `false` | No | `true` |
-| `VITE_ENABLE_PWA` | Progressive Web App | `false` | No | `true` |
+| Variable                | Description            | Default | Required | Example |
+| ----------------------- | ---------------------- | ------- | -------- | ------- |
+| `VITE_ENABLE_ANALYTICS` | Enable tracking        | `false` | No       | `true`  |
+| `VITE_ENABLE_SENTRY`    | Enable error reporting | `false` | No       | `true`  |
+| `VITE_ENABLE_PWA`       | Progressive Web App    | `false` | No       | `true`  |
 
 ### Development Settings
 
-| Variable | Description | Default | Required | Example |
-|----------|-------------|---------|----------|---------|
-| `VITE_LOG_LEVEL` | Logging level | `info` | No | `debug` |
-| `VITE_API_TIMEOUT` | Request timeout (ms) | `30000` | No | `60000` |
-| `VITE_ENABLE_DEVTOOLS` | React Query DevTools | `true` | No | `false` |
+| Variable               | Description          | Default | Required | Example |
+| ---------------------- | -------------------- | ------- | -------- | ------- |
+| `VITE_LOG_LEVEL`       | Logging level        | `info`  | No       | `debug` |
+| `VITE_API_TIMEOUT`     | Request timeout (ms) | `30000` | No       | `60000` |
+| `VITE_ENABLE_DEVTOOLS` | React Query DevTools | `true`  | No       | `false` |
 
 ## Environment File Setup
 
@@ -46,7 +46,7 @@ Create `.env.local` in the `frontend-new/` directory:
 ```bash
 # .env.local - Local development configuration
 
-# API Configuration  
+# API Configuration
 VITE_API_BASE_URL=http://localhost:8000
 
 # Environment
@@ -134,29 +134,29 @@ VITE_API_TIMEOUT=60000
 // src/config/env.ts
 export const config = {
   // API Configuration
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
-  environment: import.meta.env.VITE_ENVIRONMENT || 'development',
-  
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
+  environment: import.meta.env.VITE_ENVIRONMENT || "development",
+
   // Application Settings
-  appVersion: import.meta.env.VITE_APP_VERSION || '1.0.0',
+  appVersion: import.meta.env.VITE_APP_VERSION || "1.0.0",
   maxFileSize: Number(import.meta.env.VITE_MAX_FILE_SIZE) || 500000000,
   maxClipDuration: Number(import.meta.env.VITE_MAX_CLIP_DURATION) || 180,
-  
+
   // Feature Flags
-  enableAnalytics: import.meta.env.VITE_ENABLE_ANALYTICS === 'true',
-  enableSentry: import.meta.env.VITE_ENABLE_SENTRY === 'true',
-  enablePWA: import.meta.env.VITE_ENABLE_PWA === 'true',
-  
+  enableAnalytics: import.meta.env.VITE_ENABLE_ANALYTICS === "true",
+  enableSentry: import.meta.env.VITE_ENABLE_SENTRY === "true",
+  enablePWA: import.meta.env.VITE_ENABLE_PWA === "true",
+
   // Development Settings
-  logLevel: import.meta.env.VITE_LOG_LEVEL || 'info',
+  logLevel: import.meta.env.VITE_LOG_LEVEL || "info",
   apiTimeout: Number(import.meta.env.VITE_API_TIMEOUT) || 30000,
-  enableDevtools: import.meta.env.VITE_ENABLE_DEVTOOLS !== 'false',
+  enableDevtools: import.meta.env.VITE_ENABLE_DEVTOOLS !== "false",
 } as const;
 
 // Type-safe environment check
-export const isDevelopment = config.environment === 'development';
-export const isStaging = config.environment === 'staging';
-export const isProduction = config.environment === 'production';
+export const isDevelopment = config.environment === "development";
+export const isStaging = config.environment === "staging";
+export const isProduction = config.environment === "production";
 ```
 
 ### In Components
@@ -167,12 +167,12 @@ import { config, isDevelopment } from '@/config/env';
 export function ApiService() {
   const apiUrl = config.apiBaseUrl;
   const timeout = config.apiTimeout;
-  
+
   // Development-only logging
   if (isDevelopment) {
     console.log('API Base URL:', apiUrl);
   }
-  
+
   return (
     <div>
       App Version: {config.appVersion}
@@ -193,7 +193,7 @@ npm run dev  # Uses .env.local and .env.development
 # Build for staging
 vite build --mode staging  # Uses .env.staging
 
-# Build for production  
+# Build for production
 vite build --mode production  # Uses .env.production
 ```
 
@@ -271,26 +271,26 @@ CMD ["nginx", "-g", "daemon off;"]
 ```typescript
 // src/config/validation.ts
 export function validateEnvironment() {
-  const required = [
-    'VITE_API_BASE_URL',
-  ];
+  const required = ["VITE_API_BASE_URL"];
 
-  const missing = required.filter(key => !import.meta.env[key]);
-  
+  const missing = required.filter((key) => !import.meta.env[key]);
+
   if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    throw new Error(
+      `Missing required environment variables: ${missing.join(", ")}`,
+    );
   }
 
   // Validate API URL format
   const apiUrl = import.meta.env.VITE_API_BASE_URL;
-  if (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
-    throw new Error('VITE_API_BASE_URL must start with http:// or https://');
+  if (!apiUrl.startsWith("http://") && !apiUrl.startsWith("https://")) {
+    throw new Error("VITE_API_BASE_URL must start with http:// or https://");
   }
 
   // Validate numeric values
   const maxFileSize = Number(import.meta.env.VITE_MAX_FILE_SIZE);
   if (isNaN(maxFileSize) || maxFileSize <= 0) {
-    throw new Error('VITE_MAX_FILE_SIZE must be a positive number');
+    throw new Error("VITE_MAX_FILE_SIZE must be a positive number");
   }
 }
 
@@ -305,12 +305,14 @@ validateEnvironment();
 ⚠️ **Important**: All `VITE_*` variables are exposed in the client-side bundle.
 
 **Never include**:
+
 - API keys or secrets
-- Database credentials  
+- Database credentials
 - Private configuration
 - User data
 
 **Safe to include**:
+
 - API endpoints (public)
 - Feature flags
 - UI configuration
@@ -359,21 +361,21 @@ if (isDevelopment) {
 }
 
 // Check specific variable
-console.log('API URL:', import.meta.env.VITE_API_BASE_URL);
+console.log("API URL:", import.meta.env.VITE_API_BASE_URL);
 ```
 
 ### Testing Environment Setup
 
 ```typescript
 // src/test/setup.ts
-import { beforeAll } from 'vitest';
+import { beforeAll } from "vitest";
 
 beforeAll(() => {
   // Set test environment variables
   Object.assign(import.meta.env, {
-    VITE_API_BASE_URL: 'http://localhost:8000',
-    VITE_ENVIRONMENT: 'test',
-    VITE_ENABLE_ANALYTICS: 'false',
+    VITE_API_BASE_URL: "http://localhost:8000",
+    VITE_ENVIRONMENT: "test",
+    VITE_ENABLE_ANALYTICS: "false",
   });
 });
 ```
@@ -395,17 +397,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          
+          node-version: "20"
+
       - name: Install dependencies
         run: |
           cd frontend-new
           npm ci
-          
+
       - name: Build for production
         run: |
           cd frontend-new
@@ -433,4 +435,4 @@ services:
       - NODE_ENV=production
 ```
 
-This environment setup provides flexible, secure, and maintainable configuration management for all deployment scenarios. 
+This environment setup provides flexible, secure, and maintainable configuration management for all deployment scenarios.
