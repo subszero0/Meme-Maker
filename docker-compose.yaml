@@ -51,13 +51,6 @@ services:
       # Remove VITE_API_BASE_URL to use relative URLs for production
       # - VITE_API_BASE_URL=http://backend:8000
       # - VITE_WS_BASE_URL=ws://backend:8000
-    ports:
-      - "80:80"   # HTTP port
-      - "443:443" # HTTPS port
-    volumes:
-      # Mount SSL certificates
-      - ./ssl/certs:/etc/ssl/certs:ro
-      - ./ssl/private:/etc/ssl/private:ro
     depends_on:
       backend:
         condition: service_healthy
