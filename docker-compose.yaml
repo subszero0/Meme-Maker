@@ -29,7 +29,7 @@ services:
       - BASE_URL=https://memeit.pro
       - CORS_ORIGINS=["https://memeit.pro", "https://www.memeit.pro", "http://memeit.pro", "http://13.126.173.223"]
     ports:
-      - "8000:8000"
+      - "8001:8000"  # Expose backend on host port 8001
     volumes:
       - ./storage:/app/clips
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
@@ -46,11 +46,10 @@ services:
       dockerfile: Dockerfile
     container_name: meme-maker-frontend
     restart: unless-stopped
+    ports:
+      - "8080:80"    # Expose frontend on host port 8080
     environment:
       - NODE_ENV=production
-      # Remove VITE_API_BASE_URL to use relative URLs for production
-      # - VITE_API_BASE_URL=http://backend:8000
-      # - VITE_WS_BASE_URL=ws://backend:8000
     depends_on:
       backend:
         condition: service_healthy
