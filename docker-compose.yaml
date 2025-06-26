@@ -29,7 +29,7 @@ services:
       - BASE_URL=https://memeit.pro
       - CORS_ORIGINS=["https://memeit.pro", "https://www.memeit.pro", "http://memeit.pro", "http://13.126.173.223"]
     ports:
-      - "8001:8000"  # Expose backend on host port 8001
+      - "8000:8000"  # Expose backend on host port 8000 to match health check
     volumes:
       - ./storage:/app/clips
     command: >
