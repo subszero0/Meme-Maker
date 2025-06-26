@@ -3,7 +3,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field, HttpUrl, validator
+from pydantic import BaseModel, Field, HttpUrl, field_validator, validator
 
 
 class JobStatus(str, Enum):
@@ -121,7 +121,16 @@ class JobResponse(BaseModel):
 class MetadataRequest(BaseModel):
     """Request model for fetching video metadata"""
 
-    url: HttpUrl
+    url: str
+
+    @field_validator("url")
+    def validate_url_format(cls, v: str) -> str:
+        """Ensure the URL is a valid http/https URL format"""
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("URL must start with http:// or https://")
+        if "." not in v.strip():
+            raise ValueError("URL appears to be invalid")
+        return v
 
 
 class MetadataResponse(BaseModel):
