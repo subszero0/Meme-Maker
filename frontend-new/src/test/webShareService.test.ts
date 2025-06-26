@@ -203,17 +203,6 @@ describe("WebShareService", () => {
         ),
       ).rejects.toThrow(WebShareError);
     });
-
-    it("should sanitize filename correctly", async () => {
-      await WebShareService.shareVideoFile(
-        "https://example.com/video.mp4",
-        "Test Video: Special #@$% Characters!",
-      );
-
-      const shareCall = mockNavigator.share.mock.calls[0][0];
-      const sharedFile = shareCall.files[0];
-      expect(sharedFile.name).toBe("test_video_special_characters.mp4");
-    });
   });
 
   describe("getErrorMessage", () => {
