@@ -121,7 +121,16 @@ class JobResponse(BaseModel):
 class MetadataRequest(BaseModel):
     """Request model for fetching video metadata"""
 
-    url: HttpUrl
+    url: str
+
+    @validator("url")
+    def validate_url_format(cls, v):
+        """Ensure the URL is a valid http/https URL format"""
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("URL must start with http:// or https://")
+        if "." not in v:
+            raise ValueError("URL appears to be invalid")
+        return v
 
 
 class MetadataResponse(BaseModel):
