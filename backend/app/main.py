@@ -148,6 +148,7 @@ app.include_router(clips.router, tags=["clips"])  # No prefix for direct /clips 
 @app.get("/health", tags=["health"])
 async def health_check() -> dict[str, str]:
     """Health check endpoint"""
+    # Returns a simple JSON response to indicate the service is alive.
     return {"status": "ok"}
 
 
