@@ -26,8 +26,16 @@ docker-compose ps
 
 # Test endpoints
 echo "🔍 Testing endpoints..."
-echo "Testing localhost health..."
-curl -s -o /dev/null -w "Localhost health: %{http_code}\n" http://localhost:8000/health || echo "❌ Localhost health failed"
+echo "Testing backend health..."
+
+# Check backend health and get logs on failure
+if ! curl -s -f http://localhost:8000/health > /dev/null; then
+    echo "❌ Backend health check failed. Dumping logs..."
+    docker-compose logs --no-color --tail="100" backend
+    exit 1
+else
+    echo "✅ Backend health check passed."
+fi
 
 echo "Testing frontend on port 80..."
 curl -s -o /dev/null -w "Frontend port 80: %{http_code}\n" http://localhost:80/ || echo "❌ Frontend port 80 failed"

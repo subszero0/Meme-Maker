@@ -32,7 +32,11 @@ services:
       - "8001:8000"  # Expose backend on host port 8001
     volumes:
       - ./storage:/app/clips
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+    command: >
+      sh -c "
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 || 
+        (echo '❌ Backend failed to start. Review logs above for errors.' && exit 1)
+      "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
