@@ -116,17 +116,29 @@ jobs:
           sudo systemctl restart docker
           echo "✅ Docker daemon restarted."
 
-          # === STAGE 2: Full Docker Compose Teardown ===
+          # === STAGE 2: Resolve Port Conflicts ===
+          # Stop any services that might be using port 80
+          echo "🔍 Checking for port conflicts..."
+          if sudo lsof -i :80 > /dev/null 2>&1; then
+            echo "⚠️  Port 80 is in use, stopping conflicting services..."
+            sudo systemctl stop nginx 2>/dev/null || echo "No nginx service to stop"
+            sudo systemctl stop apache2 2>/dev/null || echo "No apache2 service to stop"
+            sudo pkill -f "nginx" 2>/dev/null || echo "No nginx processes to kill"
+          else
+            echo "✅ Port 80 is available"
+          fi
+
+          # === STAGE 3: Full Docker Compose Teardown ===
           # This removes all resources managed by the previous deployment.
           echo "🛑 Tearing down all old services and volumes..."
           docker-compose down --volumes --remove-orphans || echo "No services to tear down."
 
-          # === STAGE 3: Aggressive System Prune ===
+          # === STAGE 4: Aggressive System Prune ===
           # This removes any remaining lingering Docker artifacts (cache, etc.).
           echo "🗑️ Pruning Docker system..."
           docker system prune -af
           
-          # === STAGE 4: Fresh Build and Deploy ===
+          # === STAGE 5: Fresh Build and Deploy ===
           echo "🚀 Building and starting fresh containers..."
           docker-compose build --no-cache
           docker-compose up -d
@@ -135,12 +147,72 @@ jobs:
           echo "Waiting 30 seconds for services to start..."
           sleep 30
           
-          # Perform a health check to ensure the backend is running
-          echo "Performing health check..."
+          # === STAGE 6: Set up reverse proxy ===
+          echo "🔧 Setting up nginx reverse proxy..."
+          sudo tee /etc/nginx/sites-available/meme-maker > /dev/null << 'EOF'
+          server {
+              listen 80 default_server;
+              server_name memeit.pro www.memeit.pro _;
+              
+              # Frontend proxy
+              location / {
+                  proxy_pass http://127.0.0.1:8080;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+              
+              # API proxy
+              location /api/ {
+                  proxy_pass http://127.0.0.1:8000/api/;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+              
+              # WebSocket proxy
+              location /ws {
+                  proxy_pass http://127.0.0.1:8000;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
+                  proxy_set_header Host $host;
+              }
+          }
+          EOF
+          
+          # Enable the site and start nginx
+          sudo rm -f /etc/nginx/sites-enabled/default
+          sudo ln -sf /etc/nginx/sites-available/meme-maker /etc/nginx/sites-enabled/
+          sudo nginx -t && sudo systemctl enable nginx && sudo systemctl start nginx
+          
+          # === STAGE 7: Health Checks ===
+          echo "🏥 Performing comprehensive health checks..."
+          
+          # Check backend directly
           if curl -f -s http://localhost:8000/health > /dev/null; then
-            echo "✅ Deployment successful - health check passed"
+            echo "✅ Backend health check passed"
           else
-            echo "❌ Deployment failed - health check failed"
+            echo "❌ Backend health check failed"
+            exit 1
+          fi
+          
+          # Check frontend directly
+          if curl -f -s http://localhost:8080/ > /dev/null; then
+            echo "✅ Frontend health check passed"
+          else
+            echo "❌ Frontend health check failed"
+            exit 1
+          fi
+          
+          # Check reverse proxy
+          if curl -f -s http://localhost/ > /dev/null; then
+            echo "✅ Reverse proxy health check passed"
+            echo "✅ Production deployment successful!"
+          else
+            echo "❌ Reverse proxy health check failed"
             exit 1
           fi
 
