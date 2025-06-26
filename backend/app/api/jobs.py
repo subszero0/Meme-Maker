@@ -205,6 +205,7 @@ async def download_job_file(
                 media_type="video/mp4",
                 filename=filename,
                 headers={
+                    "Access-Control-Allow-Origin": "*",  # Allow cross-origin requests
                     "Content-Disposition": f'attachment; filename="{filename}"',
                     "Cache-Control": "no-cache, no-store, must-revalidate",
                     "Pragma": "no-cache",

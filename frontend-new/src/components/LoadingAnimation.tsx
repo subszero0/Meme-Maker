@@ -91,36 +91,39 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
   };
 
   // Define processing steps with dynamic progress ranges
-  const steps = [
-    {
-      icon: Clock,
-      text: "Queued for processing...",
-      color: "text-blue-500",
-      progressRange: [0, 5],
-      status: [JobStatus.QUEUED],
-    },
-    {
-      icon: Scissors,
-      text: "Analyzing video content...",
-      color: "text-orange-500",
-      progressRange: [5, 35],
-      status: [JobStatus.WORKING],
-    },
-    {
-      icon: Zap,
-      text: "Processing your clip...",
-      color: "text-red-500",
-      progressRange: [35, 85],
-      status: [JobStatus.WORKING],
-    },
-    {
-      icon: Download,
-      text: "Preparing for download...",
-      color: "text-green-500",
-      progressRange: [85, 100],
-      status: [JobStatus.WORKING, JobStatus.DONE],
-    },
-  ];
+  const steps = useMemo(
+    () => [
+      {
+        icon: Clock,
+        text: "Queued for processing...",
+        color: "text-blue-500",
+        progressRange: [0, 5],
+        status: [JobStatus.QUEUED],
+      },
+      {
+        icon: Scissors,
+        text: "Analyzing video content...",
+        color: "text-orange-500",
+        progressRange: [5, 35],
+        status: [JobStatus.WORKING],
+      },
+      {
+        icon: Zap,
+        text: "Processing your clip...",
+        color: "text-red-500",
+        progressRange: [35, 85],
+        status: [JobStatus.WORKING],
+      },
+      {
+        icon: Download,
+        text: "Preparing for download...",
+        color: "text-green-500",
+        progressRange: [85, 100],
+        status: [JobStatus.WORKING, JobStatus.DONE],
+      },
+    ],
+    [],
+  );
 
   // Determine current step based on progress and status
   const currentStep = useMemo(() => {
@@ -143,7 +146,8 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
       Math.floor((progress / 100) * steps.length),
       steps.length - 1,
     );
-  }, [jobState.progress, jobState.status, steps.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobState.progress, jobState.status]);
 
   // Error state
   if (jobState.status === JobStatus.ERROR) {
