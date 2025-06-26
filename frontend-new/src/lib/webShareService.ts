@@ -83,7 +83,7 @@ export class WebShareService {
       // Step 2: Download video file as blob
       const file = await this.downloadAsFile(
         downloadUrl,
-        videoTitle,
+        "shared-video.mp4",
         onProgress,
       );
 
@@ -126,7 +126,7 @@ export class WebShareService {
    */
   private static async downloadAsFile(
     downloadUrl: string,
-    videoTitle: string,
+    fileName: string = "video.mp4",
     onProgress?: (loaded: number, total: number) => void,
   ): Promise<File> {
     try {
@@ -165,7 +165,6 @@ export class WebShareService {
       const blob = new Blob(chunks, { type: "video/mp4" });
 
       // Create File object
-      const fileName = `${this.sanitizeFileName(videoTitle)}.mp4`;
       return new File([blob], fileName, { type: "video/mp4" });
     } catch (error) {
       throw new WebShareError(
