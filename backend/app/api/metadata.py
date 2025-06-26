@@ -47,15 +47,9 @@ def get_optimized_ydl_opts() -> Dict:
         "quiet": True,
         "no_warnings": True,
         "extract_flat": False,
-        "skip_download": True,  # Only extract metadata, don't download
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["ios", "android_creator", "web"],
-                "skip": ["dash"],  # Skip DASH for faster extraction
-                "max_comments": ["0"],  # Don't fetch comments
-                "comment_sort": ["top"],
-            }
-        },
+        "skip_download": True,
+        # "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best", # This may be causing issues
+        # "prefer_ffmpeg": True,
         "http_headers": {
             "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
