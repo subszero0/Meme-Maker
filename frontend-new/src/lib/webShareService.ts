@@ -60,6 +60,10 @@ export class WebShareService {
     videoTitle: string,
     options: WebShareOptions = {},
   ): Promise<void> {
+    console.log("[SHARE] Initiating shareVideoFile process.");
+    console.log(`[SHARE] Download URL: ${downloadUrl}`);
+    console.log(`[SHARE] Video Title: ${videoTitle}`);
+
     const {
       fallbackToLink = true,
       showProgress = true,
@@ -70,7 +74,9 @@ export class WebShareService {
 
     try {
       // Step 1: Check Web Share API support
+      console.log("[SHARE] Checking for Web Share API support...");
       if (!this.isSupported()) {
+        console.warn("[SHARE] Web Share API not supported. Triggering fallback.");
         if (fallbackToLink) {
           return this.shareAsLink(downloadUrl, videoTitle);
         }
@@ -79,16 +85,23 @@ export class WebShareService {
           "NOT_SUPPORTED",
         );
       }
+      console.log("[SHARE] Web Share API is supported.");
 
       // Step 2: Download video file as blob
+      console.log("[SHARE] Attempting to download file...");
       const file = await this.downloadAsFile(
         downloadUrl,
         "shared-video.mp4",
         onProgress,
       );
+      console.log("[SHARE] File downloaded successfully.", file);
 
       // Step 3: Check if file sharing is supported
+      console.log("[SHARE] Checking for file sharing capabilities...");
       if (!this.canShareFiles([file])) {
+        console.warn(
+          "[SHARE] File sharing not supported. Triggering fallback.",
+        );
         if (fallbackToLink) {
           return this.shareAsLink(downloadUrl, videoTitle);
         }
@@ -97,16 +110,20 @@ export class WebShareService {
           "NOT_SUPPORTED",
         );
       }
+      console.log("[SHARE] File sharing is supported.");
 
       // Step 4: Share the file natively
+      console.log("[SHARE] Calling navigator.share with the file...");
       await navigator.share({
         files: [file],
         title: videoTitle,
         text: "Check out this video clip!",
       });
 
+      console.log("[SHARE] navigator.share was successful.");
       onSuccess?.();
     } catch (error) {
+      console.error("[SHARE] An error occurred during the share process:", error);
       const webShareError =
         error instanceof WebShareError
           ? error
