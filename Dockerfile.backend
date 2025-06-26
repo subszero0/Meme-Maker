@@ -11,15 +11,15 @@ RUN apk add --no-cache gcc musl-dev curl \
 # Copy Poetry files
 COPY backend/pyproject.toml backend/poetry.lock* ./
 
+# Copy application code first so poetry can find the local package
+COPY backend/app ./app
+
 # Configure Poetry and install dependencies
 RUN poetry config virtualenvs.create false \
     && poetry install --without dev --no-interaction --no-ansi
 
 # Update yt-dlp to latest version for YouTube fixes (force latest even if pyproject.toml has older version)
 RUN pip install --upgrade --force-reinstall yt-dlp
-
-# Copy application code
-COPY backend/app ./app
 
 # Create non-root user
 RUN adduser -D -s /bin/sh app
