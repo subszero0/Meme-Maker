@@ -35,7 +35,10 @@ export const useWebShare = (): UseWebShareState & UseWebShareActions => {
 
   const shareVideoFile = useCallback(
     async (downloadUrl: string, videoTitle: string) => {
-      const absoluteUrl = new URL(downloadUrl, window.location.origin).href;
+      let absoluteUrl = new URL(downloadUrl, window.location.origin).href;
+      if (window.location.protocol === "https:" && absoluteUrl.startsWith("http://")) {
+        absoluteUrl = absoluteUrl.replace("http://", "https://");
+      }
 
       try {
         setIsSharing(true);
@@ -106,7 +109,10 @@ export const useWebShare = (): UseWebShareState & UseWebShareActions => {
 
   const shareAsLink = useCallback(
     async (downloadUrl: string, videoTitle: string) => {
-      const absoluteUrl = new URL(downloadUrl, window.location.origin).href;
+      let absoluteUrl = new URL(downloadUrl, window.location.origin).href;
+      if (window.location.protocol === "https:" && absoluteUrl.startsWith("http://")) {
+        absoluteUrl = absoluteUrl.replace("http://", "https://");
+      }
 
       try {
         setIsSharing(true);
