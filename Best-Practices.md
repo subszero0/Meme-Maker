@@ -846,6 +846,7 @@ cd frontend
 npm run lint                       # ✅ ESLint warnings/errors
 npx prettier --check .             # ✅ Code formatting
 # Add any other tools your project uses
+npm run type-check                 # ✅ TypeScript type checking
 
 # Step 2: Only proceed if ALL tools pass
 ```
@@ -889,6 +890,7 @@ echo "✅ Backend verification complete"
 cd frontend && \
 npm run lint && \
 npx prettier --check . && \
+npm run type-check && \
 echo "✅ Frontend verification complete"
 ```
 
