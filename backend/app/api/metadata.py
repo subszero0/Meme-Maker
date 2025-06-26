@@ -76,9 +76,9 @@ def get_fallback_ydl_opts() -> List[Dict]:
             "no_warnings": True,
             "extract_flat": False,
             "skip_download": True,
-            "extractor_args": {
-                "youtube": {"player_client": ["tv_embedded"], "skip": ["dash", "hls"]}
-            },
+            # "extractor_args": {
+            #     "youtube": {"player_client": ["tv_embedded"], "skip": ["dash", "hls"]}
+            # },
             "http_headers": {
                 "User-Agent": "Mozilla/5.0 (SMART-TV; LINUX; Tizen 2.4.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/2.4.0 TV Safari/538.1"
             },
@@ -90,9 +90,9 @@ def get_fallback_ydl_opts() -> List[Dict]:
             "no_warnings": True,
             "extract_flat": False,
             "skip_download": True,
-            "extractor_args": {
-                "youtube": {"player_client": ["android"], "skip": ["dash"]}
-            },
+            # "extractor_args": {
+            #     "youtube": {"player_client": ["android"], "skip": ["dash"]}
+            # },
             "http_headers": {
                 "User-Agent": "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip"
             },
@@ -104,11 +104,11 @@ def get_fallback_ydl_opts() -> List[Dict]:
             "no_warnings": True,
             "extract_flat": False,
             "skip_download": True,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["web"],
-                }
-            },
+            # "extractor_args": {
+            #     "youtube": {
+            #         "player_client": ["web"],
+            #     }
+            # },
             "http_headers": {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             },
