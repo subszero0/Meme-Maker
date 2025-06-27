@@ -347,12 +347,12 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                 'writesubtitles': False,
                 'writeautomaticsub': False,
                 'extract_flat': False,
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['android_creator'],
-                        'skip': ['dash']
-                    }
-                },
+                # 'extractor_args': {
+                #     'youtube': {
+                #         'player_client': ['android_creator'],
+                #         'skip': ['dash']
+                #     }
+                # },
                 'http_headers': {
                     'User-Agent': 'com.google.android.apps.youtube.creator/24.47.100 (Linux; U; Android 14; SM-S918B) gzip',
                     'Accept': '*/*',
@@ -372,12 +372,12 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                 'writesubtitles': False,
                 'writeautomaticsub': False,
                 'extract_flat': False,
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['web'],
-                        'skip': ['dash', 'hls']
-                    }
-                },
+                # 'extractor_args': {
+                #     'youtube': {
+                #         'player_client': ['web'],
+                #         'skip': ['dash', 'hls']
+                #     }
+                # },
                 'http_headers': {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
@@ -404,11 +404,11 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                 'writesubtitles': False,
                 'writeautomaticsub': False,
                 'extract_flat': False,
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['ios']
-                    }
-                },
+                # 'extractor_args': {
+                #     'youtube': {
+                #         'player_client': ['ios']
+                #     }
+                # },
                 'http_headers': {
                     'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -428,12 +428,12 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, format_id: 
                 'writesubtitles': False,
                 'writeautomaticsub': False,
                 'extract_flat': False,
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['web_embedded'],
-                        'skip': ['dash', 'hls']
-                    }
-                },
+                # 'extractor_args': {
+                #     'youtube': {
+                #         'player_client': ['web_embedded'],
+                #         'skip': ['dash', 'hls']
+                #     }
+                # },
                 'http_headers': {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Referer': 'https://www.youtube.com/',

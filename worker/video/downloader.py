@@ -46,12 +46,12 @@ class VideoDownloader:
                 'writesubtitles': False,
                 'writeautomaticsub': False,
                 'extract_flat': False,
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['android_creator'],
-                        'skip': ['dash', 'hls']
-                    }
-                },
+                # 'extractor_args': {
+                #     'youtube': {
+                #         'player_client': ['android_creator'],
+                #         'skip': ['dash', 'hls']
+                #     }
+                # },
                 'http_headers': {
                     'User-Agent': 'com.google.android.apps.youtube.creator/24.47.100 (Linux; U; Android 14; SM-S918B) gzip',
                     'Accept': '*/*',
@@ -71,12 +71,12 @@ class VideoDownloader:
                 'writesubtitles': False,
                 'writeautomaticsub': False,
                 'extract_flat': False,
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['ios'],
-                        'skip': ['dash']
-                    }
-                },
+                # 'extractor_args': {
+                #     'youtube': {
+                #         'player_client': ['ios'],
+                #         'skip': ['dash']
+                #     }
+                # },
                 'http_headers': {
                     'User-Agent': 'com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 17_6_1 like Mac OS X)',
                     'Accept': '*/*',
@@ -95,12 +95,12 @@ class VideoDownloader:
                 'writesubtitles': False,
                 'writeautomaticsub': False,
                 'extract_flat': False,
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['android_music'],
-                        'skip': ['dash', 'hls']
-                    }
-                },
+                # 'extractor_args': {
+                #     'youtube': {
+                #         'player_client': ['android_music'],
+                #         'skip': ['dash', 'hls']
+                #     }
+                # },
                 'http_headers': {
                     'User-Agent': 'com.google.android.apps.youtube.music/6.42.52 (Linux; U; Android 14; SM-S918B) gzip',
                     'Accept': '*/*',
@@ -116,12 +116,12 @@ class VideoDownloader:
                 'writesubtitles': False,
                 'writeautomaticsub': False,
                 'extract_flat': False,
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['web'],
-                        'skip': ['dash', 'hls']
-                    }
-                },
+                # 'extractor_args': {
+                #     'youtube': {
+                #         'player_client': ['web'],
+                #         'skip': ['dash', 'hls']
+                #     }
+                # },
                 'http_headers': {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
@@ -148,12 +148,12 @@ class VideoDownloader:
                 'writesubtitles': False,
                 'writeautomaticsub': False,
                 'extract_flat': False,
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['tv_embedded'],
-                        'skip': ['dash', 'hls']
-                    }
-                },
+                # 'extractor_args': {
+                #     'youtube': {
+                #         'player_client': ['tv_embedded'],
+                #         'skip': ['dash', 'hls']
+                #     }
+                # },
                 'http_headers': {
                     'User-Agent': 'Mozilla/5.0 (SMART-TV; LINUX; Tizen 2.4.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/2.4.0 TV Safari/538.1'
                 }
