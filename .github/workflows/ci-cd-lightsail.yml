@@ -263,7 +263,7 @@ jobs:
             
             if [ "$backend_ok" != "true" ]; then
               echo "❌ Backend health check failed even after 502 fix attempt"
-              docker-compose logs backend | tail-20
+              docker-compose logs backend | tail -20
               exit 1
             fi
           fi
