@@ -915,6 +915,111 @@ echo "✅ Frontend verification complete"
 
 ---
 
+## 🎯 **Best Practice #24: Design for Portability - Eradicate Environment-Specific Code**
+
+**Principle**: When an application is moved from a controlled environment (like Docker) to a different OS (like Windows), hidden environment-specific assumptions become critical failures. Code must be written to be portable and agnostic to the underlying operating system and environment.
+
+**Implementation**:
+- **Externalize All Paths and Hostnames**: Never hardcode file paths (`/usr/bin/ffmpeg`) or hostnames (`redis://redis:6379`) directly in the code.
+- **Use Platform-Agnostic Defaults**: Provide sensible, cross-platform defaults (e.g., `ffmpeg` instead of `/usr/bin/ffmpeg`) that rely on the system's `PATH`.
+- **Centralize Configuration**: Use a single, centralized configuration system (like `pydantic-settings` with `.env` files) for all services (backend, worker, etc.) to ensure consistency. Do not let services have their own independent, hardcoded settings.
+- **Verify Working Directories**: When executing scripts or commands, always ensure you are in the correct working directory. Scripts should either be run from the project root or explicitly change to the required directory before execution.
+
+**Real-World Example from This Session**:
+- **Problem 1**: The worker failed because its `ffmpeg_path` was hardcoded to the Linux path `/usr/bin/ffmpeg`.
+- **Problem 2**: The worker failed to connect to Redis because its `REDIS_URL` was hardcoded to the Docker-specific hostname `redis`, and it wasn't loading the shared `.env` file.
+- **Problem 3**: The worker failed because `poetry` commands were run from the `worker/` directory instead of the `backend/` directory where `pyproject.toml` resided.
+- **Solution**:
+    1. Moved `ffmpeg_path` and `redis_url` into the centralized Pydantic `Settings` model.
+    2. Used platform-agnostic defaults (`ffmpeg`, `localhost`).
+    3. Refactored the worker to import and use the centralized settings.
+    4. Corrected the startup script to `cd` into the `backend` directory before running the worker.
+
+**Why It Matters**: 
+Docker and other containerization technologies are excellent at hiding environment-specific issues. A truly robust application must be able to run natively on different operating systems without code changes. This is critical for enabling local development and ensuring portability.
+
+---
+
+## 🎯 **Best Practice #25: Systematic Dependency Resolution for Cross-Platform Setups**
+
+**Principle**: Migrating to a local, non-containerized setup often reveals deep-seated dependency conflicts. Resolving them requires a systematic approach, as a single change can have cascading effects.
+
+**Implementation**:
+
+**The "Add → Lock → Install → Verify" Cycle**:
+1.  **Add/Update Dependency**: Make the smallest necessary change in `pyproject.toml`.
+2.  **Lock Dependencies**: Run `poetry lock` to resolve the entire dependency tree. This is the most critical step. **Do not skip it.**
+3.  **Install from Lock File**: Run `poetry install`. This ensures the environment exactly matches the newly generated lock file.
+4.  **Verify Functionality**: Run the application to ensure the primary functionality that depends on the new package works as expected.
+
+**Common Pitfalls and Solutions**:
+- **Conflict During `lock`**: If `poetry lock` fails, resist the urge to use overly broad version constraints like `*`. Instead:
+    - Read the error to see which packages are in conflict.
+    - Try upgrading the *other* packages involved in the conflict.
+    - If a package that interacts with external services (like `yt-dlp`) is involved, it often needs to be pinned to the *latest* version, as its functionality depends on external APIs.
+- **Missing Dependency in Code**: If you add a new `import`, immediately add the corresponding package to `pyproject.toml`. A `ModuleNotFoundError` is a direct sign this step was missed.
+
+**Real-World Example from This Session**:
+- **Problem**: A series of cascading dependency failures.
+- **Sequence**:
+    1.  `ModuleNotFoundError: pydantic_settings` → Added `pydantic-settings` to `pyproject.toml`.
+    2.  `poetry install` failed → Realized `poetry lock` was needed.
+    3.  `poetry lock` failed due to an `rq` version conflict.
+    4.  Changed `rq` to `*`, which caused `yt-dlp` to be downgraded.
+    5.  The old `yt-dlp` failed to download from Facebook.
+- **Systematic Solution**:
+    1.  Pinned `yt-dlp` to the latest version (`^2025.6.25`) in `pyproject.toml`.
+    2.  Ran `poetry lock` which successfully resolved the tree around the new `yt-dlp` version.
+    3.  Ran `poetry install` to apply the changes.
+
+**Why It Matters**: 
+The `poetry.lock` file is the single source of truth for a reproducible environment. Bypassing or mismanaging it leads to unpredictable behavior, especially when moving between environments.
+
+---
+
+## 🎯 **Best Practice #26: Ensure Frontend Data Models are Synchronized with Backend Payloads**
+
+**Principle**: Frontend components often fail silently or with confusing errors if their data models (e.g., TypeScript interfaces) do not perfectly match the JSON schema of the API responses they consume.
+
+**Implementation**:
+- **Schema-First Approach**: Ideally, use a shared schema (e.g., OpenAPI) to generate both backend models and frontend types.
+- **Manual Verification**: When creating or updating a frontend interface, have the backend API response open and verify every field, paying close attention to optional (`?`) vs. required fields and their data types (`string`, `number`, etc.).
+- **Defensive Frontend Coding**: Never assume a field will be present, even if the type definition says it's required. Use optional chaining (`?.`) and provide sensible fallbacks for potentially missing data.
+
+**Real-World Example from This Session**:
+- **Problem**: The frontend failed to render video formats correctly because the backend added an `audio_merged` property to the format object, but the frontend's `VideoFormat` TypeScript type was not updated to include it. In a previous session, a `filesize_approx` property was also missing.
+- **Symptom**: Type errors during the build process, or components failing to render data correctly.
+- **Solution**: Update the TypeScript `interface VideoFormat` to include `audio_merged?: boolean;` and any other new or changed fields from the API.
+
+**Why It Matters**: 
+A mismatch between the frontend's expectation and the backend's reality is a common source of bugs that can be difficult to trace. Keeping data contracts in sync is fundamental to the stability of a full-stack application.
+
+---
+
+## 🎯 **Best Practice #27: Implement Robust and Idempotent Event Listeners in React**
+
+**Principle**: Incorrectly managed event listeners in React are a common source of memory leaks, performance issues, and unexpected behavior. Listeners, especially those on the `window` object, must be added and removed correctly.
+
+**Implementation**:
+- **Symmetry in `useEffect`**: When adding an event listener in a `useEffect` hook, the cleanup function (`return () => ...`) must call `removeEventListener` with the *exact same arguments*, including the options object (e.g., `{ passive: false }`).
+- **Eliminate Redundancy**: Avoid attaching the same event handlers in multiple places (e.g., once in JSX like `onTouchMove` and again with `window.addEventListener` in a `useEffect`). Choose one authoritative source for the event listener. For global drag events that should work outside a component's bounds, `useEffect` is the correct choice.
+- **Explicitly Handle Passive Listeners**: For events like `touchmove` where you intend to call `preventDefault()`, you **must** register the listener with `{ passive: false }`. Failure to do so will result in console warnings and may prevent your code from blocking native browser behavior like scrolling.
+
+**Real-World Example from This Session**:
+- **Problem**: A `Unable to preventDefault inside passive event listener invocation` warning appeared when dragging the timeline slider on touch devices.
+- **Root Cause**:
+    1.  A `touchmove` listener was added in `useEffect` with `{ passive: false }`.
+    2.  The cleanup function tried to remove it *without* the options object, meaning the listener was never removed.
+    3.  A redundant `onTouchMove` handler was also present in the JSX, which did not have the `passive: false` option.
+- **Solution**:
+    1.  Corrected the `removeEventListener` call to include `{ passive: false }`.
+    2.  Removed the redundant `onTouchMove` and other drag-related handlers from the JSX, making the `useEffect` hook the single source of truth for these global listeners.
+
+**Why It Matters**: 
+Modern browsers aggressively optimize touch events for smooth scrolling. Developers must explicitly opt-out of this optimization when needed. Incorrectly cleaned-up listeners are a silent killer of application performance and stability.
+
+---
+
 ## 🔄 **Meta Best Practice: Continuous Learning Integration**
 
 **Implementation**:
@@ -956,5 +1061,9 @@ After each debugging session:
 21. **Execute complete linting suite** - Run ALL linting tools before any CI/CD push, never fix in isolation
 22. **Always push fixes to remote** - Local fixes don't affect CI/CD until pushed to repository
 23. **Execute complete verification suite** - Run ALL backend AND frontend verification tools before every push to prevent regression cycles
+24. **Design for portability** - Eradicate environment-specific code
+25. **Systematic dependency resolution** - Resolve cross-platform setup conflicts
+26. **Frontend data model synchronization** - Ensure API payloads are consumed correctly
+27. **Robust event listeners in React** - Implement correct event handling
 
 These practices work together to create a systematic, safe, and effective approach to production problem resolution that minimizes system disruption while maximizing learning and long-term stability. 

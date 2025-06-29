@@ -81,12 +81,13 @@ async def startup_event():
         init_redis()
         # Test Redis connection immediately if it was initialized
         if redis is not None:
+            # The init_redis function already logs success or fallback,
+            # so we just need to test the connection if it exists.
             redis.ping()
-            print("✅ Redis connected and tested successfully")
-        else:
-            print("⚠️ Redis not available - running without cache")
+            print("✅ Redis connection tested successfully.")
+        # No 'else' needed here, as init_redis already warns if it falls back to FakeRedis.
     except Exception as e:
-        print(f"❌ Redis initialization/test failed: {e}")
+        print(f"❌ Redis connection test failed: {e}")
         # Don't fail startup, but log the issue
 
     # Ensure the clips directory exists, but don't crash on writability check

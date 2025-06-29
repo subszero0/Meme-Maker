@@ -6,6 +6,65 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
+from dotenv import load_dotenv
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Correctly locate the .env file at the project root
+# The configuration.py file is at backend/app/config/configuration.py
+# So we go up three levels to find the project root.
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
+
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+    print(f"✅ Loaded environment variables from: {env_path}")
+else:
+    print(f"⚠️ .env file not found at {env_path}, using default settings.")
+
+
+class Settings(BaseSettings):
+    """Application settings"""
+
+    # Environment settings
+    debug: bool = Field(False, env="DEBUG")
+    testing: bool = Field(False, env="TESTING")
+    base_url: str = Field("http://localhost:8000", env="BASE_URL")
+
+    # CORS settings
+    cors_origins: list[str] = Field(default_factory=list, env="CORS_ORIGINS")
+
+    # Redis settings
+    redis_url: str = Field("redis://localhost:6379", env="REDIS_URL")
+
+    # Storage settings
+    storage_backend: str = Field("local", env="STORAGE_BACKEND")
+    clips_dir: str = Field("storage/clips", env="CLIPS_DIR")
+    s3_bucket_name: str = Field("", env="S3_BUCKET_NAME")
+    s3_access_key_id: str = Field("", env="S3_ACCESS_KEY_ID")
+    s3_secret_access_key: str = Field("", env="S3_SECRET_ACCESS_KEY")
+
+    # FFmpeg settings
+    ffmpeg_path: str = Field("ffmpeg", env="FFMPEG_PATH")
+    ffprobe_path: str = Field("ffprobe", env="FFPROBE_PATH")
+
+    # Rate limiting
+    rate_limit_enabled: bool = Field(True, env="RATE_LIMIT_ENABLED")
+    rate_limit_times: int = Field(100, env="RATE_LIMIT_TIMES")
+    rate_limit_seconds: int = Field(60, env="RATE_LIMIT_SECONDS")
+
+    # Pydantic settings configuration
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
+
+
+@lru_cache
+def get_settings() -> Settings:
+    """Get the application settings, cached for performance"""
+    return Settings()
+
 
 class VideoProcessingSettings:
     """Video processing configuration with validation"""
@@ -16,7 +75,8 @@ class VideoProcessingSettings:
         self.max_concurrent_jobs: int = int(os.getenv("MAX_CONCURRENT_JOBS", 20))
 
         # Video Processing
-        self.ffmpeg_path: str = os.getenv("FFMPEG_PATH", "/usr/bin/ffmpeg")
+        self.ffmpeg_path: str = os.getenv("FFMPEG_PATH", "ffmpeg")
+        self.ffprobe_path: str = os.getenv("FFPROBE_PATH", "ffprobe")
         self.rotation_correction: float = float(os.getenv("ROTATION_CORRECTION", -1.0))
 
         # Storage
@@ -116,12 +176,6 @@ class MetricsSettings:
         self.enable_tracing: bool = (
             os.getenv("METRICS_ENABLE_TRACING", "False").lower() == "true"
         )
-
-
-@lru_cache()
-def get_settings() -> VideoProcessingSettings:
-    """Get cached settings instance"""
-    return VideoProcessingSettings()
 
 
 @lru_cache()

@@ -11,7 +11,7 @@ export const jobsApi = {
       );
       return response.data;
     } catch (error) {
-      handleApiError(error as any);
+      handleApiError(error);
     }
   },
 
@@ -22,7 +22,7 @@ export const jobsApi = {
       );
       return response.data;
     } catch (error) {
-      handleApiError(error as any);
+      handleApiError(error);
     }
   },
-}; 
+};

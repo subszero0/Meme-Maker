@@ -2,11 +2,16 @@ export interface VideoFormat {
   format_id: string;
   ext: string;
   resolution: string;
+  url: string;
   filesize?: number;
+  filesize_approx?: number;
   fps?: number;
   vcodec: string;
   acodec: string;
   format_note: string;
+  view_count: number;
+  formats: VideoFormat[];
+  manifest_url?: string;
 }
 
 export interface MetadataRequest {
@@ -28,4 +33,5 @@ export interface VideoMetadata {
   upload_date: string;
   view_count: number;
   formats: VideoFormat[];
-} 
+  manifest_url?: string;
+}

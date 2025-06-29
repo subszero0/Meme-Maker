@@ -14,7 +14,7 @@ export const clipsApi = {
         await apiClient.delete(`api/v1/clips/${jobId}`);
       return response.data;
     } catch (error) {
-      handleApiError(error as any);
+      handleApiError(error);
     }
   },
 };
@@ -26,7 +26,7 @@ export const healthApi = {
         await apiClient.get("/health");
       return response.data;
     } catch (error) {
-      handleApiError(error as any);
+      handleApiError(error);
     }
   },
-}; 
+};

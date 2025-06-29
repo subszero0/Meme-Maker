@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
 import { formatDuration } from "../lib/api";
-import type { MetadataResponse } from "../lib/api";
+import type { MetadataResponse } from "@/types/metadata";
 
 interface VideoPlayerProps {
   videoUrl: string;
@@ -35,6 +35,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isReady, setIsReady] = useState(false);
   const playerRef = useRef<ReactPlayer>(null);
 
+  useEffect(() => {
+    console.log("VideoPlayer: URL received:", videoUrl);
+    setIsReady(false);
+    setError(null);
+  }, [videoUrl]);
+
   // Initialize duration from metadata
   useEffect(() => {
     if (metadata?.duration) {
@@ -51,7 +57,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [currentTime, onCurrentTimeChange]);
 
   const togglePlay = () => {
-    setIsPlaying(!isPlaying);
+    console.log(
+      `VideoPlayer: togglePlay called. Current state: isPlaying=${isPlaying}, isReady=${isReady}`,
+    );
+    if (isReady) {
+      setIsPlaying(!isPlaying);
+    } else {
+      console.warn("VideoPlayer: Tried to play but player is not ready.");
+    }
   };
 
   const skipSeconds = (seconds: number) => {
@@ -79,13 +92,36 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const handleReady = () => {
+    console.log("VideoPlayer: onReady event fired. Player is ready to play.");
     setIsReady(true);
     setError(null);
   };
 
-  const handleError = (error: Error | string | unknown) => {
-    setError("Failed to load video. Please check the URL and try again.");
+  const handleError = (e: unknown) => {
+    console.error("VideoPlayer: onError event fired.", e);
+    let errorMessage = "Failed to load video.";
+    if (
+      typeof e === "object" &&
+      e !== null &&
+      "message" in e &&
+      typeof e.message === "string"
+    ) {
+      errorMessage = e.message;
+    } else if (typeof e === "string") {
+      errorMessage = e;
+    }
+    setError(`Video Error: ${errorMessage}`);
     setIsReady(false);
+  };
+
+  const handlePlay = () => {
+    console.log("VideoPlayer: onPlay event fired. Playback has started.");
+    setIsPlaying(true);
+  };
+
+  const handlePause = () => {
+    console.log("VideoPlayer: onPause event fired. Playback has paused.");
+    setIsPlaying(false);
   };
 
   return (
@@ -119,6 +155,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         playing={isPlaying}
         volume={volume}
         onReady={handleReady}
+        onPlay={handlePlay}
+        onPause={handlePause}
         onDuration={handleDuration}
         onProgress={handleProgress}
         onError={handleError}

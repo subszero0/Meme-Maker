@@ -16,7 +16,7 @@ export const metadataApi = {
       return response.data;
     } catch (error) {
       console.error("❌ Basic metadata failed:", error);
-      handleApiError(error as any);
+      handleApiError(error);
     }
   },
 
@@ -35,7 +35,7 @@ export const metadataApi = {
       return response.data;
     } catch (error) {
       console.error("❌ Detailed metadata failed:", error);
-      handleApiError(error as any);
+      handleApiError(error);
     }
   },
-}; 
+};

@@ -4,10 +4,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link2, Loader2, AlertCircle } from "lucide-react";
 import { useVideoMetadata } from "../hooks/useApi";
 import { useDebounce } from "use-debounce";
-import type { MetadataResponse } from "@/lib/api";
+import type { VideoMetadata } from "@/types/metadata";
 
 interface UrlInputProps {
-  onSubmit: (url: string, metadata: MetadataResponse) => void;
+  onSubmit: (url: string, metadata: VideoMetadata) => void;
 }
 
 export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
@@ -24,7 +24,7 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
     isLoading,
     error: metadataError,
     isError,
-  } = useVideoMetadata(submittedUrl, !!submittedUrl && !validationError);
+  } = useVideoMetadata(debouncedUrl, !!debouncedUrl && !validationError);
 
   const validateUrl = (inputUrl: string): boolean => {
     if (!inputUrl.trim()) {
@@ -97,24 +97,30 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="relative">
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://youtube.com/watch?v=... or any video URL"
-            className={`w-full p-4 pr-12 border-2 rounded-2xl focus:ring-4 focus:ring-orange-100 outline-none text-lg bg-orange-50/30 transition-colors ${
-              validationError
-                ? "border-red-300 focus:border-red-400"
-                : "border-orange-200 focus:border-orange-400"
-            }`}
-            disabled={isLoading}
-          />
-          {isLoading ? (
-            <Loader2 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-orange-400 w-6 h-6 animate-spin" />
-          ) : (
-            <Link2 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-orange-400 w-6 h-6" />
-          )}
+        <div>
+          <label htmlFor="video-url" className="sr-only">
+            Video URL
+          </label>
+          <div className="relative">
+            <input
+              type="url"
+              id="video-url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://youtube.com/watch?v=... or any video URL"
+              className={`w-full p-4 pr-12 border-2 rounded-2xl focus:ring-4 focus:ring-orange-100 outline-none text-lg bg-orange-50/30 transition-colors ${
+                validationError
+                  ? "border-red-300 focus:border-red-400"
+                  : "border-orange-200 focus:border-orange-400"
+              }`}
+              disabled={isLoading}
+            />
+            {isLoading ? (
+              <Loader2 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-orange-400 w-6 h-6 animate-spin" />
+            ) : (
+              <Link2 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-orange-400 w-6 h-6" />
+            )}
+          </div>
         </div>
 
         {/* Validation Error */}
@@ -136,10 +142,7 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
                   : metadataError.message.includes(
                         "Failed to extract video metadata",
                       )
-                    ? metadataError.message.replace(
-                        "Failed to extract video metadata: ",
-                        "",
-                      )
+                    ? metadataError.message
                     : metadataError.message
                 : "Failed to fetch video information. Please check the URL and try again."}
             </AlertDescription>

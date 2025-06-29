@@ -83,7 +83,7 @@ async def download_clip(filename: str):
     )
 
 
-@router.delete("/clips/{job_id}.mp4")
+@router.delete("/clips/{job_id}")
 async def cleanup_clip(job_id: str):
     """Clean up a processed clip (called after successful download)"""
     # Validate job_id to prevent path traversal
