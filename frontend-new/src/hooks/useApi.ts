@@ -1,10 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { metadataApi, jobsApi, healthApi, clipsApi } from "../lib/api";
 import { JobStatus, JobCreate, JobResponse } from "../types/job";
-import {
-  MetadataResponse,
-  VideoMetadata,
-} from "../types/metadata";
+import { MetadataResponse, VideoMetadata } from "../types/metadata";
 import { HealthResponse } from "../types/common";
 
 // ===========================
@@ -57,7 +54,7 @@ export function useDetailedVideoMetadata(url: string, enabled = true) {
 /**
  * Alias for useBasicVideoMetadata for backward compatibility
  */
-export const useVideoMetadata = useBasicVideoMetadata;
+export const useVideoMetadata = useDetailedVideoMetadata;
 
 // ===========================
 // Job Management Hooks

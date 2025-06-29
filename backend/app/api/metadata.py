@@ -16,6 +16,37 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+def _process_formats_for_audio(formats: List[Dict]) -> List[Dict]:
+    """
+    If separate audio and video streams are detected (common in DASH),
+    update video-only formats to indicate that audio will be merged.
+    """
+    # Check if there are any audio-only streams available
+    has_audio_streams = any(
+        f.get("acodec") != "none" and f.get("vcodec") == "none" for f in formats
+    )
+
+    if not has_audio_streams:
+        # No separate audio streams, so return formats as-is
+        return formats
+
+    # If we are here, it means there are separate audio streams.
+    # We can assume the downloader (yt-dlp) will merge the best one.
+    processed_formats = []
+    for f in formats:
+        # If a format is video-only, but audio streams are available,
+        # we can infer that audio will be included in the final download.
+        if f.get("vcodec") != "none" and f.get("acodec") == "none":
+            # Update the format to signal that audio is present.
+            # The frontend will use this to show the correct icon.
+            f["acodec"] = "aac"  # Common audio codec
+            f["format_note"] = f"{f.get('format_note', '')} (audio will be merged)"
+
+        processed_formats.append(f)
+
+    return processed_formats
+
+
 class UrlRequest(BaseModel):
     url: HttpUrl
 
@@ -24,6 +55,7 @@ class VideoFormat(BaseModel):
     format_id: str
     ext: str
     resolution: str
+    url: str
     filesize: Optional[int] = None
     fps: Optional[float] = None
     vcodec: str
@@ -39,6 +71,7 @@ class VideoMetadata(BaseModel):
     upload_date: str
     view_count: int
     formats: List[VideoFormat]
+    manifest_url: Optional[str] = None
 
 
 def get_optimized_ydl_opts() -> Dict:
@@ -342,13 +375,14 @@ async def extract_video_metadata(
                 formats.append(VideoFormat(**fmt_data))
 
             return VideoMetadata(
-                title=metadata.get("title", "Unknown"),
+                title=metadata.get("title", "No Title"),
                 duration=metadata.get("duration", 0),
                 thumbnail=metadata.get("thumbnail", ""),
-                uploader=metadata.get("uploader", "Unknown"),
-                upload_date=metadata.get("upload_date", ""),
+                uploader=metadata.get("uploader", "Unknown Uploader"),
+                upload_date=metadata.get("upload_date", "Unknown Date"),
                 view_count=metadata.get("view_count", 0),
                 formats=formats,
+                manifest_url=metadata.get("manifest_url"),
             )
 
         # Log cache miss
@@ -360,55 +394,42 @@ async def extract_video_metadata(
         extraction_time = time.time() - start_time
 
         # Extract basic metadata
-        title = info.get("title", "Unknown")
+        title = info.get("title", "No Title")
         duration = float(info.get("duration", 0))
-        thumbnail = info.get("thumbnail", "")
-        uploader = info.get("uploader", "Unknown")
-        upload_date = info.get("upload_date", "")
+        thumbnail_url = info.get("thumbnail", "")
+        uploader = info.get("uploader", "Unknown Uploader")
+        upload_date = info.get("upload_date", "Unknown Date")
         view_count = int(info.get("view_count", 0))
 
-        # Extract and filter video formats with enhanced logging
-        formats = []
-        seen_format_ids = set()
+        # Get available formats, ensuring it's a list
+        raw_formats = info.get("formats", [])
+        if not isinstance(raw_formats, list):
+            raw_formats = []
 
-        logger.info(
-            f"🔍 Backend: Processing {len(info.get('formats', []))} total formats from yt-dlp"
-        )
+        # Process formats for audio merging *before* converting to Pydantic models
+        logger.info("Processing formats to check for separate audio streams...")
+        processed_formats = _process_formats_for_audio(raw_formats)
+        logger.info("Format processing complete.")
 
-        for fmt in info.get("formats", []):
-            # Only include formats that have video streams (exclude audio-only)
-            if (
-                fmt.get("vcodec")
-                and fmt.get("vcodec") != "none"
-                and fmt.get("height")
-                and fmt.get("width")
-                and fmt.get("format_id") not in seen_format_ids
-            ):
-                resolution = f"{fmt.get('width')}x{fmt.get('height')}"
-                format_id = fmt.get("format_id", "")
+        # Create Pydantic models from the processed data
+        video_formats = [
+            VideoFormat(
+                format_id=f.get("format_id", "unknown"),
+                ext=f.get("ext", "unknown"),
+                resolution=f.get("resolution", "unknown"),
+                url=f.get("url", ""),
+                filesize=f.get("filesize"),
+                fps=f.get("fps"),
+                vcodec=f.get("vcodec", "none"),
+                acodec=f.get("acodec", "none"),
+                format_note=f.get("format_note", ""),
+            )
+            for f in processed_formats
+            if f.get("resolution")
+            and f.get("vcodec") != "none"  # Only include formats with video
+        ]
 
-                # Avoid duplicate format IDs
-                seen_format_ids.add(format_id)
-
-                format_obj = VideoFormat(
-                    format_id=format_id,
-                    ext=fmt.get("ext", "mp4"),
-                    resolution=resolution,
-                    filesize=fmt.get("filesize"),
-                    fps=fmt.get("fps"),
-                    vcodec=fmt.get("vcodec", "unknown"),
-                    acodec=fmt.get("acodec", "unknown"),
-                    format_note=fmt.get("format_note", ""),
-                )
-                formats.append(format_obj)
-
-                # Log first few formats for debugging
-                if len(formats) <= 5:
-                    logger.info(
-                        f"🔍 Backend: Format {format_id}: {resolution} ({fmt.get('vcodec')}/{fmt.get('acodec')})"
-                    )
-
-        # Sort formats by resolution (descending), then by filesize (descending)
+        # Sort formats from best to worst resolution, then by file extension
         def resolution_sort_key(fmt):
             try:
                 width, height = map(int, fmt.resolution.split("x"))
@@ -417,47 +438,49 @@ async def extract_video_metadata(
             except (ValueError, AttributeError):
                 return (0, 0)
 
-        formats.sort(key=resolution_sort_key, reverse=True)
+        video_formats.sort(key=resolution_sort_key, reverse=True)
 
         # Limit to reasonable number of formats
-        formats = formats[:20]
+        video_formats = video_formats[:20]
 
         metadata = VideoMetadata(
             title=title,
             duration=duration,
-            thumbnail=thumbnail,
+            thumbnail=thumbnail_url,
             uploader=uploader,
             upload_date=upload_date,
             view_count=view_count,
-            formats=formats,
+            formats=video_formats,
+            manifest_url=info.get("manifest_url"),
         )
 
-        # Cache the detailed result using proper cache method
-        detailed_metadata_to_cache = {
+        # Cache the detailed metadata
+        cache_data = {
             "title": title,
             "duration": duration,
-            "thumbnail": thumbnail,
+            "thumbnail": thumbnail_url,
             "uploader": uploader,
             "upload_date": upload_date,
             "view_count": view_count,
             "formats": [
-                fmt.dict() for fmt in formats
+                fmt.dict() for fmt in video_formats
             ],  # Convert to dict for JSON serialization
             "extraction_time": extraction_time,
+            "manifest_url": info.get("manifest_url"),
         }
 
         # Use the proper cache method for format metadata
-        cache_success = await cache.set_format_metadata(url, detailed_metadata_to_cache)
+        cache_success = await cache.set_format_metadata(url, cache_data)
         if cache_success:
             logger.info(f"✅ Cached detailed metadata for: {url}")
         else:
             logger.warning(f"⚠️ Failed to cache detailed metadata for: {url}")
 
         logger.info(
-            f"✅ Extracted detailed metadata: {title} - {len(formats)} formats in {extraction_time:.2f}s"
+            f"✅ Extracted detailed metadata: {title} - {len(video_formats)} formats in {extraction_time:.2f}s"
         )
         logger.info(
-            f"🔍 Backend: Format IDs extracted: {[f.format_id for f in formats[:10]]}"
+            f"🔍 Backend: Format IDs extracted: {[f.format_id for f in video_formats[:10]]}"
         )
 
         return metadata
@@ -477,8 +500,57 @@ async def extract_video_metadata(
                 detail="The video service is currently unavailable. Please try again later.",
             )
     except Exception as e:
-        logger.error(f"❌ Failed to extract detailed metadata: {str(e)}")
+        logger.error(f"❌ yt-dlp failed to extract info for {url}: {e}")
+        # Log the full exception for debugging
+        import traceback
+
+        traceback.print_exc()
         raise HTTPException(
-            status_code=400,
-            detail="Failed to extract video metadata. The URL may be invalid or unsupported.",
+            status_code=404, detail=f"Failed to extract video metadata: {e}"
+        )
+
+
+@router.post("/metadata/cached", response_model=VideoMetadata)
+async def get_cached_video_metadata(
+    request: UrlRequest, redis_client=Depends(get_async_redis)
+):
+    """Get cached video metadata"""
+    try:
+        url = str(request.url)
+        logger.info(f"🔍 Fetching cached metadata for: {url}")
+
+        # Initialize cache
+        cache = MetadataCache(redis_client)
+
+        # Check cache first
+        cached_metadata = await cache.get_format_metadata(url)
+        if cached_metadata:
+            logger.info(f"✅ Cache hit for cached metadata: {url}")
+            metadata = cached_metadata.get("metadata", {})
+
+            # Reconstruct VideoFormat objects
+            formats = []
+            for fmt_data in metadata.get("formats", []):
+                formats.append(VideoFormat(**fmt_data))
+
+            return VideoMetadata(
+                title=metadata.get("title", "No Title"),
+                duration=metadata.get("duration", 0),
+                thumbnail=metadata.get("thumbnail", ""),
+                uploader=metadata.get("uploader", "Unknown Uploader"),
+                upload_date=metadata.get("upload_date", "Unknown Date"),
+                view_count=metadata.get("view_count", 0),
+                formats=formats,
+                manifest_url=metadata.get("manifest_url"),
+            )
+
+        # Log cache miss
+        logger.info(f"❌ Cache miss for cached metadata: {url}")
+        raise HTTPException(status_code=404, detail="Video metadata not found")
+
+    except Exception as e:
+        logger.error(f"❌ Failed to fetch cached metadata: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected server error occurred while fetching cached metadata.",
         )

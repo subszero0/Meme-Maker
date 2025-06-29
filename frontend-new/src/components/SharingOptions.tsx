@@ -1,14 +1,17 @@
 import React, { useState, useCallback, useMemo } from "react";
 import {
   Download,
+  Copy,
   Share2,
   ExternalLink,
   RefreshCw,
   CheckCircle,
   X,
   Smartphone,
+  Check,
 } from "lucide-react";
 import { useDeleteClip } from "@/hooks/useApi";
+import { useSmartShare } from "@/hooks/useSmartShare";
 import { NativeShareButton } from "./NativeShareButton";
 
 interface SharingOptionsProps {
@@ -137,105 +140,39 @@ export const SharingOptions: React.FC<SharingOptionsProps> = ({
   onStartOver,
 }) => {
   const [showDownloadModal, setShowDownloadModal] = useState(false);
-  const [sharingPlatform, setSharingPlatform] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
+  const { share, isSharing, error } = useSmartShare();
   const deleteClipMutation = useDeleteClip();
 
-  // Generate sharing URL based on current domain
+  // Generate a shareable URL for link-based sharing
   const sharingUrl = useMemo(() => {
-    // In production, this would be the actual app domain
     const baseUrl = window.location.origin;
-    return `${baseUrl}/clip/${encodeURIComponent(downloadUrl)}`;
+    // This could be a dedicated page in the future, for now it points to the clip
+    return downloadUrl.startsWith("http")
+      ? downloadUrl
+      : `${baseUrl}${downloadUrl}`;
   }, [downloadUrl]);
 
-  // Platform configurations with real sharing URLs
-  const platforms = [
-    {
-      id: "whatsapp",
-      name: "WhatsApp",
-      icon: "💬",
-      color: "from-green-500 to-green-600",
-      description: "Send to contacts",
-      bgColor: "bg-green-50",
-      borderColor: "border-green-200",
-      shareUrl: `https://wa.me/?text=${encodeURIComponent(`Check out this video clip: ${videoTitle}\n${sharingUrl}`)}`,
-    },
-    {
-      id: "twitter",
-      name: "Twitter / X",
-      icon: "🐦",
-      color: "from-blue-500 to-blue-600",
-      description: "Share as tweet",
-      bgColor: "bg-blue-50",
-      borderColor: "border-blue-200",
-      shareUrl: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this clip: ${videoTitle}`)}&url=${encodeURIComponent(sharingUrl)}`,
-    },
-    {
-      id: "facebook",
-      name: "Facebook",
-      icon: "📘",
-      color: "from-blue-600 to-blue-700",
-      description: "Post to timeline",
-      bgColor: "bg-blue-50",
-      borderColor: "border-blue-200",
-      shareUrl: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(sharingUrl)}`,
-    },
-    {
-      id: "reddit",
-      name: "Reddit",
-      icon: "🤖",
-      color: "from-orange-500 to-red-500",
-      description: "Post to subreddit",
-      bgColor: "bg-orange-50",
-      borderColor: "border-orange-200",
-      shareUrl: `https://reddit.com/submit?url=${encodeURIComponent(sharingUrl)}&title=${encodeURIComponent(videoTitle)}`,
-    },
-    {
-      id: "telegram",
-      name: "Telegram",
-      icon: "✈️",
-      color: "from-blue-400 to-blue-500",
-      description: "Share in chat",
-      bgColor: "bg-blue-50",
-      borderColor: "border-blue-200",
-      shareUrl: `https://t.me/share/url?url=${encodeURIComponent(sharingUrl)}&text=${encodeURIComponent(videoTitle)}`,
-    },
-    {
-      id: "copy",
-      name: "Copy Link",
-      icon: "🔗",
-      color: "from-gray-500 to-gray-600",
-      description: "Copy to clipboard",
-      bgColor: "bg-gray-50",
-      borderColor: "border-gray-200",
-      shareUrl: sharingUrl,
-    },
-  ];
+  const handleSmartShare = useCallback(() => {
+    share({
+      title: videoTitle,
+      text: "Check out this video clip I made!",
+      url: sharingUrl,
+      downloadUrl: downloadUrl,
+    });
+  }, [share, videoTitle, sharingUrl, downloadUrl]);
 
-  const handlePlatformClick = useCallback(
-    async (platform: { id: string; name: string; shareUrl: string }) => {
-      setSharingPlatform(platform.id);
-
-      try {
-        if (platform.id === "copy") {
-          // Copy to clipboard
-          await navigator.clipboard.writeText(platform.shareUrl);
-          console.log("🔗 Link copied to clipboard");
-        } else {
-          // Open sharing URL in new window
-          window.open(platform.shareUrl, "_blank", "width=600,height=400");
-          console.log(`🔗 Sharing to ${platform.name}`);
-        }
-
-        // Reset sharing state after animation
-        setTimeout(() => setSharingPlatform(null), 2000);
-      } catch (error) {
-        console.error(`Failed to share to ${platform.name}:`, error);
-        setSharingPlatform(null);
-      }
-    },
-    [],
-  );
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(sharingUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy link:", err);
+      alert("Failed to copy link.");
+    }
+  }, [sharingUrl]);
 
   const handleDownloadClick = useCallback(() => {
     setShowDownloadModal(true);
@@ -243,160 +180,94 @@ export const SharingOptions: React.FC<SharingOptionsProps> = ({
 
   const handleCleanup = useCallback(async () => {
     try {
-      // Extract job ID from download URL if possible
       const urlParts = downloadUrl.split("/");
-      const potentialJobId = urlParts[urlParts.length - 1]?.split(".")[0];
+      const jobID = urlParts.find((part) => part.includes("-"))?.split(".")[0];
 
-      if (potentialJobId) {
-        console.log("🗑️ Cleaning up clip file:", potentialJobId);
-        await deleteClipMutation.mutateAsync(potentialJobId);
+      if (jobID) {
+        await deleteClipMutation.mutateAsync(jobID);
+        console.log(`🗑️ Clip ${jobID} marked for deletion.`);
       }
     } catch (error) {
-      console.warn("Failed to clean up clip file:", error);
-      // Non-critical error, continue with start over
+      console.error("Failed to delete clip:", error);
+    } finally {
+      onStartOver();
     }
-
-    onStartOver();
   }, [downloadUrl, deleteClipMutation, onStartOver]);
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="bg-white rounded-t-3xl p-6 space-y-6 w-full max-w-lg mx-auto shadow-2xl">
         <div className="text-center">
-          <h3 className="text-2xl font-bold text-gray-800 mb-2 flex items-center justify-center">
-            <CheckCircle className="w-6 h-6 mr-2 text-green-500" />
+          <h2 className="text-2xl font-bold text-gray-800">
             Your Clip is Ready!
-          </h3>
-          <p className="text-gray-600">Download or share your video creation</p>
-          <p className="text-sm text-gray-500 mt-1 truncate max-w-md mx-auto">
-            {videoTitle}
+          </h2>
+          <p className="text-gray-600 mt-1 truncate">{videoTitle}</p>
+        </div>
+
+        {/* Main Actions */}
+        <div className="space-y-4">
+          {/* Smart Share Button */}
+          <button
+            onClick={handleSmartShare}
+            disabled={isSharing}
+            className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 hover:shadow-xl hover:scale-105 flex items-center justify-center space-x-3 text-lg"
+          >
+            {isSharing ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Sharing...</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="w-5 h-5" />
+                <span>Share Video</span>
+              </>
+            )}
+          </button>
+          {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+          <p className="text-xs text-gray-500 text-center">
+            Tries to share the video file, falls back to a link.
           </p>
         </div>
 
-        {/* Download Section */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-200">
-          <div className="text-center space-y-3">
-            <h4 className="font-semibold text-gray-800 text-lg">
-              Download Your Video
-            </h4>
-            <p className="text-gray-600 text-sm">
-              Save the clip to your device
-            </p>
-
-            <button
-              onClick={handleDownloadClick}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-3 hover:scale-105"
-            >
-              <Download className="w-5 h-5" />
-              <span className="text-lg">Download MP4</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Sharing Section */}
-        <div className="space-y-4">
-          <div className="text-center">
-            <h4 className="font-semibold text-gray-800 text-lg flex items-center justify-center">
-              <Share2 className="w-5 h-5 mr-2 text-orange-500" />
-              Share Your Creation
-            </h4>
-            <p className="text-gray-600 text-sm">
-              Share directly to social platforms
-            </p>
-          </div>
-
-          {/* Native Share Button - Primary Option */}
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-2xl border border-blue-200">
-            <div className="text-center space-y-3">
-              <div className="flex items-center justify-center space-x-2">
-                <Smartphone className="w-5 h-5 text-blue-600" />
-                <h5 className="font-semibold text-gray-800">Native Sharing</h5>
-              </div>
-              <p className="text-gray-600 text-sm">
-                Share video file directly to apps on your device
-              </p>
-
-              <NativeShareButton
-                downloadUrl={downloadUrl}
-                videoTitle={videoTitle}
-                size="lg"
-                className="w-full"
-              />
-            </div>
-          </div>
-
-          {/* Alternative Sharing Methods */}
-          <div className="text-center">
-            <p className="text-gray-500 text-sm mb-4">
-              Or choose a specific platform:
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {platforms.map((platform) => (
-              <button
-                key={platform.id}
-                onClick={() => handlePlatformClick(platform)}
-                disabled={sharingPlatform === platform.id}
-                className={`${platform.bgColor} ${platform.borderColor} border-2 p-4 rounded-xl transition-all duration-300 hover:shadow-lg ${
-                  sharingPlatform === platform.id
-                    ? "scale-95 animate-pulse"
-                    : "hover:scale-105"
-                }`}
-              >
-                <div className="text-center space-y-2">
-                  <div className="text-2xl">{platform.icon}</div>
-                  <div>
-                    <h5 className="font-medium text-gray-800 text-sm">
-                      {platform.name}
-                    </h5>
-                    <p className="text-xs text-gray-600">
-                      {platform.description}
-                    </p>
-                  </div>
-
-                  {sharingPlatform === platform.id ? (
-                    <div className="flex items-center justify-center space-x-1 text-gray-600">
-                      <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                      <span className="text-xs">
-                        {platform.id === "copy" ? "Copied!" : "Sharing..."}
-                      </span>
-                    </div>
-                  ) : (
-                    <div
-                      className={`bg-gradient-to-r ${platform.color} text-white py-1 px-3 rounded-lg text-xs font-medium flex items-center justify-center space-x-1`}
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      <span>Share</span>
-                    </div>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
+        {/* Secondary Actions */}
+        <div className="grid grid-cols-2 gap-4">
           <button
-            onClick={handleCleanup}
-            disabled={deleteClipMutation.isPending}
-            className="flex-1 bg-gradient-to-r from-orange-400 to-red-400 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2 hover:scale-105"
+            onClick={handleCopyLink}
+            className="bg-gray-100 text-gray-800 font-medium py-3 px-4 rounded-xl transition-all duration-200 hover:bg-gray-200 flex items-center justify-center space-x-2"
           >
-            <RefreshCw
-              className={`w-4 h-4 ${deleteClipMutation.isPending ? "animate-spin" : ""}`}
-            />
-            <span>Create Another Clip</span>
+            {linkCopied ? (
+              <>
+                <Check className="w-5 h-5 text-green-500" />
+                <span>Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-5 h-5" />
+                <span>Copy Link</span>
+              </>
+            )}
+          </button>
+          <button
+            onClick={handleDownloadClick}
+            className="bg-gray-100 text-gray-800 font-medium py-3 px-4 rounded-xl transition-all duration-200 hover:bg-gray-200 flex items-center justify-center space-x-2"
+          >
+            <Download className="w-5 h-5" />
+            <span>Download MP4</span>
           </button>
         </div>
 
-        <div className="text-center text-sm text-gray-500 space-y-1">
-          <p>🔒 Your videos are processed securely</p>
-          <p>🗑️ Files are automatically cleaned up after download</p>
+        {/* Start Over */}
+        <div className="pt-4 border-t border-gray-200 text-center">
+          <button
+            onClick={handleCleanup}
+            className="text-gray-500 hover:text-red-500 font-medium transition-colors duration-200 flex items-center justify-center w-full space-x-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Create Another Clip</span>
+          </button>
         </div>
       </div>
-
-      {/* Download Modal */}
       <DownloadModal
         isOpen={showDownloadModal}
         onClose={() => setShowDownloadModal(false)}

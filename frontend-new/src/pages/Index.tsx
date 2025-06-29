@@ -1,12 +1,14 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
+import { Button } from "@/components/ui/button";
 import { UrlInput } from "@/components/UrlInput";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { Timeline } from "@/components/Timeline";
 import { ResolutionSelector } from "@/components/ResolutionSelector";
 import { SharingOptions } from "@/components/SharingOptions";
 import { LoadingAnimation } from "@/components/LoadingAnimation";
-import { MetadataResponse } from "@/lib/api";
+import { MetadataResponse, VideoMetadata } from "@/types/metadata";
 import { useCreateJob } from "@/hooks/useApi";
+import { useToast } from "@/components/ui/use-toast";
 
 // Application phases
 type AppPhase = "input" | "editing" | "processing" | "completed" | "error";
@@ -17,13 +19,14 @@ interface CompletedState {
 }
 
 const Index = () => {
-  // Application state
+  const { toast } = useToast();
   const [phase, setPhase] = useState<AppPhase>("input");
   const [error, setError] = useState<string | null>(null);
 
   // Video and metadata state
   const [videoUrl, setVideoUrl] = useState("");
-  const [videoMetadata, setVideoMetadata] = useState<MetadataResponse | null>(
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(
     null,
   );
 
@@ -35,11 +38,12 @@ const Index = () => {
 
   // Clip selection state
   const [clipStart, setClipStart] = useState(0);
-  const [clipEnd, setClipEnd] = useState(30);
+  const [clipEnd, setClipEnd] = useState<number>(0);
 
   // Format selection state
-  const [selectedFormatId, setSelectedFormatId] = useState<string | undefined>(
-    undefined,
+  const [selectedFormatId, setSelectedFormatId] = useState<string | null>(null);
+  const [selectedResolution, setSelectedResolution] = useState<string | null>(
+    null,
   );
 
   // Job creation mutation
@@ -82,17 +86,49 @@ const Index = () => {
 
   // Handle URL submission with metadata
   const handleUrlSubmit = useCallback(
-    (url: string, metadata: MetadataResponse) => {
-      console.log("🎬 New video loaded:", metadata.title);
-      setVideoUrl(url);
+    (url: string, metadata: VideoMetadata) => {
+      setSourceUrl(url);
       setVideoMetadata(metadata);
       setPhase("editing");
       setError(null);
 
+      // --- Robust URL Selection Logic ---
+      const getPreviewUrl = (): string => {
+        // 1. Prioritize manifest URL for adaptive streaming
+        if (metadata.manifest_url) {
+          console.log("Using manifest URL for preview:", metadata.manifest_url);
+          return metadata.manifest_url;
+        }
+
+        // 2. Fallback to finding a direct format URL with video
+        const suitableFormat =
+          metadata.formats?.find(
+            (f) => f.vcodec !== "none" && f.acodec !== "none" && f.url,
+          ) || metadata.formats?.find((f) => f.vcodec !== "none" && f.url);
+
+        if (suitableFormat) {
+          console.log(
+            "Using direct format URL for preview:",
+            suitableFormat.url,
+          );
+          return suitableFormat.url;
+        }
+
+        // 3. As a last resort, use the original URL
+        console.warn(
+          "No ideal preview URL found. Falling back to original URL.",
+        );
+        return url;
+      };
+
+      const previewUrl = getPreviewUrl();
+      setVideoUrl(previewUrl); // This state now holds the best URL for the player
+
       // Reset all other states
       setCurrentJobId(null);
       setCompletedState(null);
-      setSelectedFormatId(undefined);
+      setSelectedFormatId(null);
+      setSelectedResolution(null);
 
       // Initialize clip selection based on video duration
       setClipStart(0);
@@ -144,10 +180,13 @@ const Index = () => {
   );
 
   // Handle format selection
-  const handleFormatChange = useCallback((formatId: string | undefined) => {
-    console.log("🎬 Format changed to:", formatId);
-    setSelectedFormatId(formatId);
-  }, []);
+  const handleFormatChange = useCallback(
+    (formatId: string | null, resolution: string | null) => {
+      setSelectedFormatId(formatId);
+      setSelectedResolution(resolution);
+    },
+    [],
+  );
 
   // Handle clip creation
   const handleClipCreate = useCallback(async () => {
@@ -157,22 +196,20 @@ const Index = () => {
     }
 
     const jobData = {
-      url: videoUrl,
+      url: sourceUrl,
       in_ts: clipStart,
       out_ts: clipEnd,
-      format_id: selectedFormatId!,
+      resolution: selectedResolution,
     };
 
-    console.log("🎬 Creating job with data:", jobData);
+    console.log("Creating job with data:", jobData);
     setPhase("processing");
     setError(null);
 
     try {
       const jobResponse = await createJobMutation.mutateAsync(jobData);
       setCurrentJobId(jobResponse.id);
-      console.log("🎬 Job created successfully:", jobResponse.id);
     } catch (err) {
-      console.error("🎬 Failed to create job:", err);
       setError(
         err instanceof Error ? err.message : "Failed to create processing job",
       );
@@ -181,17 +218,16 @@ const Index = () => {
   }, [
     canCreateClip,
     videoMetadata,
-    videoUrl,
+    sourceUrl,
     clipStart,
     clipEnd,
-    selectedFormatId,
+    selectedResolution,
     createJobMutation,
   ]);
 
   // Handle job completion
   const handleJobComplete = useCallback(
     (downloadUrl: string) => {
-      console.log("🎉 Job completed with download URL:", downloadUrl);
       setCompletedState({
         downloadUrl,
         videoTitle: videoMetadata?.title || "Video Clip",
@@ -204,7 +240,6 @@ const Index = () => {
 
   // Handle job error
   const handleJobError = useCallback((errorMessage: string) => {
-    console.error("❌ Job failed:", errorMessage);
     setError(errorMessage);
     setPhase("error");
     setCurrentJobId(null);
@@ -212,24 +247,29 @@ const Index = () => {
 
   // Handle job cancellation
   const handleJobCancel = useCallback(() => {
-    console.log("🛑 Job cancelled by user");
     setPhase("editing");
     setCurrentJobId(null);
   }, []);
 
   // Handle starting over
   const handleStartOver = useCallback(() => {
-    console.log("🔄 Starting over");
     setPhase("input");
     setVideoUrl("");
     setVideoMetadata(null);
     setCurrentJobId(null);
     setCompletedState(null);
     setError(null);
-    setSelectedFormatId(undefined);
+    setSelectedFormatId(null);
+    setSelectedResolution(null);
     setClipStart(0);
     setClipEnd(30);
   }, []);
+
+  useEffect(() => {
+    if (createJobMutation.data?.id) {
+      setCurrentJobId(createJobMutation.data.id);
+    }
+  }, [createJobMutation.data]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50">
@@ -248,159 +288,83 @@ const Index = () => {
       <div className="max-w-6xl mx-auto p-4 space-y-6">
         {/* URL Input Section - Always visible for starting over */}
         {(phase === "input" || phase === "error") && (
-          <div className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100">
-            <UrlInput onSubmit={handleUrlSubmit} />
+          <UrlInput onSubmit={handleUrlSubmit} />
+        )}
 
-            {/* Error Display */}
-            {phase === "error" && error && (
-              <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-2xl">
-                <div className="flex items-start space-x-3">
-                  <div className="w-5 h-5 text-red-500 mt-0.5">⚠️</div>
-                  <div>
-                    <h4 className="font-medium text-red-800">
-                      Processing Failed
-                    </h4>
-                    <p className="text-red-600 text-sm mt-1">{error}</p>
-                    <button
-                      onClick={handleStartOver}
-                      className="mt-3 text-red-600 hover:text-red-800 text-sm underline"
+        {/* Processing Section */}
+        {phase === "processing" && (
+          <LoadingAnimation
+            jobId={currentJobId}
+            onComplete={handleJobComplete}
+            onError={handleJobError}
+            onCancel={handleJobCancel}
+          />
+        )}
+
+        {/* Completed Section */}
+        {phase === "completed" && completedState && (
+          <SharingOptions
+            downloadUrl={completedState.downloadUrl}
+            videoTitle={completedState.videoTitle}
+            onStartOver={handleStartOver}
+          />
+        )}
+
+        {/* Editing Section */}
+        {phase === "editing" && videoMetadata && (
+          <div className="animate-fade-in-up">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {/* Left Column: Player and Timeline */}
+              <div className="space-y-6">
+                <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-orange-100">
+                  <VideoPlayer
+                    videoUrl={videoUrl}
+                    metadata={videoMetadata}
+                    onDurationChange={handleVideoDurationChange}
+                  />
+                </div>
+                <div className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100">
+                  <Timeline
+                    duration={videoDuration}
+                    clipStart={clipStart}
+                    clipEnd={clipEnd}
+                    onClipStartChange={handleClipStartChange}
+                    onClipEndChange={handleClipEndChange}
+                  />
+                </div>
+              </div>
+
+              {/* Right Column: Resolution and Actions */}
+              <div className="space-y-6">
+                <div className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100">
+                  <ResolutionSelector
+                    formats={videoMetadata.formats}
+                    onFormatChange={handleFormatChange}
+                  />
+                </div>
+                <div className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100">
+                  <div className="flex flex-col space-y-4">
+                    <Button
+                      onClick={handleClipCreate}
+                      disabled={!canCreateClip}
+                      size="lg"
+                      className="w-full bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold py-4 px-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
-                      Try again with a different video
-                    </button>
+                      {createJobMutation.isPending
+                        ? "Creating Clip..."
+                        : "✅ Create Clip"}
+                    </Button>
+                    <Button
+                      onClick={handleStartOver}
+                      variant="outline"
+                      size="lg"
+                    >
+                      Restart
+                    </Button>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Video Editing Interface */}
-        {phase === "editing" && videoMetadata && (
-          <>
-            {/* Start Over Button */}
-            <div className="flex justify-between items-center">
-              <button
-                onClick={handleStartOver}
-                className="text-gray-600 hover:text-gray-800 text-sm flex items-center space-x-1"
-              >
-                <span>←</span>
-                <span>Load different video</span>
-              </button>
             </div>
-
-            {/* Video Player Section */}
-            <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-orange-100">
-              <VideoPlayer
-                videoUrl={videoUrl}
-                metadata={videoMetadata}
-                onDurationChange={handleVideoDurationChange}
-              />
-            </div>
-
-            {/* Timeline Section */}
-            <div className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100">
-              <Timeline
-                duration={videoDuration}
-                clipStart={clipStart}
-                clipEnd={clipEnd}
-                onClipStartChange={handleClipStartChange}
-                onClipEndChange={handleClipEndChange}
-              />
-            </div>
-
-            {/* Controls Section */}
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Resolution Selector */}
-              <div className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100">
-                <ResolutionSelector
-                  videoUrl={videoUrl}
-                  selectedFormatId={selectedFormatId}
-                  onFormatChange={handleFormatChange}
-                />
-              </div>
-
-              {/* Create Clip Button */}
-              <div className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100 flex flex-col items-center justify-center space-y-3">
-                <button
-                  onClick={handleClipCreate}
-                  disabled={!canCreateClip}
-                  className={`w-full font-bold py-4 px-8 rounded-2xl shadow-lg transition-all duration-200 text-lg ${
-                    canCreateClip
-                      ? "bg-gradient-to-r from-orange-400 to-red-400 text-white hover:shadow-xl transform hover:scale-105"
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  }`}
-                >
-                  {createJobMutation.isPending
-                    ? "🎬 Creating Job..."
-                    : "🎬 Create Clip"}
-                </button>
-
-                {/* Validation feedback */}
-                {!canCreateClip && (
-                  <div className="text-center text-sm space-y-1">
-                    {!videoMetadata && (
-                      <p className="text-gray-600">Load a video to start</p>
-                    )}
-                    {videoMetadata && !clipValidation.isValid && (
-                      <>
-                        {clipValidation.invalidRange && (
-                          <p className="text-red-600">
-                            End time must be after start time
-                          </p>
-                        )}
-                        {clipValidation.exceedsMaxDuration && (
-                          <p className="text-red-600">
-                            Clip duration cannot exceed 3 minutes
-                          </p>
-                        )}
-                      </>
-                    )}
-                    {videoMetadata &&
-                      clipValidation.isValid &&
-                      !selectedFormatId && (
-                        <p className="text-yellow-600">
-                          Select a video quality
-                        </p>
-                      )}
-                  </div>
-                )}
-
-                {canCreateClip && (
-                  <div className="text-center text-sm space-y-1">
-                    <p className="text-green-600 font-medium">
-                      ✓ Ready to create clip
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {clipValidation.duration.toFixed(1)}s clip • Format:{" "}
-                      {selectedFormatId}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Processing Animation */}
-        {phase === "processing" && currentJobId && (
-          <div className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100">
-            <LoadingAnimation
-              jobId={currentJobId}
-              onComplete={handleJobComplete}
-              onError={handleJobError}
-              onCancel={handleJobCancel}
-            />
-          </div>
-        )}
-
-        {/* Completion and Download */}
-        {phase === "completed" && completedState && (
-          <div className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100">
-            <SharingOptions
-              downloadUrl={completedState.downloadUrl}
-              videoTitle={completedState.videoTitle}
-              onStartOver={handleStartOver}
-            />
           </div>
         )}
       </div>

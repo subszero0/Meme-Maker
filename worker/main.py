@@ -18,20 +18,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Minimal settings directly in worker to avoid backend import issues
-class WorkerSettings:
-    def __init__(self):
-        self.redis_url = os.getenv('REDIS_URL', 'redis://redis:6379')
-        self.storage_backend = os.getenv('STORAGE_BACKEND', 'local')
-        self.clips_dir = os.getenv('CLIPS_DIR', '/app/clips')
-        self.environment = os.getenv('ENVIRONMENT', 'development')
+# Correctly set the Python path to find the 'app' module
+# This allows us to use the same centralized settings as the backend
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
-# Initialize worker settings
-worker_settings = WorkerSettings()
+# Import settings and models from the backend app
+try:
+    from app.config.configuration import get_settings
+    from app.models import JobStatus
+    
+    # Get settings from the centralized configuration
+    worker_settings = get_settings()
+    # Manually trigger the print statement to show where env is loaded from
+    # This is normally done in the backend's __init__ but we need it here
+    from app.config.configuration import env_path, load_dotenv
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path)
+        print(f"✅ Loaded environment variables from: {env_path}")
 
-# Import from backend app for consistent JobStatus values
-sys.path.append('/app/backend')
-from app.models import JobStatus
+except ImportError as e:
+    logger.error(f"❌ Could not import from backend 'app'. Ensure PYTHONPATH is set correctly.")
+    logger.error(f"Import Error: {e}")
+    sys.exit(1)
 
 # Redis connection (will be initialized later)
 redis = None
@@ -105,7 +113,7 @@ def get_queued_jobs():
                         'in_ts': float(job_data['in_ts']),
                         'out_ts': float(job_data['out_ts']),
                         'created_at': job_data['created_at'],
-                        'format_id': job_data.get('format_id') if job_data.get('format_id') not in ['None', '', None] else None
+                        'resolution': job_data.get('resolution'),
                     })
             if cursor == 0:
                 break
@@ -161,7 +169,7 @@ def main():
     """Main worker loop"""
     logger.info("🚀 Worker starting up...")
     logger.info(f"📍 Redis URL: {worker_settings.redis_url}")
-    logger.info(f"🐳 Environment: {worker_settings.environment}")
+    logger.info(f"🐳 Environment: {worker_settings.debug}")
     
     # Initialize Redis connection
     redis_instance = init_worker_redis()
@@ -206,8 +214,8 @@ def main():
                                 url=job['url'],
                                 in_ts=job['in_ts'],
                                 out_ts=job['out_ts'],
-                                format_id=job.get('format_id'),  # Pass format_id if provided
-                                redis_connection=redis  # Pass Redis connection for progress updates
+                                resolution=job.get('resolution'),
+                                redis_connection=redis
                             )
                             logger.info(f"✅ Job {job_id} completed successfully")
                             

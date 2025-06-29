@@ -1,4 +1,10 @@
-import React, { useState, useRef, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
 import { Scissors, AlertTriangle, CheckCircle } from "lucide-react";
 
 interface TimelineProps {
@@ -277,17 +283,46 @@ export const Timeline: React.FC<TimelineProps> = ({
   );
 
   // Update input fields when slider values change
-  React.useEffect(() => {
+  useEffect(() => {
     setClipStartInput(formatTime(clipStart));
   }, [clipStart, formatTime]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setClipEndInput(formatTime(clipEnd));
   }, [clipEnd, formatTime]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setClipDurationInput(formatTime(clipDuration));
   }, [clipDuration, formatTime]);
+
+  // Attach and detach global event listeners for dragging
+  useEffect(() => {
+    if (!isDragging) return;
+
+    // We need to cast here because the DOM types are not as specific as React's
+    const moveHandler = (e: MouseEvent | TouchEvent) => {
+      handleMove(e as unknown as React.MouseEvent | React.TouchEvent);
+    };
+
+    const endHandler = () => {
+      handleEnd();
+    };
+
+    // Add listeners
+    window.addEventListener("mousemove", moveHandler);
+    window.addEventListener("touchmove", moveHandler, { passive: false });
+    window.addEventListener("mouseup", endHandler);
+    window.addEventListener("touchend", endHandler);
+
+    return () => {
+      // Clean up listeners
+      window.removeEventListener("mousemove", moveHandler);
+      // Ensure the options match for removal to work correctly
+      window.removeEventListener("touchmove", moveHandler, { passive: false });
+      window.removeEventListener("mouseup", endHandler);
+      window.removeEventListener("touchend", endHandler);
+    };
+  }, [isDragging, handleMove, handleEnd]);
 
   return (
     <div className="space-y-6">
@@ -312,12 +347,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         <div
           ref={timelineRef}
           className="relative h-16 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded-2xl cursor-pointer shadow-inner touch-none"
-          onMouseMove={handleMove}
-          onMouseUp={handleEnd}
-          onMouseLeave={handleEnd}
           onClick={handleTimelineInteraction}
-          onTouchMove={handleMove}
-          onTouchEnd={handleEnd}
           onTouchStart={handleTimelineInteraction}
         >
           {/* Selected Clip Area */}

@@ -32,12 +32,16 @@ except ImportError:
 # Try to import from backend app, but handle gracefully for testing
 try:
     import sys
-    sys.path.append('/app/backend')
-    from app import settings
+    # This path adjustment is handled by the calling script (main.py)
+    # sys.path.append('/app/backend') 
+    from app.config.configuration import get_settings
+    settings = get_settings()
 except ImportError:
-    # For testing, create mock settings
+    # This fallback is for isolated testing and won't be used in production
     class settings:
-        ffmpeg_path = '/usr/bin/ffmpeg'
+        ffmpeg_path = "ffmpeg" # Use a generic default for testing
+        ffprobe_path = "ffprobe"
+    settings = settings()
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +51,8 @@ class VideoTrimmer:
     
     def __init__(self, progress_tracker: ProgressTracker):
         self.progress_tracker = progress_tracker
+        self.ffmpeg_path = settings.ffmpeg_path
+        self.ffprobe_path = settings.ffprobe_path
     
     def find_nearest_keyframe(self, video_path: Path, timestamp: float) -> float:
         """
@@ -61,7 +67,7 @@ class VideoTrimmer:
         """
         try:
             cmd = [
-                settings.ffmpeg_path.replace('/usr/local/bin/ffmpeg', '/usr/bin/ffprobe'),
+                self.ffprobe_path,
                 '-v', 'quiet',
                 '-select_streams', 'v:0',
                 '-show_entries', 'frame=pkt_pts_time,key_frame',
@@ -101,7 +107,7 @@ class VideoTrimmer:
         """
         try:
             cmd = [
-                'ffprobe',
+                self.ffprobe_path,
                 '-v', 'quiet',
                 '-print_format', 'json',
                 '-show_streams',
@@ -241,7 +247,7 @@ class VideoTrimmer:
         
         # Build FFmpeg command for re-encoding
         cmd_process = [
-            'ffmpeg',
+            self.ffmpeg_path,
             '-ss', str(in_ts),
             '-i', str(input_file),
             '-t', str(out_ts - in_ts),
@@ -275,7 +281,7 @@ class VideoTrimmer:
         
         # Build FFmpeg command for stream copy
         cmd_process = [
-            'ffmpeg',
+            self.ffmpeg_path,
             '-ss', str(in_ts),
             '-i', str(input_file),
             '-t', str(out_ts - in_ts),
@@ -391,7 +397,7 @@ class VideoTrimmer:
         # Validate the output file has video content
         try:
             cmd_validate = [
-                'ffprobe',
+                self.ffprobe_path,
                 '-v', 'quiet',
                 '-print_format', 'json',
                 '-show_streams',

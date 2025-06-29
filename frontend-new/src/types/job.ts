@@ -9,7 +9,7 @@ export interface JobCreate {
   url: string;
   in_ts: number;
   out_ts: number;
-  format_id?: string;
+  resolution?: string;
 }
 
 export interface JobResponse {
@@ -22,4 +22,5 @@ export interface JobResponse {
   stage?: string;
   format_id?: string;
   video_title?: string;
-} 
+  resolution?: string;
+}

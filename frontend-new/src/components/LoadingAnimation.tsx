@@ -12,7 +12,7 @@ import { useJobStatusWithPolling, useCancelJob } from "@/hooks/useApi";
 import { JobStatus } from "@/types/job";
 
 interface LoadingAnimationProps {
-  jobId: string;
+  jobId: string | null;
   onComplete?: (downloadUrl: string) => void;
   onError?: (error: string) => void;
   onCancel?: () => void;
@@ -24,7 +24,7 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
   onError,
   onCancel,
 }) => {
-  // Poll job status
+  // Poll job status (always call hooks)
   const {
     data: jobData,
     error: jobError,
@@ -149,6 +149,25 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobState.progress, jobState.status]);
 
+  // Handle null jobId case
+  if (!jobId) {
+    return (
+      <div className="text-center space-y-6">
+        <div className="flex items-center justify-center w-32 h-32 mx-auto">
+          <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center">
+            <Clock className="w-12 h-12 text-gray-500" />
+          </div>
+        </div>
+        <div>
+          <h3 className="text-2xl font-bold text-gray-800 mb-2">
+            Initializing...
+          </h3>
+          <p className="text-gray-600">Setting up your processing job</p>
+        </div>
+      </div>
+    );
+  }
+
   // Error state
   if (jobState.status === JobStatus.ERROR) {
     return (
@@ -214,11 +233,6 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
         <p className="text-gray-600">
           Hang tight while we process your video ✨
         </p>
-        {jobData?.video_title && (
-          <p className="text-sm text-gray-500 mt-1 truncate max-w-md mx-auto">
-            {jobData.video_title}
-          </p>
-        )}
       </div>
 
       {/* Animated Progress Circle */}
@@ -266,7 +280,7 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-blue-700 font-medium">{jobState.stage}</p>
         <p className="text-blue-600 text-sm mt-1">
-          Job ID: {jobId.slice(0, 8)}...
+          Job ID: {jobId ? jobId.slice(0, 8) : "Unknown"}...
         </p>
       </div>
 
