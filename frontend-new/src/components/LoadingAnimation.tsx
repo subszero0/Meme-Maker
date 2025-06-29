@@ -9,7 +9,7 @@ import {
   Clock,
 } from "lucide-react";
 import { useJobStatusWithPolling, useCancelJob } from "@/hooks/useApi";
-import { JobStatus } from "@/lib/api";
+import { JobStatus } from "@/types/job";
 
 interface LoadingAnimationProps {
   jobId: string;
