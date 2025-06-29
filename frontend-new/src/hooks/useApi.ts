@@ -1,18 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { metadataApi, jobsApi, healthApi, clipsApi } from "../lib/api";
+import { JobStatus, JobCreate, JobResponse } from "../types/job";
 import {
-  metadataApi,
-  jobsApi,
-  healthApi,
-  clipsApi,
-  JobStatus,
-} from "../lib/api";
-import type {
   MetadataResponse,
   VideoMetadata,
-  JobCreate,
-  JobResponse,
-  HealthResponse,
-} from "../lib/api";
+} from "../types/metadata";
+import { HealthResponse } from "../types/common";
 
 // ===========================
 // Query Keys Factory

@@ -29,6 +29,9 @@ ENV NODE_ENV=production
 ENV MODE=production
 ENV VITE_MODE=production
 
+# Clean Vite's internal cache and any previous build artifacts
+RUN rm -rf node_modules/.vite dist
+
 # Build the application
 RUN npm run build:production
 
