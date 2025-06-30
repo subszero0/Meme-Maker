@@ -183,7 +183,7 @@ def main():
     # Import process_clip only after Redis is working (lazy import to avoid backend issues)
     try:
         logger.info("📦 Loading video processing module...")
-        from process_clip import process_clip
+        from worker.process_clip import process_clip
         logger.info("✅ Video processing module loaded successfully")
     except Exception as e:
         logger.error(f"❌ Failed to import process_clip: {e}")

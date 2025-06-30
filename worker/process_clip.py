@@ -23,8 +23,8 @@ from app.models import JobStatus
 from app.storage_factory import get_storage_manager
 
 # Import video processing components
-from video.trimmer import VideoTrimmer
-from progress.tracker import ProgressTracker
+from worker.video.trimmer import VideoTrimmer
+from worker.progress.tracker import ProgressTracker
 
 # Redis will be passed as parameter from main worker
 worker_redis = None
