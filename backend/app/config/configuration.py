@@ -26,31 +26,35 @@ class Settings(BaseSettings):
     """Application settings"""
 
     # Environment settings
-    debug: bool = Field(False, env="DEBUG")
-    testing: bool = Field(False, env="TESTING")
-    base_url: str = Field("http://localhost:8000", env="BASE_URL")
+    debug: bool = Field(default=False, env="DEBUG")
+    testing: bool = Field(default=False, env="TESTING")
+    base_url: str = Field(default="http://localhost:8000", env="BASE_URL")
 
     # CORS settings
     cors_origins: list[str] = Field(default_factory=list, env="CORS_ORIGINS")
 
     # Redis settings
-    redis_url: str = Field("redis://localhost:6379", env="REDIS_URL")
+    redis_url: str = Field(default="redis://localhost:6379", env="REDIS_URL")
 
     # Storage settings
-    storage_backend: str = Field("local", env="STORAGE_BACKEND")
-    clips_dir: str = Field("storage/clips", env="CLIPS_DIR")
-    s3_bucket_name: str = Field("", env="S3_BUCKET_NAME")
-    s3_access_key_id: str = Field("", env="S3_ACCESS_KEY_ID")
-    s3_secret_access_key: str = Field("", env="S3_SECRET_ACCESS_KEY")
+    storage_backend: str = Field(default="local", env="STORAGE_BACKEND")
+    clips_dir: str = Field(default="storage/clips", env="CLIPS_DIR")
+    s3_bucket_name: str = Field(default="", env="S3_BUCKET_NAME")
+    s3_access_key_id: str = Field(default="", env="S3_ACCESS_KEY_ID")
+    s3_secret_access_key: str = Field(default="", env="S3_SECRET_ACCESS_KEY")
 
     # FFmpeg settings
-    ffmpeg_path: str = Field("ffmpeg", env="FFMPEG_PATH")
-    ffprobe_path: str = Field("ffprobe", env="FFPROBE_PATH")
+    ffmpeg_path: str = Field(default="/usr/bin/ffmpeg", env="FFMPEG_PATH")
+    ffprobe_path: str = Field(default="ffprobe", env="FFPROBE_PATH")
+
+    # Job and cleanup settings
+    max_concurrent_jobs: int = Field(default=20, env="MAX_CONCURRENT_JOBS")
+    cleanup_after_hours: int = Field(default=24, env="CLEANUP_AFTER_HOURS")
 
     # Rate limiting
-    rate_limit_enabled: bool = Field(True, env="RATE_LIMIT_ENABLED")
-    rate_limit_times: int = Field(100, env="RATE_LIMIT_TIMES")
-    rate_limit_seconds: int = Field(60, env="RATE_LIMIT_SECONDS")
+    rate_limit_enabled: bool = Field(default=True, env="RATE_LIMIT_ENABLED")
+    rate_limit_times: int = Field(default=100, env="RATE_LIMIT_TIMES")
+    rate_limit_seconds: int = Field(default=60, env="RATE_LIMIT_SECONDS")
 
     # Pydantic settings configuration
     model_config = SettingsConfigDict(
@@ -75,7 +79,7 @@ class VideoProcessingSettings:
         self.max_concurrent_jobs: int = int(os.getenv("MAX_CONCURRENT_JOBS", 20))
 
         # Video Processing
-        self.ffmpeg_path: str = os.getenv("FFMPEG_PATH", "ffmpeg")
+        self.ffmpeg_path: str = os.getenv("FFMPEG_PATH", "/usr/bin/ffmpeg")
         self.ffprobe_path: str = os.getenv("FFPROBE_PATH", "ffprobe")
         self.rotation_correction: float = float(os.getenv("ROTATION_CORRECTION", -1.0))
 
