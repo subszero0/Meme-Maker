@@ -95,7 +95,9 @@ describe("Component Fixed Tests", () => {
       renderWithProviders(<UrlInput onSubmit={mockOnSubmit} />);
 
       // Check that the component mentions the supported platforms in the description text
-      expect(screen.getByText(/Paste any video link from Facebook/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Paste any video link from Facebook/i),
+      ).toBeInTheDocument();
     });
   });
 
