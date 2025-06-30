@@ -3,4 +3,5 @@ rq==1.15.1
 yt-dlp>=2025.06.09
 pydantic>=2.8.2
 aiofiles==23.2.1
-python-dotenv>=1.0.1 
+python-dotenv>=1.0.1
+pydantic-settings>=2.2.1 
