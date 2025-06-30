@@ -15,12 +15,12 @@ export interface JobCreate {
 export interface JobResponse {
   id: string;
   status: JobStatus;
-  created_at: string;
-  progress?: number;
+  progress: number;
   download_url?: string;
-  error_code?: string;
+  source_url?: string;
+  error_message?: string;
+  error_code?: string | null;
   stage?: string;
-  format_id?: string;
-  video_title?: string;
-  resolution?: string;
+  created_at?: string;
+  updated_at?: string;
 }

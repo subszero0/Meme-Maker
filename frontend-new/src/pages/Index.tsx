@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { UrlInput } from "@/components/UrlInput";
 import { VideoPlayer } from "@/components/VideoPlayer";
@@ -9,6 +10,8 @@ import { LoadingAnimation } from "@/components/LoadingAnimation";
 import { MetadataResponse, VideoMetadata } from "@/types/metadata";
 import { useCreateJob } from "@/hooks/useApi";
 import { useToast } from "@/components/ui/use-toast";
+import { queryKeys } from "@/hooks/useApi";
+import { JobResponse, JobStatus } from "@/types/job";
 
 // Application phases
 type AppPhase = "input" | "editing" | "processing" | "completed" | "error";
@@ -235,7 +238,7 @@ const Index = () => {
       setPhase("completed");
       setCurrentJobId(null);
     },
-    [videoMetadata?.title],
+    [videoMetadata],
   );
 
   // Handle job error

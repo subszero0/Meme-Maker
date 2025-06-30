@@ -132,7 +132,7 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
 
     if (status === JobStatus.QUEUED) return 0;
     if (status === JobStatus.ERROR) return -1;
-    if (status === JobStatus.DONE) return steps.length - 1;
+    if (status === JobStatus.DONE || progress === 100) return steps.length - 1;
 
     // Find step based on progress range
     for (let i = 0; i < steps.length; i++) {
@@ -190,33 +190,6 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
             {jobData?.error_code === "QUEUE_FULL"
               ? "🚦 The server is experiencing high traffic. Please try again in a few minutes."
               : "⚠️ Something went wrong during processing. Please try again with a different video or contact support."}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Success state
-  if (jobState.status === JobStatus.DONE) {
-    return (
-      <div className="text-center space-y-6">
-        <div className="flex items-center justify-center w-32 h-32 mx-auto">
-          <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
-            <CheckCircle className="w-12 h-12 text-green-500" />
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-2">
-            Your Clip is Ready! 🎉
-          </h3>
-          <p className="text-gray-600">Download will start automatically</p>
-        </div>
-
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-green-600 text-sm">
-            ✅ Processing completed successfully! Your video clip has been
-            generated and is ready for download.
           </p>
         </div>
       </div>

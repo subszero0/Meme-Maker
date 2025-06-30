@@ -4,7 +4,6 @@ interface SmartShareProps {
   title: string;
   text: string;
   url: string;
-  downloadUrl: string;
 }
 
 export const useSmartShare = () => {
@@ -15,7 +14,7 @@ export const useSmartShare = () => {
     setIsSharing(true);
     setError(null);
 
-    const { title, text, url, downloadUrl } = shareData;
+    const { title, text, url } = shareData;
 
     // Check for Web Share API support first
     if (!navigator.share) {
@@ -35,7 +34,7 @@ export const useSmartShare = () => {
 
     try {
       // --- Attempt to share the FILE first ---
-      const response = await fetch(downloadUrl);
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error("Failed to fetch video file for sharing.");
       }
@@ -58,16 +57,9 @@ export const useSmartShare = () => {
         return; // Success, exit
       }
 
-      // --- Fallback to sharing the URL ---
-      if (navigator.canShare({ url })) {
-        await navigator.share({
-          url,
-          title,
-          text,
-        });
-      } else {
-        // If neither file nor URL can be shared (unlikely if navigator.share exists)
-        throw new Error("This content cannot be shared on your device.");
+      // If file sharing is not possible, inform the user.
+      if (!navigator.canShare || !navigator.canShare({ files: [file] })) {
+        throw new Error("Direct file sharing is not supported on this device.");
       }
     } catch (err: unknown) {
       // Ignore abort errors from user cancelling the share sheet
