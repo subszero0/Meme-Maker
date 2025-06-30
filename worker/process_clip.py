@@ -392,8 +392,11 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, resolution:
                 
                 # Update job with download URL
                 job_key = f"job:{job_id}"
-                worker_redis.hset(job_key, "url", download_url)
-                worker_redis.expire(job_key, 3600)
+                worker_redis.hset(job_key, mapping={
+                    "download_url": download_url,
+                    "file_size": str(storage_result["size"]),
+                    "video_title": video_title,
+                })
                 
                 logger.info(f"🎬 Worker: Job {job_id} completed successfully")
                 
