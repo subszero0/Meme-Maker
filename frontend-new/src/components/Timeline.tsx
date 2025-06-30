@@ -317,8 +317,7 @@ export const Timeline: React.FC<TimelineProps> = ({
     return () => {
       // Clean up listeners
       window.removeEventListener("mousemove", moveHandler);
-      // Ensure the options match for removal to work correctly
-      window.removeEventListener("touchmove", moveHandler, { passive: false });
+      window.removeEventListener("touchmove", moveHandler);
       window.removeEventListener("mouseup", endHandler);
       window.removeEventListener("touchend", endHandler);
     };
@@ -479,6 +478,30 @@ export const Timeline: React.FC<TimelineProps> = ({
 
           <div
             className={`p-4 rounded-2xl border transition-colors duration-200 ${
+              validation.isValidEnd
+                ? "bg-orange-50 border-orange-200"
+                : "bg-red-50 border-red-200"
+            }`}
+          >
+            <label className="block text-sm text-gray-600 mb-2 font-medium">
+              Clip End
+            </label>
+            <input
+              type="text"
+              value={clipEndInput}
+              onChange={handleEndTimeChange}
+              placeholder="0:30.0"
+              className={`w-full text-center text-lg font-bold bg-white border rounded-lg px-3 py-2 transition-colors duration-200 focus:outline-none focus:ring-2 ${
+                validation.isValidEnd
+                  ? "text-orange-600 border-orange-300 focus:ring-orange-500"
+                  : "text-red-600 border-red-300 focus:ring-red-500"
+              }`}
+            />
+            <p className="text-xs text-gray-500 mt-1">Format: M:SS.D</p>
+          </div>
+
+          <div
+            className={`p-4 rounded-2xl border transition-colors duration-200 ${
               validation.isMaxDuration
                 ? "bg-blue-50 border-blue-200"
                 : "bg-red-50 border-red-200"
@@ -506,30 +529,6 @@ export const Timeline: React.FC<TimelineProps> = ({
             <p className="text-xs text-gray-500 mt-1">
               Max: {formatTime(MAX_CLIP_DURATION)}
             </p>
-          </div>
-
-          <div
-            className={`p-4 rounded-2xl border transition-colors duration-200 ${
-              validation.isValidEnd
-                ? "bg-yellow-50 border-yellow-200"
-                : "bg-red-50 border-red-200"
-            }`}
-          >
-            <label className="block text-sm text-gray-600 mb-2 font-medium">
-              Clip End
-            </label>
-            <input
-              type="text"
-              value={clipEndInput}
-              onChange={handleEndTimeChange}
-              placeholder="0:30.0"
-              className={`w-full text-center text-lg font-bold bg-white border rounded-lg px-3 py-2 transition-colors duration-200 focus:outline-none focus:ring-2 ${
-                validation.isValidEnd
-                  ? "text-yellow-600 border-yellow-300 focus:ring-yellow-500"
-                  : "text-red-600 border-red-300 focus:ring-red-500"
-              }`}
-            />
-            <p className="text-xs text-gray-500 mt-1">Format: M:SS.D</p>
           </div>
         </div>
 
