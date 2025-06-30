@@ -281,7 +281,10 @@ const Index = () => {
       <header className="bg-gradient-to-r from-orange-400 to-red-400 text-white p-4 shadow-lg">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between">
           <h1 className="text-3xl tracking-wide md:text-4xl font-bold text-slate-50 mb-2 md:mb-0 flex items-center">
-            <Logo className="h-8 w-8 mr-2 flex-shrink-0" aria-label="MemeIt logo" />
+            <Logo
+              className="h-8 w-8 mr-2 flex-shrink-0"
+              aria-label="MemeIt logo"
+            />
             MemeIt
           </h1>
           <p className="text-orange-100 text-sm md:text-base">
