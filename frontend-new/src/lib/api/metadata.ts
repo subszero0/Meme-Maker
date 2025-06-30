@@ -7,7 +7,7 @@ export const metadataApi = {
     try {
       console.log("🔍 Fetching basic metadata for:", url);
       const response: AxiosResponse<MetadataResponse> = await apiClient.post(
-        "api/v1/metadata/extract",
+        "api/v1/metadata",
         {
           url,
         },
