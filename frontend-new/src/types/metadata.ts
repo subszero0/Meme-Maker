@@ -33,5 +33,6 @@ export interface VideoMetadata {
   upload_date: string;
   view_count: number;
   formats: VideoFormat[];
+  resolutions: string[];
   manifest_url?: string;
 }

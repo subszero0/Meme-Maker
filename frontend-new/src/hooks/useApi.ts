@@ -110,46 +110,47 @@ export function useJobStatus(
  * Hook for polling job status with automatic updates
  */
 export function useJobStatusWithPolling(
-  jobId: string,
-  options?: {
+  jobId: string | null,
+  options: {
     enabled?: boolean;
     pollingInterval?: number;
   },
 ) {
-  const {
-    enabled = true,
-    pollingInterval = parseInt(import.meta.env.VITE_POLLING_INTERVAL || "2000"),
-  } = options || {};
+  const { enabled = true, pollingInterval = 2000 } = options;
 
-  return useQuery({
+  return useQuery<JobResponse>({
     queryKey: queryKeys.job(jobId),
     queryFn: async () => {
-      console.log("🔄 Polling job status for:", jobId);
-      const response = await jobsApi.getJob(jobId);
-      console.log(
-        "🔄 Job status:",
-        response.status,
-        "Progress:",
-        response.progress,
-      );
-      return response;
-    },
-    enabled: enabled && !!jobId,
-    refetchInterval: (query) => {
-      // Only poll if job is still in progress
-      const data = query.state.data;
-      if (
-        data?.status === JobStatus.QUEUED ||
-        data?.status === JobStatus.WORKING
-      ) {
-        return pollingInterval;
+      if (!jobId) {
+        throw new Error("No job ID provided for polling");
       }
-      // Stop polling when job is done or errored
-      return false;
+      const data = await jobsApi.getJob(jobId);
+      console.log(
+        `Polling job status for: ${jobId}, Status: ${data.status}, Progress: ${data.progress}`,
+      );
+      return data;
     },
-    refetchIntervalInBackground: false, // Stop polling when tab is not active
-    staleTime: 0, // Always consider job data stale for real-time updates
-    refetchOnWindowFocus: false,
+    enabled: !!jobId && enabled,
+    refetchInterval: (query) => {
+      const data = query.state.data as JobResponse | undefined;
+
+      // Stop polling if the job is complete and we have a URL, or if there's an error.
+      if (
+        (data?.status === JobStatus.DONE && data?.download_url) ||
+        data?.status === JobStatus.ERROR
+      ) {
+        return false;
+      }
+
+      // If the job is "done" but the URL is missing, poll faster for a few seconds.
+      if (data?.status === JobStatus.DONE && !data?.download_url) {
+        return 500; // Poll every 0.5 seconds to quickly fetch the final URL
+      }
+
+      return pollingInterval; // Otherwise, use the default interval.
+    },
+    refetchIntervalInBackground: false,
+    retry: 3, // Standard retry for actual network errors
   });
 }
 

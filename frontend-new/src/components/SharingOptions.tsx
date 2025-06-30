@@ -145,34 +145,35 @@ export const SharingOptions: React.FC<SharingOptionsProps> = ({
   const { share, isSharing, error } = useSmartShare();
   const deleteClipMutation = useDeleteClip();
 
-  // Generate a shareable URL for link-based sharing
-  const sharingUrl = useMemo(() => {
+  // The downloadUrl from the backend is now the single source of truth.
+  const absoluteDownloadUrl = useMemo(() => {
+    // If the URL is already absolute, use it directly.
+    if (downloadUrl.startsWith("http")) {
+      return downloadUrl;
+    }
+    // Otherwise, construct the full URL from the relative path.
     const baseUrl = window.location.origin;
-    // This could be a dedicated page in the future, for now it points to the clip
-    return downloadUrl.startsWith("http")
-      ? downloadUrl
-      : `${baseUrl}${downloadUrl}`;
+    return `${baseUrl}${downloadUrl}`;
   }, [downloadUrl]);
 
   const handleSmartShare = useCallback(() => {
     share({
       title: videoTitle,
       text: "Check out this video clip I made!",
-      url: sharingUrl,
-      downloadUrl: downloadUrl,
+      url: absoluteDownloadUrl,
     });
-  }, [share, videoTitle, sharingUrl, downloadUrl]);
+  }, [share, videoTitle, absoluteDownloadUrl]);
 
   const handleCopyLink = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(sharingUrl);
+      await navigator.clipboard.writeText(absoluteDownloadUrl);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy link:", err);
       alert("Failed to copy link.");
     }
-  }, [sharingUrl]);
+  }, [absoluteDownloadUrl]);
 
   const handleDownloadClick = useCallback(() => {
     setShowDownloadModal(true);
