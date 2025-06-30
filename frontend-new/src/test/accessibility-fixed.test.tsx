@@ -79,7 +79,7 @@ describe("Accessibility Fixed Tests", () => {
       renderWithProviders(<UrlInput onSubmit={mockOnSubmit} />);
 
       // Check the actual structure of the component
-      const input = screen.getByPlaceholderText(/https.*youtube.*watch/i);
+      const input = screen.getByPlaceholderText(/https.*facebook.*watch/i);
       expect(input).toHaveAttribute("type", "url");
       expect(input).not.toBeDisabled();
 
@@ -130,7 +130,7 @@ describe("Accessibility Fixed Tests", () => {
       expect(form).toBeInTheDocument();
 
       // Check for proper input types
-      const urlInput = screen.getByPlaceholderText(/https.*youtube.*watch/i);
+      const urlInput = screen.getByPlaceholderText(/https.*facebook.*watch/i);
       expect(urlInput).toHaveAttribute("type", "url");
 
       // Check for proper button attributes
@@ -213,8 +213,8 @@ describe("Accessibility Fixed Tests", () => {
       renderWithProviders(<UrlInput onSubmit={mockOnSubmit} />);
 
       // Check that the input has a meaningful placeholder
-      const input = screen.getByPlaceholderText(/https.*youtube.*watch/i);
-      expect(input.getAttribute("placeholder")).toContain("youtube");
+      const input = screen.getByPlaceholderText(/https.*facebook.*watch/i);
+      expect(input.getAttribute("placeholder")).toContain("facebook");
       expect(input.getAttribute("placeholder")).toContain("video URL");
     });
 
