@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link2, Loader2, AlertCircle } from "lucide-react";
 import { useVideoMetadata } from "../hooks/useApi";
-import { useDebounce } from "use-debounce";
 import type { VideoMetadata } from "@/types/metadata";
 
 interface UrlInputProps {
@@ -15,16 +14,13 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
   const [submittedUrl, setSubmittedUrl] = useState("");
   const [validationError, setValidationError] = useState("");
 
-  // Debounce URL for validation
-  const [debouncedUrl] = useDebounce(url, 500);
-
-  // Fetch metadata when URL is valid
+  // Only fetch metadata when user has submitted a URL (not on every input change)
   const {
     data: metadata,
     isLoading,
     error: metadataError,
     isError,
-  } = useVideoMetadata(debouncedUrl, !!debouncedUrl && !validationError);
+  } = useVideoMetadata(submittedUrl, !!submittedUrl);
 
   const validateUrl = (inputUrl: string): boolean => {
     if (!inputUrl.trim()) {
