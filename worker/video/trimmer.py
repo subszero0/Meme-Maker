@@ -181,9 +181,9 @@ class VideoTrimmer:
                                     f"Detected Google/YouTube video with potential tilt: {width}x{height} from {handler}"
                                 )
                                 logger.info(
-                                    "Skipping minor tilt correction (≤1°) to avoid unintended rotation"
+                                    "Applying subtle 0.5° counter-clockwise tilt correction"
                                 )
-                                # No rotation applied for minor tilt
+                                return "rotate=-0.5*PI/180:fillcolor=black"
                             elif (
                                 "android" in handler
                                 or "lavc" in encoder
@@ -232,7 +232,7 @@ class VideoTrimmer:
             raise TrimError(
                 f"Invalid timestamps: end ({out_ts}s) must be greater than start ({in_ts}s)"
             )
-        if (out_ts - in_ts) < 0.1:
+        if (out_ts - in_ts) < 0.5:
             logger.warning(f"⚠️ Very short clip duration: {out_ts - in_ts:.3f}s")
 
         # Analyze input file
@@ -241,7 +241,12 @@ class VideoTrimmer:
         try:
             rotation_filter = self.detect_video_rotation(input_file)
 
-            # No generic tilt correction – only apply rotation when metadata explicitly requires it
+            # Apply an extremely subtle 0.5° CCW tilt if no specific rotation metadata found
+            if not rotation_filter:
+                rotation_filter = "rotate=-0.5*PI/180:fillcolor=black,scale=trunc(iw/2)*2:trunc(ih/2)*2"
+                logger.info(
+                    "🎬 Applying systematic 0.5° counter-clockwise tilt correction"
+                )
 
             if rotation_filter:
                 logger.info(f"🎬 Applying rotation correction: {rotation_filter}")
