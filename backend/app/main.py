@@ -156,6 +156,7 @@ async def health_check() -> dict[str, str]:
 @app.get("/", tags=["root"])
 async def root() -> dict[str, str]:
     """Root endpoint with API information"""
+    # Updated: 2025-06-30 - Ensure latest deployment with /metadata/extract endpoint
     return {
         "message": "Meme Maker API",
         "version": "0.1.0",
