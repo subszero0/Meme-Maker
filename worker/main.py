@@ -10,6 +10,7 @@ import logging
 import traceback
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 
 # Configure logging first, before any other imports
 logging.basicConfig(
@@ -43,6 +44,12 @@ except ImportError as e:
 
 # Redis connection (will be initialized later)
 redis = None
+
+# --- ensure project root on sys.path -----------------------------------------
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+# -----------------------------------------------------------------------------
 
 def init_worker_redis():
     """Initialize Redis connection specifically for worker"""
