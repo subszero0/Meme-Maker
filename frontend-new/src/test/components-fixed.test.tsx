@@ -72,7 +72,7 @@ describe("Component Fixed Tests", () => {
       // Use the actual placeholder text from the component
       expect(
         screen.getByPlaceholderText(
-          "https://youtube.com/watch?v=... or any video URL",
+          "https://facebook.com/watch?v=... or any video URL",
         ),
       ).toBeInTheDocument();
       expect(
@@ -95,9 +95,7 @@ describe("Component Fixed Tests", () => {
       renderWithProviders(<UrlInput onSubmit={mockOnSubmit} />);
 
       // Check that the component mentions the supported platforms in the description text
-      expect(
-        screen.getByText(/YouTube, Instagram, Facebook, WhatsApp, or Threads/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Paste any video link from Facebook/i)).toBeInTheDocument();
     });
   });
 
