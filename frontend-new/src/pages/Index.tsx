@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { queryKeys } from "@/hooks/useApi";
 import { JobResponse, JobStatus } from "@/types/job";
 import logoUrl from "../../Logos/white.svg";
+import { Link } from "react-router-dom";
 
 // Application phases
 type AppPhase = "input" | "editing" | "processing" | "completed" | "error";
@@ -280,13 +281,18 @@ const Index = () => {
       {/* Header */}
       <header className="bg-gradient-to-r from-orange-400 to-red-400 text-white p-4 shadow-lg">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between">
-          <h1 className="text-3xl tracking-wide md:text-4xl font-bold text-slate-50 mb-2 md:mb-0 flex items-center">
-            <img
-              src={logoUrl}
-              alt="MemeIt logo"
-              className="h-8 w-8 mr-2 flex-shrink-0"
-            />
-            MemeIt
+          <h1 className="text-3xl tracking-wide md:text-4xl font-bold text-slate-50 mb-2 md:mb-0">
+            <Link
+              to="/"
+              className="flex items-center hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white"
+            >
+              <img
+                src={logoUrl}
+                alt="MemeIt logo"
+                className="h-8 w-8 mr-2 flex-shrink-0"
+              />
+              MemeIt
+            </Link>
           </h1>
           <p className="text-orange-100 text-sm md:text-base">
             Clip, Create, Share - Your video moments made viral
