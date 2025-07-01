@@ -214,8 +214,7 @@ describe("Accessibility Fixed Tests", () => {
 
       // Check that the input has a meaningful placeholder
       const input = screen.getByPlaceholderText(/https.*facebook.*watch/i);
-      expect(input.getAttribute("placeholder")).toContain("facebook");
-      expect(input.getAttribute("placeholder")).toContain("video URL");
+      expect(input.getAttribute("placeholder")).toMatch(/facebook.*instagram/i);
     });
 
     it("should have proper form submission behavior", () => {
