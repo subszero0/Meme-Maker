@@ -198,15 +198,35 @@ async def download_job_file(
                     )
 
             video_title = job_data.get("video_title", "video")
-            filename = f"{video_title}_{job_id}.mp4"
+
+            # --- Robust filename handling ---
+            import unicodedata
+            import urllib.parse
+
+            raw_filename = f"{video_title}_{job_id}.mp4"
+
+            # ASCII-only fallback for `filename` (required by RFC6266)
+            ascii_filename = (
+                unicodedata.normalize("NFKD", raw_filename)
+                .encode("ascii", "ignore")
+                .decode("ascii")
+            ) or "clip.mp4"
+
+            # RFC 5987 encoded value for full UTF-8 support
+            quoted_filename = urllib.parse.quote(raw_filename.encode("utf-8"))
+
+            content_disposition = (
+                f'attachment; filename="{ascii_filename}"; filename*=UTF-8'
+                "{quoted_filename}"
+            )
 
             return FileResponse(
                 path=str(file_path),
                 media_type="video/mp4",
-                filename=filename,
+                filename=ascii_filename,
                 headers={
-                    "Access-Control-Allow-Origin": "*",  # Allow cross-origin requests
-                    "Content-Disposition": f'attachment; filename="{filename}"',
+                    "Access-Control-Allow-Origin": "*",
+                    "Content-Disposition": content_disposition,
                     "Cache-Control": "no-cache, no-store, must-revalidate",
                     "Pragma": "no-cache",
                     "Expires": "0",
