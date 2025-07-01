@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 import time
 from typing import Dict, List, Optional
 
@@ -14,6 +15,26 @@ from ..models import MetadataRequest, MetadataResponse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# NEW_EDIT_START: Add helper to detect Instagram URLs
+INSTAGRAM_URL_RE = re.compile(
+    r"https?://(www\.)?instagram\.com/((reel|p|tv)/[\w\-]+)/?"
+)
+
+# NEW_EDIT_START: Add regex for Reddit URLs
+REDDIT_URL_RE = re.compile(
+    r"https?://(www\.)?reddit\.com/r/[\w\-]+/comments/[\w\-]+/[\w\-]+/?|https?://v\.redd\.it/[\w\d]+"
+)
+
+
+def _is_instagram_url(url: str) -> bool:
+    """Return True if the provided url points to an Instagram reel / post / tv video."""
+    return bool(INSTAGRAM_URL_RE.match(url))
+
+
+def _is_reddit_url(url: str) -> bool:
+    """Return True if the provided url points to a Reddit hosted video (post or v.redd.it)."""
+    return bool(REDDIT_URL_RE.match(url))
 
 
 def _process_formats_for_audio(formats: List[Dict]) -> List[Dict]:
@@ -160,7 +181,57 @@ def get_fallback_ydl_opts() -> List[Dict]:
 
 async def extract_metadata_with_fallback(url: str) -> Dict:
     """Extract metadata with fallback configurations and smart retry for bot detection"""
-    configs = [get_optimized_ydl_opts()] + get_fallback_ydl_opts()
+    # Prepare configuration list based on the domain so that we use the most appropriate
+    # headers / client hints up-front.  This improves reliability, especially for
+    # platforms (like Instagram) that are sensitive to the `User-Agent` & `Referer`.
+
+    if _is_instagram_url(url):
+        instagram_base_headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+                "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+            ),
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Referer": "https://www.instagram.com/",
+        }
+
+        instagram_primary_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": False,
+            "skip_download": True,
+            "http_headers": instagram_base_headers,
+            "socket_timeout": 30,
+            "retries": 3,
+        }
+
+        # For Instagram we don't need the YouTube-specific fallbacks.  Instead we
+        # simply try with and without the explicit `Referer` header.
+        configs = [
+            instagram_primary_opts,
+            {
+                **instagram_primary_opts,
+                "http_headers": {
+                    k: v for k, v in instagram_base_headers.items() if k != "Referer"
+                },
+            },
+        ]
+    elif _is_reddit_url(url):
+        # Reddit URLs are handled separately
+        reddit_primary_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": False,
+            "skip_download": True,
+            "http_headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            "socket_timeout": 30,
+        }
+        configs = [reddit_primary_opts]
+    else:
+        configs = [get_optimized_ydl_opts()] + get_fallback_ydl_opts()
 
     # Smart retry parameters for bot detection - REDUCED for better UX
     max_retries = 2  # Reduced from 3 to 2
