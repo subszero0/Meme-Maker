@@ -30,20 +30,14 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
 
     try {
       const urlObj = new URL(inputUrl);
-      const supportedDomains = [
-        "facebook.com",
-        "fb.watch",
-        "instagram.com",
-      ];
+      const supportedDomains = ["facebook.com", "fb.watch", "instagram.com"];
 
       const isSupported = supportedDomains.some((domain) =>
         urlObj.hostname.includes(domain),
       );
 
       if (!isSupported) {
-        setValidationError(
-          "Please enter a valid URL from Facebook, Instagram",
-        );
+        setValidationError("Please enter a valid URL from Facebook, Instagram");
         return false;
       }
 
@@ -82,7 +76,9 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
           Start Your Creative Journey
         </h2>
-        <p className="text-gray-600">Paste any video link from Facebook or Instagram</p>
+        <p className="text-gray-600">
+          Paste any video link from Facebook or Instagram
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
