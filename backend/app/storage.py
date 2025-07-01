@@ -1,7 +1,7 @@
 import hashlib
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -127,10 +127,9 @@ class LocalStorageManager:
 
         # Search in recent days (last 7 days)
         for days_ago in range(1, 8):
-            check_date = datetime.utcnow().replace(
+            check_date = (datetime.utcnow() - timedelta(days=days_ago)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
-            check_date = check_date.replace(day=check_date.day - days_ago)
             date_str = check_date.strftime("%Y-%m-%d")
             date_path = self.base_path / date_str
 

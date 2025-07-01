@@ -31,13 +31,9 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
     try {
       const urlObj = new URL(inputUrl);
       const supportedDomains = [
-        "youtube.com",
-        "youtu.be",
         "facebook.com",
         "fb.watch",
         "instagram.com",
-        "threads.net",
-        "whatsapp.com",
       ];
 
       const isSupported = supportedDomains.some((domain) =>
@@ -46,7 +42,7 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
 
       if (!isSupported) {
         setValidationError(
-          "Please enter a valid URL from YouTube, Instagram, Facebook, WhatsApp, or Threads",
+          "Please enter a valid URL from Facebook, Instagram",
         );
         return false;
       }
@@ -86,7 +82,7 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
           Start Your Creative Journey
         </h2>
-        <p className="text-gray-600">Paste any video link from Facebook</p>
+        <p className="text-gray-600">Paste any video link from Facebook or Instagram</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -100,7 +96,7 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit }) => {
               id="video-url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://facebook.com/watch?v=... or any video URL"
+              placeholder="https://facebook.com/watch?v=... or instagram.com/reel/..."
               className={`w-full p-4 pr-12 border-2 rounded-2xl focus:ring-4 focus:ring-orange-100 outline-none text-lg bg-orange-50/30 transition-colors ${
                 validationError
                   ? "border-red-300 focus:border-red-400"
