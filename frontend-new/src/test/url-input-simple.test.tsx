@@ -35,6 +35,8 @@ describe("UrlInput Simple Test", () => {
       </TestWrapper>,
     );
 
-    expect(screen.getByPlaceholderText(/video URL/i)).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(/facebook\.com.*instagram\.com/i),
+    ).toBeInTheDocument();
   });
 });

@@ -1020,6 +1020,65 @@ Modern browsers aggressively optimize touch events for smooth scrolling. Develop
 
 ---
 
+## 🎯 **Best Practice #28: Keep Tests Synchronized with UI Copy**
+
+**Principle**: Whenever user-facing copy (placeholders, headings, descriptions) is changed, _update the corresponding unit/integration tests in the same commit_.  Out-of-sync tests will explode in CI and block merges even though the application works fine.
+
+**Implementation**:
+1. Grep the test suite for the previous text (e.g. `youtube.*watch`).
+2. Replace hard-coded strings or regexes with the new wording.
+3. If copy will change frequently, prefer **semantic queries** (`getByRole`, `getByLabelText`) over brittle exact-match strings.
+4. Run the full test suite locally before pushing.
+
+**Real-World Example**:
+- We shortened the UrlInput description and placeholder to be Facebook-only.  All Vitest specs that expected the old YouTube copy began failing.  Updating two test files and re-running `npm test` restored green status.
+
+**Why It Matters**: CI failures caused by stale tests create noise and slow delivery.  Aligning tests with intentional UI copy changes keeps the pipeline green and the team confident.
+
+**Real-World Pitfall (2025-07-01):** Updating the `UrlInput` placeholder from "video URL" to "facebook.com / instagram.com" broke three Vitest specs (`url-input-simple`, `components-fixed`, `accessibility-fixed`) and failed CI. Always grep for the old copy and update `getByPlaceholderText(...)` or switch to semantic queries before pushing.
+
+---
+
+## 🎯 **Best Practice #29: Treat Prettier Violations as Build-Blocking Errors**
+
+**Principle**: In many pipelines Prettier runs after ESLint.  A single unformatted file will fail `npm run lint` _even when ESLint has only warnings_.  Always run `npx prettier --check .` locally before committing.
+
+**Implementation**:
+- Integrate Prettier into the pre-commit hook or IDE "save" action.
+- Before each push run: `npm run lint && npx prettier --check .`.
+- Use `--write` to fix and **re-stage** the file in the same commit.
+
+**Real-World Example**: The CI Docker build aborted at `npm run build:production` because Prettier found two un-formatted files (`Index.tsx` and `svg.d.ts`).  Running Prettier locally and pushing the formatted files unblocked the build.
+
+---
+
+## 🎯 **Best Practice #30: Verify Static Assets Are Part of the Repository & Build**
+
+**Principle**: A local build can silently load images from `public/`, but production Docker builds only include what the Docker context copies.  Missing assets cause broken images and, if referenced in code, build failures.
+
+**Implementation**:
+1. After adding/renaming images, run `git status` and ensure they are tracked.
+2. For multi-stage Dockerfiles, confirm the `COPY` step includes the asset path.
+3. Use the production build command (`npm run build:production` or `vite build --mode production`) locally to catch missing-file errors early.
+
+**Real-World Example**: The white logo rendered locally because it sat in `public/`, but failed in Lightsail build as the file wasn't added to Git.  Staging `Logos/white.svg` (and retina PNGs) fixed the issue.
+
+---
+
+## 🎯 **Best Practice #31: Prefer URL Imports over `ReactComponent` for Simple SVGs in Vite**
+
+**Principle**: Importing SVGs as React components (`import { ReactComponent as Logo } from "logo.svg"`) requires a compatible SVGR plugin.  In production builds without the plugin, compilation fails.  Importing the asset URL (`import logo from "logo.svg"`) and rendering with `<img>` avoids that risk.
+
+**Implementation**:
+- Use URL import (`import logoUrl from '.../logo.svg'`) for non-interactive icons.
+- Only opt-in to SVGR when you need inline styling or dynamic fill; configure the plugin in `vite.config.ts` first.
+
+**Real-World Example**: CI failed during `vite build` because SVGR wasn't enabled in the Docker image.  Switching to a plain URL import eliminated the dependency and unblocked the build.
+
+**Why It Matters**: Minimizing build-time plugins keeps the production image smaller and the build process simpler.
+
+---
+
 ## 🔄 **Meta Best Practice: Continuous Learning Integration**
 
 **Implementation**:
@@ -1065,5 +1124,8 @@ After each debugging session:
 25. **Systematic dependency resolution** - Resolve cross-platform setup conflicts
 26. **Frontend data model synchronization** - Ensure API payloads are consumed correctly
 27. **Robust event listeners in React** - Implement correct event handling
+28. **Keep tests synchronized with UI copy** - Update tests in the same commit as copy changes
+29. **Verify static assets are part of the repository & build** - Catch missing files in local and production builds
+31. **Prefer URL imports over `ReactComponent` for simple SVGs in Vite** - Avoid build failures in production
 
 These practices work together to create a systematic, safe, and effective approach to production problem resolution that minimizes system disruption while maximizing learning and long-term stability. 
