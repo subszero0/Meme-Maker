@@ -215,10 +215,8 @@ async def download_job_file(
             # RFC 5987 encoded value for full UTF-8 support
             quoted_filename = urllib.parse.quote(raw_filename.encode("utf-8"))
 
-            content_disposition = (
-                f'attachment; filename="{ascii_filename}"; filename*=UTF-8'
-                "{quoted_filename}"
-            )
+            # Build Content-Disposition combining ASCII fallback and RFC5987 UTF-8 value
+            content_disposition = f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{quoted_filename}"
 
             return FileResponse(
                 path=str(file_path),
