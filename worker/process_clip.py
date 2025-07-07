@@ -27,7 +27,7 @@ from worker.video.trimmer import VideoTrimmer
 from worker.progress.tracker import ProgressTracker
 
 # Import Instagram-specific yt-dlp configuration
-from worker.utils.ytdlp_options import build_common_ydl_opts, build_instagram_ydl_opts, is_instagram_url
+from worker.utils.ytdlp_options import build_common_ydl_opts, build_instagram_ydl_configs, is_instagram_url
 
 # Redis will be passed as parameter from main worker
 worker_redis = None
@@ -233,27 +233,55 @@ def extract_video_title(url: str) -> str:
         
         # Use Instagram-specific configuration for title extraction if needed
         if is_instagram_url(url):
-            ydl_opts = build_instagram_ydl_opts()
-            ydl_opts['extract_flat'] = False
-            ydl_opts['skip_download'] = True
+            instagram_configs = build_instagram_ydl_configs()
+            
+            # Try each config for title extraction
+            for config_idx, base_config in enumerate(instagram_configs, 1):
+                try:
+                    ydl_opts = {**base_config}
+                    ydl_opts['extract_flat'] = False
+                    ydl_opts['skip_download'] = True
+                    
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        info = ydl.extract_info(url, download=False)
+                        
+                        # Handle playlist URLs - take first video
+                        if 'entries' in info and info['entries']:
+                            info = info['entries'][0]
+                        
+                        title = info.get('title', 'Unknown Video')
+                        sanitized_title = sanitize_filename(title)
+                        
+                        logger.info(f"🎬 Worker: Video title: '{title}' (using config {config_idx})")
+                        logger.info(f"🎬 Worker: Sanitized filename: '{sanitized_title}'")
+                        
+                        return sanitized_title
+                        
+                except Exception as e:
+                    logger.warning(f"🎬 Worker: Title extraction config {config_idx} failed: {e}")
+                    if config_idx == len(instagram_configs):
+                        # If all configs failed, return default
+                        logger.warning("🎬 Worker: All Instagram title extraction methods failed, using default")
+                        return 'instagram_video'
+                    continue
         else:
             ydl_opts = build_common_ydl_opts()
             ydl_opts['extract_flat'] = False
         
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            
-            # Handle playlist URLs - take first video
-            if 'entries' in info and info['entries']:
-                info = info['entries'][0]
-            
-            title = info.get('title', 'Unknown Video')
-            sanitized_title = sanitize_filename(title)
-            
-            logger.info(f"🎬 Worker: Video title: '{title}'")
-            logger.info(f"🎬 Worker: Sanitized filename: '{sanitized_title}'")
-            
-            return sanitized_title
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                
+                # Handle playlist URLs - take first video
+                if 'entries' in info and info['entries']:
+                    info = info['entries'][0]
+                
+                title = info.get('title', 'Unknown Video')
+                sanitized_title = sanitize_filename(title)
+                
+                logger.info(f"🎬 Worker: Video title: '{title}'")
+                logger.info(f"🎬 Worker: Sanitized filename: '{sanitized_title}'")
+                
+                return sanitized_title
             
     except Exception as e:
         logger.warning(f"🎬 Worker: Failed to extract video title: {e}")
@@ -308,17 +336,68 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, resolution:
 
             temp_video_path = temp_dir / f"{job_id}_source.%(ext)s"
 
-            # Use Instagram-specific configuration if URL is from Instagram
+            # Use Instagram-specific configuration with fallback strategies
             if is_instagram_url(url):
-                logger.info("🎬 Worker: Using Instagram-specific configuration to avoid rate limiting")
-                ydl_opts = build_instagram_ydl_opts()
-                ydl_opts.update({
-                    'format': format_selector,
-                    'outtmpl': str(temp_video_path),
-                    'fragment_retries': 3,
-                    'http_chunk_size': 20971520,  # 20MB in bytes
-                    'noprogress': True,
-                })
+                logger.info("🎬 Worker: Using Instagram-specific configuration with multiple fallback strategies")
+                instagram_configs = build_instagram_ydl_configs()
+                download_successful = False
+                downloaded_file = None
+                
+                for config_idx, base_config in enumerate(instagram_configs, 1):
+                    try:
+                        logger.info(f"🎬 Worker: Trying Instagram config {config_idx}/{len(instagram_configs)}")
+                        
+                        ydl_opts = {
+                            **base_config,
+                            'format': format_selector,
+                            'outtmpl': str(temp_video_path),
+                            'fragment_retries': 3,
+                            'http_chunk_size': 20971520,  # 20MB in bytes
+                            'noprogress': True,
+                        }
+                        
+                        def progress_hook(d):
+                            """Robust progress hook that handles missing 'progress' key"""
+                            try:
+                                if 'downloaded_bytes' in d and 'total_bytes' in d:
+                                    progress = d['downloaded_bytes'] / d['total_bytes']
+                                    update_job_progress(job_id, int(progress * 0.25) + 5, stage="Downloading")
+                                elif 'progress' in d:
+                                    update_job_progress(job_id, int(d['progress'] * 0.25) + 5, stage="Downloading")
+                                elif d.get('status') == 'downloading':
+                                    update_job_progress(job_id, 10, stage="Downloading")
+                            except (KeyError, TypeError, ZeroDivisionError):
+                                pass
+
+                        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                            ydl.add_progress_hook(progress_hook)
+                            info = ydl.extract_info(url, download=True)
+                            downloaded_file = ydl.prepare_filename(info)
+                            download_successful = True
+                            logger.info(f"🎬 Worker: Instagram download successful with config {config_idx}")
+                            break
+                            
+                    except Exception as e:
+                        error_msg = str(e).lower()
+                        logger.warning(f"🎬 Worker: Instagram config {config_idx} failed: {e}")
+                        
+                        # If this is the last config, we'll raise the error
+                        if config_idx == len(instagram_configs):
+                            if "rate-limit" in error_msg or "login required" in error_msg:
+                                raise Exception(
+                                    "Instagram requires authentication for this content. "
+                                    "This may be due to: 1) Private/restricted content, "
+                                    "2) Rate limiting from Instagram, or 3) Content requiring login. "
+                                    "Please try with a public Instagram video or contact support."
+                                )
+                            else:
+                                raise e
+                        # Continue to next config for other errors
+                        continue
+                
+                if not download_successful:
+                    raise Exception("All Instagram download strategies failed")
+                    
             else:
                 # Use standard configuration for other platforms
                 base_opts = build_common_ydl_opts()
@@ -332,29 +411,29 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, resolution:
                     'noprogress': True,
                 }
 
-            download_start_time = time.time()
-            logger.info("🎬 Worker: Starting video download with yt-dlp...")
+                download_start_time = time.time()
+                logger.info("🎬 Worker: Starting video download with yt-dlp...")
 
-            downloaded_file = None
-            def progress_hook(d):
-                """Robust progress hook that handles missing 'progress' key"""
-                try:
-                    if 'downloaded_bytes' in d and 'total_bytes' in d:
-                        progress = d['downloaded_bytes'] / d['total_bytes']
-                        update_job_progress(job_id, int(progress * 0.25) + 5, stage="Downloading")
-                    elif 'progress' in d:
-                        update_job_progress(job_id, int(d['progress'] * 0.25) + 5, stage="Downloading")
-                    # If no progress info available, just update stage without progress
-                    elif d.get('status') == 'downloading':
-                        update_job_progress(job_id, 10, stage="Downloading")
-                except (KeyError, TypeError, ZeroDivisionError) as e:
-                    # Silently continue if progress calculation fails
-                    pass
+                downloaded_file = None
+                def progress_hook(d):
+                    """Robust progress hook that handles missing 'progress' key"""
+                    try:
+                        if 'downloaded_bytes' in d and 'total_bytes' in d:
+                            progress = d['downloaded_bytes'] / d['total_bytes']
+                            update_job_progress(job_id, int(progress * 0.25) + 5, stage="Downloading")
+                        elif 'progress' in d:
+                            update_job_progress(job_id, int(d['progress'] * 0.25) + 5, stage="Downloading")
+                        # If no progress info available, just update stage without progress
+                        elif d.get('status') == 'downloading':
+                            update_job_progress(job_id, 10, stage="Downloading")
+                    except (KeyError, TypeError, ZeroDivisionError) as e:
+                        # Silently continue if progress calculation fails
+                        pass
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.add_progress_hook(progress_hook)
-                info = ydl.extract_info(url, download=True)
-                downloaded_file = ydl.prepare_filename(info)
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.add_progress_hook(progress_hook)
+                    info = ydl.extract_info(url, download=True)
+                    downloaded_file = ydl.prepare_filename(info)
 
             if not downloaded_file or not os.path.exists(downloaded_file):
                 raise Exception("yt-dlp failed to download the file.")
