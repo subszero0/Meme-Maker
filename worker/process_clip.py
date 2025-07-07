@@ -26,6 +26,9 @@ from app.storage_factory import get_storage_manager
 from worker.video.trimmer import VideoTrimmer
 from worker.progress.tracker import ProgressTracker
 
+# Import Instagram-specific yt-dlp configuration
+from worker.utils.ytdlp_options import build_common_ydl_opts, build_instagram_ydl_opts, is_instagram_url
+
 # Redis will be passed as parameter from main worker
 worker_redis = None
 # Simplified metrics - avoid Prometheus import issues in worker
@@ -228,11 +231,14 @@ def extract_video_title(url: str) -> str:
     try:
         logger.info(f"🎬 Worker: Extracting video title from: {url}")
         
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'extract_flat': False,
-        }
+        # Use Instagram-specific configuration for title extraction if needed
+        if is_instagram_url(url):
+            ydl_opts = build_instagram_ydl_opts()
+            ydl_opts['extract_flat'] = False
+            ydl_opts['skip_download'] = True
+        else:
+            ydl_opts = build_common_ydl_opts()
+            ydl_opts['extract_flat'] = False
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -302,16 +308,29 @@ def process_clip(job_id: str, url: str, in_ts: float, out_ts: float, resolution:
 
             temp_video_path = temp_dir / f"{job_id}_source.%(ext)s"
 
-            ydl_opts = {
-                'format': format_selector,
-                'outtmpl': str(temp_video_path),
-                'quiet': True,
-                'no_warnings': True,
-                'retries': 3,
-                'fragment_retries': 3,
-                'http_chunk_size': 20971520,  # 20MB in bytes
-                'noprogress': True,
-            }
+            # Use Instagram-specific configuration if URL is from Instagram
+            if is_instagram_url(url):
+                logger.info("🎬 Worker: Using Instagram-specific configuration to avoid rate limiting")
+                ydl_opts = build_instagram_ydl_opts()
+                ydl_opts.update({
+                    'format': format_selector,
+                    'outtmpl': str(temp_video_path),
+                    'fragment_retries': 3,
+                    'http_chunk_size': 20971520,  # 20MB in bytes
+                    'noprogress': True,
+                })
+            else:
+                # Use standard configuration for other platforms
+                base_opts = build_common_ydl_opts()
+                ydl_opts = {
+                    **base_opts,
+                    'format': format_selector,
+                    'outtmpl': str(temp_video_path),
+                    'retries': 3,
+                    'fragment_retries': 3,
+                    'http_chunk_size': 20971520,  # 20MB in bytes
+                    'noprogress': True,
+                }
 
             download_start_time = time.time()
             logger.info("🎬 Worker: Starting video download with yt-dlp...")
