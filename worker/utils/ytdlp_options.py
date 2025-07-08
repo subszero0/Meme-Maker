@@ -25,7 +25,50 @@ def _detect_cookie_file() -> str | None:
     """Detect available cookie files for yt-dlp authentication."""
     logger.info("🍪 Detecting cookie files...")
 
-    # Check environment variable first
+    # NEW: Check for base64 encoded cookie content in environment variable
+    env_cookie_b64 = os.getenv("INSTAGRAM_COOKIES_B64")
+    if env_cookie_b64:
+        try:
+            import base64
+            import tempfile
+            
+            # Decode the base64 content
+            cookie_content = base64.b64decode(env_cookie_b64).decode('utf-8')
+            
+            # Create a temporary cookie file from decoded content
+            temp_dir = Path("/tmp")
+            temp_dir.mkdir(exist_ok=True)
+            temp_cookie_file = temp_dir / "instagram_cookies_temp.txt"
+            
+            # Write the cookie content to the temporary file
+            with open(temp_cookie_file, 'w') as f:
+                f.write(cookie_content)
+            
+            logger.info(f"✅ Created temporary cookie file from base64 environment variable: {temp_cookie_file}")
+            return str(temp_cookie_file)
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to create temporary cookie file from base64 env var: {e}")
+
+    # NEW: Check for cookie content in environment variable first
+    env_cookie_content = os.getenv("INSTAGRAM_COOKIES")
+    if env_cookie_content:
+        try:
+            # Create a temporary cookie file from environment variable content
+            import tempfile
+            temp_dir = Path("/tmp")
+            temp_dir.mkdir(exist_ok=True)
+            temp_cookie_file = temp_dir / "instagram_cookies_temp.txt"
+            
+            # Write the cookie content to the temporary file
+            with open(temp_cookie_file, 'w') as f:
+                f.write(env_cookie_content)
+            
+            logger.info(f"✅ Created temporary cookie file from environment variable: {temp_cookie_file}")
+            return str(temp_cookie_file)
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to create temporary cookie file from env var: {e}")
+
+    # Check environment variable for file path
     env_cookie = os.getenv("YTDLP_COOKIE_FILE")
     if env_cookie:
         expanded_path = Path(env_cookie).expanduser()
