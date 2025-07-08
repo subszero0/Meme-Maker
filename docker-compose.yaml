@@ -82,6 +82,7 @@ services:
       - ENVIRONMENT=production
     volumes:
       - ./storage:/app/clips
+      - ./cookies:/app/cookies
 
   # prometheus:
   #   image: prom/prometheus
