@@ -113,10 +113,27 @@ def build_instagram_ydl_configs() -> List[Dict]:
     available_browser = _check_browser_available()
     cookie_file = _detect_cookie_file()
 
-    # Strategy 1: Browser cookie extraction (most effective)
+    # --- NEW: Strategy 1: Prioritize Cookie File ---
+    if cookie_file:
+        logger.info("📋 Strategy 1: Using dedicated cookie file")
+        cookie_config = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": False,
+            "cookiefile": cookie_file,
+            "force_ipv4": True,
+            "http2": True,
+            "retries": 2,  # Fewer retries needed if cookies are valid
+            "socket_timeout": 30,
+        }
+        configs.append(cookie_config)
+    else:
+        logger.info("📋 Strategy 1: Skipped (no cookie file found)")
+
+    # Strategy 2: Browser cookie extraction (if available)
     if available_browser:
         logger.info(
-            f"📋 Strategy 1: Browser cookie extraction using {available_browser}"
+            f"📋 Strategy 2: Browser cookie extraction using {available_browser}"
         )
         browser_config = {
             "quiet": True,
@@ -150,10 +167,10 @@ def build_instagram_ydl_configs() -> List[Dict]:
 
         configs.append(browser_config)
     else:
-        logger.info("📋 Strategy 1: Skipped (no browser available)")
+        logger.info("📋 Strategy 2: Skipped (no browser available)")
 
-    # Strategy 2: Enhanced mobile headers with sophisticated options
-    logger.info("📋 Strategy 2: Enhanced mobile headers")
+    # Strategy 3: Enhanced mobile headers
+    logger.info("📋 Strategy 3: Enhanced mobile headers")
     mobile_config = {
         "quiet": True,
         "no_warnings": True,
@@ -190,8 +207,8 @@ def build_instagram_ydl_configs() -> List[Dict]:
 
     configs.append(mobile_config)
 
-    # Strategy 3: Enhanced desktop browser headers with different user agent
-    logger.info("📋 Strategy 3: Enhanced desktop headers")
+    # Strategy 4: Enhanced desktop browser headers
+    logger.info("📋 Strategy 4: Enhanced desktop headers")
     desktop_config = {
         "quiet": True,
         "no_warnings": True,
@@ -230,9 +247,9 @@ def build_instagram_ydl_configs() -> List[Dict]:
 
     configs.append(desktop_config)
 
-    # Strategy 4: Simplified configuration with basic headers
-    logger.info("📋 Strategy 4: Simplified fallback")
-    minimal_config = {
+    # Strategy 5: Simplified fallback with minimal headers
+    logger.info("📋 Strategy 5: Simplified fallback")
+    simple_config = {
         "quiet": True,
         "no_warnings": True,
         "extract_flat": False,
@@ -252,13 +269,13 @@ def build_instagram_ydl_configs() -> List[Dict]:
     }
 
     if cookie_file:
-        minimal_config["cookiefile"] = cookie_file
+        simple_config["cookiefile"] = cookie_file
 
-    configs.append(minimal_config)
+    configs.append(simple_config)
 
-    # Strategy 5: No headers configuration (last resort)
-    logger.info("📋 Strategy 5: No headers (last resort)")
-    bare_config = {
+    # Strategy 6: No headers (last resort)
+    logger.info("📋 Strategy 6: No headers (last resort)")
+    no_header_config = {
         "quiet": True,
         "no_warnings": True,
         "extract_flat": False,
@@ -268,9 +285,9 @@ def build_instagram_ydl_configs() -> List[Dict]:
     }
 
     if cookie_file:
-        bare_config["cookiefile"] = cookie_file
+        no_header_config["cookiefile"] = cookie_file
 
-    configs.append(bare_config)
+    configs.append(no_header_config)
 
     logger.info(f"✅ Built {len(configs)} Instagram configurations")
     return configs
