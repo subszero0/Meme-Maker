@@ -376,6 +376,28 @@ def process_clip(
                 stage="Initializing download...",
             )
 
+            # If this is an Instagram URL, attempt to use previously cached download to avoid
+            # additional network requests that can trigger Instagram anti-bot measures.
+            cache_used = False
+            cached_file_path: Optional[Path] = None
+            if is_instagram_url(url):
+                match = re.search(r"(?:reel|p|tv)/([A-Za-z0-9_-]{5,})", url)
+                if match:
+                    shortcode = match.group(1)
+                    cache_dir = Path("/tmp/ig_cache")
+                    cache_dir.mkdir(exist_ok=True)
+                    possible_cache = cache_dir / f"{shortcode}.mp4"
+                    if possible_cache.exists():
+                        logger.info(
+                            f"🎬 Worker: Using cached Instagram video for shortcode {shortcode}"
+                        )
+                        # Copy to temp_dir so downstream paths are consistent
+                        shutil.copyfile(possible_cache, temp_dir / f"{job_id}_source.mp4")
+                        downloaded_file = str(temp_dir / f"{job_id}_source.mp4")
+                        info = None  # title might still require fallback later
+                        cache_used = True
+                        cached_file_path = possible_cache
+
             # --- Robust Format Selection based on Resolution ---
             if resolution and "x" in resolution:
                 try:
@@ -395,112 +417,137 @@ def process_clip(
 
             temp_video_path = temp_dir / f"{job_id}_source.%(ext)s"
 
+            # Prepare variable to hold extraction info so it can be re-used later
+            info: Optional[dict] = None  # <-- NEW
+
             # Use Instagram-specific configuration with fallback strategies
             if is_instagram_url(url):
-                logger.info(
-                    "🎬 Worker: Using Instagram-specific configuration with multiple fallback strategies"
-                )
-                instagram_configs = build_instagram_ydl_configs()
-                download_successful = False
-                downloaded_file = None
-                last_error = None
-
-                for config_idx, base_config in enumerate(instagram_configs, 1):
-                    try:
-                        logger.info(
-                            f"🎬 Worker: Trying Instagram config {config_idx}/{len(instagram_configs)}"
-                        )
-
-                        # Log configuration details for debugging
-                        has_cookies = base_config.get("cookiefile") is not None
-                        has_browser = base_config.get("cookiesfrombrowser") is not None
-                        user_agent = base_config.get("http_headers", {}).get(
-                            "User-Agent", "None"
-                        )[:50]
-                        logger.info(
-                            f"🔧 Config {config_idx}: cookies={has_cookies}, browser={has_browser}, UA={user_agent}..."
-                        )
-
-                        ydl_opts = {
-                            **base_config,
-                            "format": format_selector,
-                            "outtmpl": str(temp_video_path),
-                            "fragment_retries": 3,
-                            "http_chunk_size": 20971520,  # 20MB in bytes
-                            "noprogress": True,
-                        }
-
-                        def progress_hook(d):
-                            """Robust progress hook that handles missing 'progress' key"""
-                            try:
-                                if "downloaded_bytes" in d and "total_bytes" in d:
-                                    progress = d["downloaded_bytes"] / d["total_bytes"]
-                                    update_job_progress(
-                                        job_id,
-                                        int(progress * 0.25) + 5,
-                                        stage="Downloading",
-                                    )
-                                elif "progress" in d:
-                                    update_job_progress(
-                                        job_id,
-                                        int(d["progress"] * 0.25) + 5,
-                                        stage="Downloading",
-                                    )
-                                elif d.get("status") == "downloading":
-                                    update_job_progress(job_id, 10, stage="Downloading")
-                            except (KeyError, TypeError, ZeroDivisionError):
-                                pass
-
-                        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                            ydl.add_progress_hook(progress_hook)
-                            info = ydl.extract_info(url, download=True)
-                            downloaded_file = ydl.prepare_filename(info)
-                            download_successful = True
-                            logger.info(
-                                f"🎬 Worker: Instagram download successful with config {config_idx}"
-                            )
-                            break
-
-                    except Exception as e:
-                        error_msg = str(e).lower()
-                        last_error = e
-                        logger.warning(
-                            f"🎬 Worker: Instagram config {config_idx} failed: {e}"
-                        )
-
-                        # Continue to next config for any error, log details for last attempt
-                        if config_idx < len(instagram_configs):
-                            continue
-
-                        # If this is the last config, provide comprehensive error message
-                        if (
-                            "rate-limit" in error_msg
-                            or "login required" in error_msg
-                            or "authentication" in error_msg
-                        ):
-                            auth_help_msg = (
-                                "Instagram requires authentication for this content. To fix this:\n\n"
-                                "1. Add Instagram cookies: Create 'cookies/instagram_cookies.txt' with valid session cookies\n"
-                                "2. Use browser extraction: Ensure Chrome/Firefox is available for automatic cookie extraction\n"
-                                "3. Try a different Instagram URL: Some content requires login while others don't\n"
-                                "4. Contact support if this is a public Instagram post\n\n"
-                                f"Tried {len(instagram_configs)} different configurations. "
-                                "See logs for detailed debugging information."
-                            )
-                            raise Exception(auth_help_msg)
-                        else:
-                            technical_msg = (
-                                f"Instagram download failed after trying {len(instagram_configs)} configurations. "
-                                f"Last error: {str(last_error)[:200]}... "
-                                "This may be due to Instagram API changes or network issues. "
-                                "Please try again later or contact support."
-                            )
-                            raise Exception(technical_msg)
-
-                if not download_successful:
-                    raise Exception(
-                        f"All {len(instagram_configs)} Instagram download strategies failed. Last error: {last_error}"
+                # If we already populated downloaded_file via cache, skip remote download
+                if cache_used:
+                    logger.info(
+                        "🎬 Worker: Download step skipped – cached file already present."
                     )
+                    download_successful = True
+                else:
+                    logger.info(
+                        "🎬 Worker: Using Instagram-specific configuration with multiple fallback strategies"
+                    )
+                    instagram_configs = build_instagram_ydl_configs()
+                    download_successful = False
+                    downloaded_file = None
+                    last_error = None
+
+                    for config_idx, base_config in enumerate(instagram_configs, 1):
+                        try:
+                            logger.info(
+                                f"🎬 Worker: Trying Instagram config {config_idx}/{len(instagram_configs)}"
+                            )
+
+                            # Log configuration details for debugging
+                            has_cookies = base_config.get("cookiefile") is not None
+                            has_browser = base_config.get("cookiesfrombrowser") is not None
+                            user_agent = base_config.get("http_headers", {}).get(
+                                "User-Agent", "None"
+                            )[:50]
+                            logger.info(
+                                f"🔧 Config {config_idx}: cookies={has_cookies}, browser={has_browser}, UA={user_agent}..."
+                            )
+
+                            ydl_opts = {
+                                **base_config,
+                                "format": format_selector,
+                                "outtmpl": str(temp_video_path),
+                                "fragment_retries": 3,
+                                "http_chunk_size": 20971520,  # 20MB in bytes
+                                "noprogress": True,
+                            }
+
+                            def progress_hook(d):
+                                """Robust progress hook that handles missing 'progress' key"""
+                                try:
+                                    if "downloaded_bytes" in d and "total_bytes" in d:
+                                        progress = d["downloaded_bytes"] / d["total_bytes"]
+                                        update_job_progress(
+                                            job_id,
+                                            int(progress * 0.25) + 5,
+                                            stage="Downloading",
+                                        )
+                                    elif "progress" in d:
+                                        update_job_progress(
+                                            job_id,
+                                            int(d["progress"] * 0.25) + 5,
+                                            stage="Downloading",
+                                        )
+                                    elif d.get("status") == "downloading":
+                                        update_job_progress(job_id, 10, stage="Downloading")
+                                except (KeyError, TypeError, ZeroDivisionError):
+                                    pass
+
+                            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                                ydl.add_progress_hook(progress_hook)
+                                info = ydl.extract_info(url, download=True)
+                                downloaded_file = ydl.prepare_filename(info)
+                                download_successful = True
+                                logger.info(
+                                    f"🎬 Worker: Instagram download successful with config {config_idx}"
+                                )
+                                # After a successful download, store it in cache for future jobs
+                                if (
+                                    is_instagram_url(url)
+                                    and match is not None
+                                    and not (cache_used)
+                                ):
+                                    try:
+                                        shutil.copyfile(downloaded_file, possible_cache)
+                                        logger.info(
+                                            f"💾 Cached Instagram video at {possible_cache} for reuse"
+                                        )
+                                    except Exception as cache_err:
+                                        logger.warning(
+                                            f"⚠️ Failed to write Instagram cache: {cache_err}"
+                                        )
+                                break
+
+                        except Exception as e:
+                            error_msg = str(e).lower()
+                            last_error = e
+                            logger.warning(
+                                f"🎬 Worker: Instagram config {config_idx} failed: {e}"
+                            )
+
+                            # Continue to next config for any error, log details for last attempt
+                            if config_idx < len(instagram_configs):
+                                continue
+
+                            # If this is the last config, provide comprehensive error message
+                            if (
+                                "rate-limit" in error_msg
+                                or "login required" in error_msg
+                                or "authentication" in error_msg
+                            ):
+                                auth_help_msg = (
+                                    "Instagram requires authentication for this content. To fix this:\n\n"
+                                    "1. Add Instagram cookies: Create 'cookies/instagram_cookies.txt' with valid session cookies\n"
+                                    "2. Use browser extraction: Ensure Chrome/Firefox is available for automatic cookie extraction\n"
+                                    "3. Try a different Instagram URL: Some content requires login while others don't\n"
+                                    "4. Contact support if this is a public Instagram post\n\n"
+                                    f"Tried {len(instagram_configs)} different configurations. "
+                                    "See logs for detailed debugging information."
+                                )
+                                raise Exception(auth_help_msg)
+                            else:
+                                technical_msg = (
+                                    f"Instagram download failed after trying {len(instagram_configs)} configurations. "
+                                    f"Last error: {str(last_error)[:200]}... "
+                                    "This may be due to Instagram API changes or network issues. "
+                                    "Please try again later or contact support."
+                                )
+                                raise Exception(technical_msg)
+
+                    if not download_successful:
+                        raise Exception(
+                            f"All {len(instagram_configs)} Instagram download strategies failed. Last error: {last_error}"
+                        )
 
             else:
                 # Use standard configuration for other platforms
@@ -543,7 +590,7 @@ def process_clip(
 
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     ydl.add_progress_hook(progress_hook)
-                    info = ydl.extract_info(url, download=True)
+                    info = ydl.extract_info(url, download=True)  # <-- store info
                     downloaded_file = ydl.prepare_filename(info)
 
             if not downloaded_file or not os.path.exists(downloaded_file):
@@ -574,8 +621,17 @@ def process_clip(
             # 3. Upload to storage
             update_job_progress(job_id, 80, stage="Uploading...")
 
-            # Get video title for filename
-            video_title = extract_video_title(url)
+            # ---- Filename generation -------------------------------------------------
+            video_title: str
+            if info is not None:
+                raw_title = info.get("title") if isinstance(info, dict) else None
+                video_title = sanitize_filename(raw_title) if raw_title else "video"
+                if not video_title or video_title == "video":
+                    # Fallback to secondary extraction only if necessary
+                    video_title = extract_video_title(url)
+            else:
+                # Should not normally happen, but keep existing fallback for safety
+                video_title = extract_video_title(url)
             final_filename = f"{video_title}_{job_id[:8]}.mp4"
 
             # Upload to storage
