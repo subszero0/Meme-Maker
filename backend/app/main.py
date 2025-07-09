@@ -32,6 +32,9 @@ app = FastAPI(
     openapi_url="/openapi.json",  # Ensure OpenAPI spec is available
 )
 
+# Production service restart fix - July 9, 2025
+# This change triggers CI/CD deployment to restart backend services that were returning 503 errors
+
 
 # Custom exception handler for validation errors
 @app.exception_handler(RequestValidationError)
