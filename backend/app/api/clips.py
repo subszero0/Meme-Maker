@@ -3,12 +3,14 @@ import sys
 import urllib.parse
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 
 # Module path setup (must be after standard imports)
 sys.path.append("/app/backend")
 from app import redis  # noqa: E402
+from app.dependencies import get_storage  # noqa: E402
+from app.storage import LocalStorageManager  # noqa: E402
 
 router = APIRouter()
 
@@ -84,7 +86,9 @@ async def download_clip(filename: str):
 
 
 @router.delete("/clips/{job_id}")
-async def cleanup_clip(job_id: str):
+async def cleanup_clip(
+    job_id: str, storage: LocalStorageManager = Depends(get_storage)
+):
     """Clean up a processed clip (called after successful download)"""
     # Validate job_id to prevent path traversal
     if not job_id.replace("-", "").replace("_", "").isalnum():
@@ -92,16 +96,17 @@ async def cleanup_clip(job_id: str):
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid job ID format"
         )
 
-    clip_path = CLIPS_DIR / f"{job_id}.mp4"
+    try:
+        # Use storage manager to delete the file (handles dated directory structure)
+        deleted = await storage.delete(job_id)
 
-    if clip_path.exists():
-        try:
-            clip_path.unlink()
+        if deleted:
             return {"message": "Clip deleted successfully"}
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to delete clip: {str(e)}",
-            )
+        else:
+            return {"message": "Clip not found (already cleaned up)"}
 
-    return {"message": "Clip not found (already cleaned up)"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete clip: {str(e)}",
+        )

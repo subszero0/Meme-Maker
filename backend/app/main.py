@@ -143,7 +143,9 @@ app.add_middleware(SecurityHeadersMiddleware)
 # Include routers with proper tags and prefixes
 app.include_router(jobs.router, prefix="/api/v1", tags=["jobs"])
 app.include_router(metadata.router, prefix="/api/v1", tags=["metadata"])
-app.include_router(clips.router, tags=["clips"])  # No prefix for direct /clips access
+app.include_router(
+    clips.router, prefix="/api/v1", tags=["clips"]
+)  # Include /api/v1 prefix
 
 
 @app.get("/health", tags=["health"])
