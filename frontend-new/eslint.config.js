@@ -5,7 +5,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  { ignores: ["dist", "coverage"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -32,6 +32,18 @@ export default tseslint.config(
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-namespace": "off",
+    },
+  },
+  // Override rules for UI components that legitimately export utilities
+  {
+    files: [
+      "src/components/ui/**/*",
+      "src/components/ErrorBoundary.tsx",
+      "src/hooks/**/*",
+      "src/test/**/*",
+    ],
+    rules: {
+      "react-refresh/only-export-components": "off",
     },
   },
 );

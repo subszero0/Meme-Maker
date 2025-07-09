@@ -42,8 +42,8 @@ describe("Twitter Video Processing", () => {
         duration: 30,
         thumbnail_url: "https://example.com/thumb.jpg",
         resolutions: ["720p", "480p", "360p"],
-        platform: "twitter"
-      }
+        platform: "twitter",
+      },
     }).as("getMetadata");
 
     // Intercept job creation
@@ -51,13 +51,14 @@ describe("Twitter Video Processing", () => {
       statusCode: 201,
       body: {
         job_id: "twitter_test_123",
-        status: "queued"
-      }
+        status: "queued",
+      },
     }).as("createJob");
 
     // Enter Twitter URL
-    cy.get('[data-cy="url-input"]')
-      .type("https://twitter.com/user/status/123456789");
+    cy.get('[data-cy="url-input"]').type(
+      "https://twitter.com/user/status/123456789",
+    );
 
     // Submit form
     cy.get('[data-cy="submit-button"]').click();
@@ -78,4 +79,4 @@ describe("Twitter Video Processing", () => {
     // Verify processing starts
     cy.get('[data-cy="processing-status"]').should("contain", "Processing");
   });
-}); 
+});
