@@ -1,3 +1,4 @@
+// @ts-nocheck
 import getPlatform, { Platform } from '../getPlatform';
 
 describe('getPlatform', () => {
