@@ -41,28 +41,42 @@ class Settings(BaseSettings):
     # Environment settings
     debug: bool = Field(default=False, description="Debug mode enabled")
     testing: bool = Field(default=False, description="Testing mode enabled")
-    base_url: str = Field(default="http://localhost:8000", description="Base URL for the application")
+    base_url: str = Field(
+        default="http://localhost:8000", description="Base URL for the application"
+    )
 
     # CORS settings
-    cors_origins: list[str] = Field(default_factory=list, description="CORS allowed origins")
+    cors_origins: list[str] = Field(
+        default_factory=list, description="CORS allowed origins"
+    )
 
     # Redis settings
-    redis_url: str = Field(default="redis://localhost:6379", description="Redis connection URL")
+    redis_url: str = Field(
+        default="redis://localhost:6379", description="Redis connection URL"
+    )
 
     # Storage settings
     storage_backend: str = Field(default="local", description="Storage backend type")
-    clips_dir: str = Field(default="storage/clips", description="Directory for storing clips")
+    clips_dir: str = Field(
+        default="storage/clips", description="Directory for storing clips"
+    )
     s3_bucket_name: str = Field(default="", description="S3 bucket name")
     s3_access_key_id: str = Field(default="", description="S3 access key ID")
     s3_secret_access_key: str = Field(default="", description="S3 secret access key")
 
     # FFmpeg settings
-    ffmpeg_path: str = Field(default="/usr/bin/ffmpeg", description="Path to FFmpeg executable")
-    ffprobe_path: str = Field(default="ffprobe", description="Path to FFprobe executable")
+    ffmpeg_path: str = Field(
+        default="/usr/bin/ffmpeg", description="Path to FFmpeg executable"
+    )
+    ffprobe_path: str = Field(
+        default="ffprobe", description="Path to FFprobe executable"
+    )
 
     # Job and cleanup settings
     max_concurrent_jobs: int = Field(default=20, description="Maximum concurrent jobs")
-    cleanup_after_hours: int = Field(default=24, description="Hours after which to cleanup files")
+    cleanup_after_hours: int = Field(
+        default=24, description="Hours after which to cleanup files"
+    )
 
     # Rate limiting
     rate_limit_enabled: bool = Field(default=True, description="Enable rate limiting")
