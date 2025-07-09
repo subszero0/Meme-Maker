@@ -1,1 +1,1 @@
-"""Worker tests module""" 
+"""Worker tests module"""

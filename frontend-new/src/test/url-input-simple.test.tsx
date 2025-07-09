@@ -36,7 +36,7 @@ describe("UrlInput Simple Test", () => {
     );
 
     expect(
-      screen.getByPlaceholderText(/facebook\.com.*instagram\.com/i),
+      screen.getByPlaceholderText(/facebook\.com.*instagram\.com.*x\.com/i),
     ).toBeInTheDocument();
   });
 });

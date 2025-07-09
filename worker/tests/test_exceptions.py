@@ -4,15 +4,23 @@ Unit tests for exception hierarchy
 
 import pytest
 from exceptions import (
-    VideoProcessingError, DownloadError, TrimError, StorageError,
-    H264DimensionError, ValidationError, QueueFullError,
-    RepositoryError, FormatNotAvailableError, VideoAnalysisError, FFmpegError
+    VideoProcessingError,
+    DownloadError,
+    TrimError,
+    StorageError,
+    H264DimensionError,
+    ValidationError,
+    QueueFullError,
+    RepositoryError,
+    FormatNotAvailableError,
+    VideoAnalysisError,
+    FFmpegError,
 )
 
 
 class TestVideoProcessingError:
     """Test base exception class"""
-    
+
     def test_creation_with_message_only(self):
         """Test creating exception with message only"""
         error = VideoProcessingError("Test error")
@@ -20,21 +28,21 @@ class TestVideoProcessingError:
         assert error.job_id is None
         assert error.details == {}
         assert error.error_code == "VIDEOPROCESSING"
-    
+
     def test_creation_with_job_id(self):
         """Test creating exception with job ID"""
         error = VideoProcessingError("Test error", job_id="job123")
         assert str(error) == "Test error"
         assert error.job_id == "job123"
         assert error.details == {}
-    
+
     def test_creation_with_details(self):
         """Test creating exception with details"""
         details = {"url": "test.com", "format": "mp4"}
         error = VideoProcessingError("Test error", details=details)
         assert str(error) == "Test error"
         assert error.details == details
-    
+
     def test_creation_with_all_params(self):
         """Test creating exception with all parameters"""
         details = {"url": "test.com"}
@@ -46,13 +54,13 @@ class TestVideoProcessingError:
 
 class TestDownloadError:
     """Test download-specific exception"""
-    
+
     def test_inheritance(self):
         """Test that DownloadError inherits from VideoProcessingError"""
         error = DownloadError("Download failed")
         assert isinstance(error, VideoProcessingError)
         assert error.error_code == "DOWNLOAD"
-    
+
     def test_format_not_available_inheritance(self):
         """Test that FormatNotAvailableError inherits from DownloadError"""
         error = FormatNotAvailableError("Format not available")
@@ -63,20 +71,20 @@ class TestDownloadError:
 
 class TestTrimError:
     """Test trim-specific exceptions"""
-    
+
     def test_inheritance(self):
         """Test that TrimError inherits from VideoProcessingError"""
         error = TrimError("Trim failed")
         assert isinstance(error, VideoProcessingError)
         assert error.error_code == "TRIM"
-    
+
     def test_h264_dimension_error_inheritance(self):
         """Test that H264DimensionError inherits from TrimError"""
         error = H264DimensionError("Dimension error")
         assert isinstance(error, TrimError)
         assert isinstance(error, VideoProcessingError)
         assert error.error_code == "H264DIMENSION"
-    
+
     def test_ffmpeg_error_inheritance(self):
         """Test that FFmpegError inherits from TrimError"""
         error = FFmpegError("FFmpeg failed")
@@ -87,7 +95,7 @@ class TestTrimError:
 
 class TestStorageError:
     """Test storage-specific exception"""
-    
+
     def test_inheritance(self):
         """Test that StorageError inherits from VideoProcessingError"""
         error = StorageError("Storage failed")
@@ -97,7 +105,7 @@ class TestStorageError:
 
 class TestValidationError:
     """Test validation-specific exception"""
-    
+
     def test_inheritance(self):
         """Test that ValidationError inherits from VideoProcessingError"""
         error = ValidationError("Validation failed")
@@ -107,7 +115,7 @@ class TestValidationError:
 
 class TestQueueFullError:
     """Test queue-specific exception"""
-    
+
     def test_inheritance(self):
         """Test that QueueFullError inherits from VideoProcessingError"""
         error = QueueFullError("Queue full")
@@ -117,7 +125,7 @@ class TestQueueFullError:
 
 class TestRepositoryError:
     """Test repository-specific exception"""
-    
+
     def test_inheritance(self):
         """Test that RepositoryError inherits from VideoProcessingError"""
         error = RepositoryError("Repository failed")
@@ -127,7 +135,7 @@ class TestRepositoryError:
 
 class TestVideoAnalysisError:
     """Test video analysis-specific exception"""
-    
+
     def test_inheritance(self):
         """Test that VideoAnalysisError inherits from VideoProcessingError"""
         error = VideoAnalysisError("Analysis failed")
@@ -137,7 +145,7 @@ class TestVideoAnalysisError:
 
 class TestErrorCodeGeneration:
     """Test automatic error code generation"""
-    
+
     def test_error_codes_are_correct(self):
         """Test that error codes are generated correctly from class names"""
         test_cases = [
@@ -151,9 +159,9 @@ class TestErrorCodeGeneration:
             (RepositoryError, "REPOSITORY"),
             (FormatNotAvailableError, "FORMATNOTAVAILABLE"),
             (VideoAnalysisError, "VIDEOANALYSIS"),
-            (FFmpegError, "FFMPEG")
+            (FFmpegError, "FFMPEG"),
         ]
-        
+
         for error_class, expected_code in test_cases:
             error = error_class("Test message")
-            assert error.error_code == expected_code 
+            assert error.error_code == expected_code
