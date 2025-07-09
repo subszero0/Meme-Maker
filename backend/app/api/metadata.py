@@ -7,13 +7,13 @@ from typing import Dict, List, Optional
 import yt_dlp
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, HttpUrl
-from yt_dlp.utils import DownloadError
 from rq import Queue
+from yt_dlp.utils import DownloadError
 
 from .. import redis as redis_client
 from ..cache.metadata_cache import MetadataCache
 from ..dependencies import get_async_redis
-from ..models import Job, MetadataRequest, MetadataResponse
+from ..models import Job, MetadataRequest
 from ..utils.job_utils import generate_job_id
 
 router = APIRouter()
