@@ -5,13 +5,16 @@ import time
 from typing import Dict, List, Optional
 
 import yt_dlp
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, HttpUrl
 from yt_dlp.utils import DownloadError
+from rq import Queue
 
+from .. import redis as redis_client
 from ..cache.metadata_cache import MetadataCache
 from ..dependencies import get_async_redis
-from ..models import MetadataRequest, MetadataResponse
+from ..models import Job, MetadataRequest, MetadataResponse
+from ..utils.job_utils import generate_job_id
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -25,6 +28,10 @@ INSTAGRAM_URL_RE = re.compile(
 REDDIT_URL_RE = re.compile(
     r"https?://(www\.)?reddit\.com/r/[\w\-]+/comments/[\w\-]+/[\w\-]+/?|https?://v\.redd\.it/[\w\d]+"
 )
+
+# --- Job Queue ---
+# Use the existing redis client to initialize the queue
+clips_queue = Queue("clips", connection=redis_client)
 
 
 def _is_instagram_url(url: str) -> bool:
@@ -304,121 +311,52 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
     raise DownloadError("Failed to extract metadata after all retry attempts")
 
 
-@router.post("/metadata", response_model=MetadataResponse)
-async def get_video_metadata(
-    request: MetadataRequest, redis_client=Depends(get_async_redis)
-) -> MetadataResponse:
-    """Get video metadata using yt-dlp with caching"""
-    url = str(request.url)
-    logger.info(f"📋 Fetching metadata for URL: {url}")
-
-    # Initialize cache
-    cache = MetadataCache(redis_client)
-
-    # Check cache first with performance logging
-    cache_start_time = time.time()
-    cached_metadata = await cache.get_metadata(url)
-    cache_time = time.time() - cache_start_time
-
-    if cached_metadata:
-        logger.info(
-            f"✅ Cache hit for metadata: {url} (cache lookup: {cache_time:.3f}s)"
-        )
-        metadata = cached_metadata.get("metadata", {})
-        return MetadataResponse(
-            title=metadata.get("title", "Unknown Video"),
-            duration=metadata.get("duration", 0),
-            thumbnail_url=metadata.get("thumbnail_url"),
-            resolutions=metadata.get("resolutions", []),
-        )
-    else:
-        logger.info(
-            f"❌ Cache miss for metadata: {url} (cache lookup: {cache_time:.3f}s)"
-        )
-
-    # Anti-bot detection: Add small delay for non-cached requests
-    await asyncio.sleep(2)  # 2-second delay to appear more human-like
-
+@router.post("/metadata", response_model=Job)
+async def create_clip_job(
+    request: MetadataRequest,
+) -> Job:
+    """
+    Create a new video clipping job by adding it to the Redis queue.
+    The worker will pick up the job for processing.
+    """
     try:
-        # Extract metadata
-        start_time = time.time()
-        info = await extract_metadata_with_fallback(url)
-        extraction_time = time.time() - start_time
-
-        # Extract basic metadata
-        title = info.get("title", "Unknown Video")
-        duration = float(info.get("duration", 0))
-        thumbnail_url = info.get("thumbnail")
-
-        # Get available formats/resolutions
-        formats = info.get("formats", [])
-        resolutions = []
-        for fmt in formats:
-            if fmt.get("height"):
-                res = f"{fmt['height']}p"
-                if res not in resolutions:
-                    resolutions.append(res)
-
-        # Sort resolutions
-        resolution_order = [
-            "144p",
-            "240p",
-            "360p",
-            "480p",
-            "720p",
-            "1080p",
-            "1440p",
-            "2160p",
-        ]
-        resolutions.sort(
-            key=lambda x: resolution_order.index(x) if x in resolution_order else 999
+        # 1. Create a new job object
+        job_id = generate_job_id()
+        new_job = Job(
+            id=job_id,
+            url=str(request.url),
+            start_time=request.startTime,
+            end_time=request.endTime,
+            resolution=request.resolution,
+            status="queued",  # Set initial status
         )
 
-        # Cache the result
-        metadata_to_cache = {
-            "title": title,
-            "duration": duration,
-            "thumbnail_url": thumbnail_url,
-            "resolutions": resolutions,
-            "extraction_time": extraction_time,
-        }
-
-        await cache.set_metadata(url, metadata_to_cache)
-
-        logger.info(
-            f"✅ Successfully extracted metadata: {title}, {duration}s in {extraction_time:.2f}s"
+        # 2. Enqueue the job for the worker
+        # The worker will execute a function named `process_clip_job`
+        clips_queue.enqueue(
+            "worker.video_processor.process_clip",  # The function worker will run
+            job_id=new_job.id,
+            url=new_job.url,
+            start_time=new_job.start_time,
+            end_time=new_job.end_time,
+            resolution=new_job.resolution,
+            job_timeout=600,  # 10 minutes
         )
 
-        return MetadataResponse(
-            title=title,
-            duration=duration,
-            thumbnail_url=thumbnail_url,
-            resolutions=resolutions,
-        )
-    except DownloadError as e:
-        error_str = str(e).lower()
-        # More comprehensive check for bot detection/rate limiting
-        if (
-            "http error 429" in error_str
-            or "too many requests" in error_str
-            or "sign in" in error_str
-            or "confirm you're not a bot" in error_str
-        ):
-            logger.warning(f"YouTube bot detection or rate limiting for {url}: {e}")
-            raise HTTPException(
-                status_code=429,
-                detail="YouTube is temporarily blocking automated requests. Please try again later or use a different video.",
-            )
-        logger.error(f"❌ Failed to extract metadata for {url}: {e}")
-        # Return 503 as service is unavailable from our end
-        raise HTTPException(
-            status_code=503,
-            detail="The video service is currently unavailable. Please try again later.",
-        )
+        # 3. Save the job metadata in Redis
+        job_key = f"job:{new_job.id}"
+        await get_async_redis().hmset(job_key, new_job.dict())
+
+        logger.info(f"✅ Enqueued job {new_job.id} for URL: {new_job.url}")
+
+        return new_job
+
     except Exception as e:
-        logger.error(f"❌ An unexpected error occurred for {url}: {e}")
+        logger.error(f"❌ Failed to create clip job for {request.url}: {e}")
+        # Use a more specific error message for job creation failure
         raise HTTPException(
-            status_code=500, detail="An unexpected server error occurred."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create clipping job. Please try again later.",
         )
 
 
