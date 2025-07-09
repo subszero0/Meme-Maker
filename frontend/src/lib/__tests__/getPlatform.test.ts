@@ -49,6 +49,21 @@ describe("getPlatform", () => {
     });
   });
 
+  describe("Twitter detection", () => {
+    it("detects twitter.com and x.com URLs", () => {
+      expect(getPlatform("https://twitter.com/user/status/123")).toBe(
+        "twitter",
+      );
+      expect(getPlatform("http://twitter.com/user/status/123")).toBe(
+        "twitter",
+      );
+      expect(getPlatform("https://mobile.twitter.com/user/status/123")).toBe(
+        "twitter",
+      );
+      expect(getPlatform("https://x.com/user/status/123")).toBe("twitter");
+    });
+  });
+
   describe("Threads detection", () => {
     it("detects threads.net URLs", () => {
       expect(getPlatform("https://threads.net/@user/post/test")).toBe(
@@ -87,9 +102,6 @@ describe("getPlatform", () => {
 
   describe("Unknown platform detection", () => {
     it("returns unknown for unsupported platforms", () => {
-      expect(getPlatform("https://twitter.com/user/status/123")).toBe(
-        "unknown",
-      );
       expect(getPlatform("https://tiktok.com/@user/video/123")).toBe("unknown");
       expect(getPlatform("https://vimeo.com/123456789")).toBe("unknown");
       expect(getPlatform("https://example.com/video")).toBe("unknown");
@@ -114,6 +126,9 @@ describe("getPlatform", () => {
         "threads",
       );
       expect(getPlatform("https://Reddit.com/r/test")).toBe("reddit");
+      expect(getPlatform("https://TWITTER.COM/user/status/123")).toBe(
+        "twitter",
+      );
     });
   });
 

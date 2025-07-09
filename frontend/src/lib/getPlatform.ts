@@ -7,6 +7,7 @@ export type Platform =
   | "facebook"
   | "threads"
   | "reddit"
+  | "twitter"
   | "unknown";
 
 /**
@@ -34,6 +35,15 @@ export default function getPlatform(url: string): Platform {
       hostname === "m.facebook.com"
     ) {
       return "facebook";
+    }
+
+    // Twitter / X detection – include new X.com domain and mobile subdomain
+    if (
+      hostname === "twitter.com" ||
+      hostname === "x.com" ||
+      hostname === "mobile.twitter.com"
+    ) {
+      return "twitter";
     }
     if (hostname === "threads.net") {
       return "threads";

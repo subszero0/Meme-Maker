@@ -71,9 +71,7 @@ describe("Component Fixed Tests", () => {
 
       // Use the actual placeholder text from the component
       expect(
-        screen.getByPlaceholderText(
-          /https:\/\/facebook\.com\/watch\?v=.*instagram\.com\/reel\//i,
-        ),
+        screen.getByPlaceholderText(/facebook\.com.*instagram\.com.*x\.com/i),
       ).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: /let's go/i }),
@@ -96,7 +94,9 @@ describe("Component Fixed Tests", () => {
 
       // Check that the component mentions the supported platforms in the description text
       expect(
-        screen.getByText(/paste any video link from facebook or instagram/i),
+        screen.getByText(
+          /paste any video link from facebook, instagram, or x \(twitter\)/i,
+        ),
       ).toBeInTheDocument();
     });
   });

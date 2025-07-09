@@ -24,7 +24,7 @@ export default function UrlInput({ onSubmit, loading = false }: UrlInputProps) {
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="Paste a YouTube, Instagram, Facebook, Threads, or Reddit video URL..."
+          placeholder="Paste a YouTube, Instagram, Facebook, X/Twitter, Threads, or Reddit video URL..."
           className="flex-1 px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           disabled={loading}
           required

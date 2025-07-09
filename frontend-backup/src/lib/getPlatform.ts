@@ -7,6 +7,7 @@ export type Platform =
   | 'facebook'
   | 'threads'
   | 'reddit'
+  | 'twitter'
   | 'unknown';
 
 /**
@@ -18,19 +19,39 @@ export default function getPlatform(url: string): Platform {
   try {
     const hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
 
-    if (hostname === 'youtube.com' || hostname === 'youtu.be' || hostname === 'm.youtube.com') {
+    if (
+      hostname === 'youtube.com' ||
+      hostname === 'youtu.be' ||
+      hostname === 'm.youtube.com'
+    ) {
       return 'youtube';
     }
     if (hostname === 'instagram.com') {
       return 'instagram';
     }
-    if (hostname === 'facebook.com' || hostname === 'fb.watch' || hostname === 'm.facebook.com') {
+    if (
+      hostname === 'facebook.com' ||
+      hostname === 'fb.watch' ||
+      hostname === 'm.facebook.com'
+    ) {
       return 'facebook';
+    }
+
+    if (
+      hostname === 'twitter.com' ||
+      hostname === 'x.com' ||
+      hostname === 'mobile.twitter.com'
+    ) {
+      return 'twitter';
     }
     if (hostname === 'threads.net') {
       return 'threads';
     }
-    if (hostname === 'reddit.com' || hostname === 'redd.it' || hostname === 'v.redd.it') {
+    if (
+      hostname === 'reddit.com' ||
+      hostname === 'redd.it' ||
+      hostname === 'v.redd.it'
+    ) {
       return 'reddit';
     }
 
