@@ -73,3 +73,8 @@ Screenshots/
 # Development utilities
 auto_fix_production.py
 add_debug_logging.py
+
+# Virtualenv
+.venv/
+/venv/
+venv/
