@@ -209,11 +209,10 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
             "skip_download": True,
             "http_headers": instagram_base_headers,
             "socket_timeout": 120,  # Increased from 30s to 120s for Instagram
-            "retries": 3,
+            "retries": 5,  # Increased retries for Instagram from 3 to 5
         }
 
-        # For Instagram we don't need the YouTube-specific fallbacks.  Instead we
-        # simply try with and without the explicit `Referer` header.
+        # For Instagram we use multiple fallback strategies to handle IP blocking
         configs = [
             instagram_primary_opts,
             {
@@ -221,6 +220,24 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
                 "http_headers": {
                     k: v for k, v in instagram_base_headers.items() if k != "Referer"
                 },
+            },
+            # Additional fallback with different User-Agent for IP restrictions
+            {
+                **instagram_primary_opts,
+                "http_headers": {
+                    **instagram_base_headers,
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                },
+                "retries": 3,
+            },
+            # Minimal fallback without special headers
+            {
+                "quiet": True,
+                "no_warnings": True,
+                "extract_flat": False,
+                "skip_download": True,
+                "socket_timeout": 120,
+                "retries": 2,
             },
         ]
     elif _is_reddit_url(url):
@@ -484,6 +501,12 @@ async def extract_video_metadata(
         error_str = str(e).lower()
         url_str = str(request.url).lower()
 
+        # Enhanced logging for all DownloadError cases to help debug production issues
+        logger.error(f"DownloadError occurred for {request.url}")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Raw error message: {str(e)}")
+        logger.error(f"Lowercase error message: {error_str}")
+
         # Instagram-specific error handling
         if "instagram.com" in url_str:
             if any(
@@ -502,6 +525,31 @@ async def extract_video_metadata(
                 raise HTTPException(
                     status_code=504,
                     detail="Instagram is taking too long to respond. Please try again in a moment.",
+                )
+            elif any(
+                keyword in error_str
+                for keyword in [
+                    "private",
+                    "unavailable",
+                    "not found",
+                    "does not exist",
+                    "blocked",
+                    "restricted",
+                ]
+            ):
+                logger.warning(f"Instagram content unavailable for {request.url}: {e}")
+                raise HTTPException(
+                    status_code=422,
+                    detail="This Instagram content is private, unavailable, or restricted in your region. Please try a different URL.",
+                )
+            else:
+                # Enhanced logging for unhandled Instagram errors
+                logger.error(f"Unhandled Instagram error for {request.url}: {e}")
+                logger.error(f"Error type: {type(e).__name__}")
+                logger.error(f"Full error message: {str(e)}")
+                raise HTTPException(
+                    status_code=503,
+                    detail="Instagram content temporarily unavailable. This may be due to regional restrictions or temporary blocking. Please try again later or use a different URL.",
                 )
 
         # YouTube-specific error handling
