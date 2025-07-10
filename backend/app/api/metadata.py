@@ -12,7 +12,7 @@ from yt_dlp.utils import DownloadError
 
 from .. import redis as redis_client
 from ..cache.metadata_cache import MetadataCache
-from ..dependencies import get_async_redis
+from ..dependencies import get_async_redis, get_clips_queue
 from ..models import Job, MetadataRequest
 from ..utils.job_utils import generate_job_id
 
@@ -31,7 +31,7 @@ REDDIT_URL_RE = re.compile(
 
 # --- Job Queue ---
 # Use the existing redis client to initialize the queue
-clips_queue = Queue("clips", connection=redis_client)
+# clips_queue = Queue("clips", connection=redis_client) # This line is removed
 
 
 def _is_instagram_url(url: str) -> bool:
@@ -313,7 +313,7 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
 
 @router.post("/metadata", response_model=Job)
 async def create_clip_job(
-    request: MetadataRequest,
+    request: MetadataRequest, clips_queue: Queue = Depends(get_clips_queue)
 ) -> Job:
     """
     Create a new video clipping job by adding it to the Redis queue.

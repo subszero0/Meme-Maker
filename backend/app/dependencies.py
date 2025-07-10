@@ -1,5 +1,8 @@
 from app.storage import LocalStorageManager
 from app.storage_factory import storage_manager
+from rq import Queue
+
+from . import redis as redis_client
 
 
 def get_storage() -> LocalStorageManager:
@@ -66,3 +69,10 @@ def get_job_repository():
     from .repositories.job_repository import JobRepository
 
     return JobRepository()
+
+
+def get_clips_queue() -> Queue:
+    """
+    Returns a Redis Queue instance for the 'clips' queue.
+    """
+    return Queue("clips", connection=redis_client)
