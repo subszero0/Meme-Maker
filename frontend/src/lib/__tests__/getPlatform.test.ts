@@ -1,7 +1,12 @@
-// @ts-nocheck
-import getPlatform from "../getPlatform";
+import { getPlatform } from '../getPlatform';
 
-describe("getPlatform", () => {
+describe('getPlatform', () => {
+  it('should return "youtube" for youtube.com URLs', () => {
+    expect(getPlatform('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe(
+      'youtube'
+    );
+  });
+
   describe("YouTube detection", () => {
     it("detects youtube.com URLs", () => {
       expect(getPlatform("https://youtube.com/watch?v=test")).toBe("youtube");
