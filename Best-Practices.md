@@ -185,21 +185,38 @@ Instead of assuming "API calls fail" → Test `curl https://domain.com/api/endpo
 Many "fixes" address symptoms rather than root causes because the initial problem assessment was incomplete.
 
 ### **BP #2: Use the Layered Diagnosis Approach**
-**Principle**: Debug from the outside in - Network → Console → Code, not the reverse.
+**Principle**: Debug from the outside in - Network → Console → Code, not the reverse. Use systematic layer-by-layer testing to distinguish platform behavior from infrastructure issues.
 
 **Implementation**:
 1. **Network Tab First**: Look for HTTP status codes, failed requests, timing issues
 2. **Console Stack Traces**: Find where errors originate in your code (not framework code)
 3. **Source Code**: Examine the specific line/function that's failing
 4. **Environment**: Check configuration, environment variables, and build settings
+5. **Platform Layer**: Test external APIs directly to distinguish platform restrictions from infrastructure failures
+
+**Systematic Layer Testing**:
+- **Frontend Layer**: Browser network tab, console errors
+- **Proxy Layer**: nginx routing, SSL termination
+- **Backend Layer**: Direct API testing with curl/Postman
+- **Extraction Layer**: Direct yt-dlp/tool testing
+- **Platform Layer**: External service APIs (Instagram, YouTube, etc.)
 
 **Example**:
 - Network shows 404 → Check nginx routing
 - Network shows 422 → Check request payload format
 - Console shows mixed content → Check HTTP/HTTPS URL patterns
+- API shows "unavailable" → Test external platform directly to confirm if it's platform restrictions vs infrastructure
+
+**Real-World Application**:
+In the Production Underscore Investigation, systematic layer testing revealed:
+- ✅ Frontend: Properly formatted requests
+- ✅ nginx: Correct URL routing
+- ✅ Backend: Successful URL processing
+- ✅ yt-dlp: Reached Instagram API
+- ❌ Instagram: Rate limiting (platform behavior, not infrastructure failure)
 
 **Why It Matters**: 
-Starting with code changes without understanding the error source leads to fixing the wrong layer.
+Starting with code changes without understanding the error source leads to fixing the wrong layer. Future investigations should use this systematic layer-by-layer approach to distinguish platform behavior from infrastructure issues.
 
 ### **BP #3: Distinguish Between Root Causes and Symptoms**
 **Principle**: Ask "why" three times before implementing any solution.
@@ -264,6 +281,72 @@ Complex solutions for simple problems create technical debt and hide the real is
 
 **Why It Matters**: 
 Browser-reported errors can be misleading due to caching, security policies, or request format differences. Always verify server behavior independently.
+
+### **BP #32: Distinguish Platform Behavior from Infrastructure Issues**
+**Principle**: When debugging external service integrations, systematically isolate whether errors originate from platform restrictions (rate limiting, authentication) or your infrastructure (routing, configuration).
+
+**Implementation**:
+
+**Step 1: Test Platform APIs Directly**
+```bash
+# Test the external service directly with the same data your system uses
+yt-dlp --print-json --skip-download "https://platform.com/content/12345"
+curl -X GET "https://api.platform.com/v1/endpoint" -H "Authorization: Bearer token"
+```
+
+**Step 2: Compare Error Patterns Across Multiple URLs**
+```bash
+# Test multiple URLs from the same platform to identify patterns
+# If ALL URLs from a platform fail → Platform issue
+# If only specific URL patterns fail → Potential infrastructure issue
+```
+
+**Step 3: Verify Error Translation Chain**
+```bash
+# Trace how platform errors become user-facing messages
+# Platform Error → Backend Processing → Frontend Display
+# Ensure each step appropriately handles platform restrictions
+```
+
+**Platform vs Infrastructure Error Indicators**:
+
+**Platform Behavior (Normal)**:
+- Rate limiting messages ("too many requests")
+- Authentication requirements ("login required") 
+- Regional restrictions ("content not available in your region")
+- Temporary blocking ("service temporarily unavailable")
+- Content-specific restrictions ("private video", "deleted content")
+
+**Infrastructure Issues (Fixable)**:
+- URL encoding/decoding problems
+- Proxy routing failures
+- Environment configuration mismatches
+- Network connectivity issues
+- Service discovery failures
+
+**Real-World Example**:
+- **Apparent Problem**: "All URLs with underscores fail in production"
+- **Systematic Testing**: 
+  1. Direct yt-dlp test → Reached Instagram API successfully
+  2. Backend API test → Correct error handling and translation
+  3. Multiple URL comparison → Same error pattern regardless of underscores
+- **Discovery**: Instagram rate limiting (platform behavior) was being misinterpreted as URL processing failure (infrastructure issue)
+- **Resolution**: No infrastructure changes needed - system working correctly
+
+**Investigation Strategy**:
+1. **Assume Platform Behavior First**: Most external service "failures" are actually normal platform restrictions
+2. **Test Infrastructure Only After**: Only investigate infrastructure if direct platform testing shows abnormal behavior
+3. **Document Platform Patterns**: Maintain knowledge of each platform's normal restriction behaviors
+4. **Verify Error Messaging**: Ensure platform restrictions are translated to helpful user messages
+
+**Common Misattribution Patterns**:
+- Assuming all API errors indicate infrastructure problems
+- Not testing external services directly before debugging internal systems
+- Missing the correlation between error patterns and platform restrictions
+- Over-engineering solutions for normal platform behavior
+
+**Why It Matters**: 
+Platform restrictions are business constraints, not technical failures. Distinguishing them from infrastructure issues prevents unnecessary technical debt, maintains system confidence, and focuses engineering effort on actual problems rather than platform limitations.
 
 ### **BP #13: Comprehensive Cache Clearing Techniques**
 **Principle**: Basic cache clearing through browser settings is often insufficient for debugging. Use multiple cache clearing methods to ensure complete cache invalidation.
@@ -1050,5 +1133,6 @@ After each debugging session:
 28. **Keep tests synchronized with UI copy** - Update tests in the same commit as copy changes
 29. **Verify static assets are part of the repository & build** - Catch missing files in local and production builds
 31. **Prefer URL imports over `ReactComponent` for simple SVGs in Vite** - Avoid build failures in production
+32. **Distinguish platform behavior from infrastructure issues** - Use systematic layer-by-layer testing to prevent misattributing platform restrictions to infrastructure problems
 
-These practices work together to create a systematic, safe, and effective approach to production problem resolution that minimizes system disruption while maximizing learning and long-term stability. 
+These practices work together to create a systematic, safe, and effective approach to production problem resolution that minimizes system disruption while maximizing learning and long-term stability. Future investigations should use systematic layer-by-layer approaches to distinguish platform behavior from infrastructure issues. 
