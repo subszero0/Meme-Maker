@@ -10,10 +10,9 @@ from pydantic import BaseModel, HttpUrl
 from rq import Queue
 from yt_dlp.utils import DownloadError
 
-from .. import redis as redis_client
 from ..cache.metadata_cache import MetadataCache
 from ..dependencies import get_async_redis, get_clips_queue
-from ..models import Job, MetadataRequest
+from ..models import Job, JobCreateRequest, JobStatus, MetadataRequest
 from ..utils.job_utils import generate_job_id
 
 router = APIRouter()
@@ -313,51 +312,38 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
 
 @router.post("/metadata", response_model=Job)
 async def create_clip_job(
-    request: MetadataRequest, clips_queue: Queue = Depends(get_clips_queue)
+    request: JobCreateRequest, clips_queue: Queue = Depends(get_clips_queue)
 ) -> Job:
     """
-    Create a new video clipping job by adding it to the Redis queue.
-    The worker will pick up the job for processing.
+    Accepts a URL and optional trim times, creates a job,
+    and adds it to the clips queue.
     """
-    try:
-        # 1. Create a new job object
-        job_id = generate_job_id()
-        new_job = Job(
-            id=job_id,
-            url=str(request.url),
-            start_time=request.startTime,
-            end_time=request.endTime,
-            resolution=request.resolution,
-            status="queued",  # Set initial status
-        )
+    job_id = generate_job_id()
+    logger.info(f"Received clip job request for url: {request.url}, job_id: {job_id}")
 
-        # 2. Enqueue the job for the worker
-        # The worker will execute a function named `process_clip_job`
-        clips_queue.enqueue(
-            "worker.video_processor.process_clip",  # The function worker will run
-            job_id=new_job.id,
-            url=new_job.url,
-            start_time=new_job.start_time,
-            end_time=new_job.end_time,
-            resolution=new_job.resolution,
-            job_timeout=600,  # 10 minutes
-        )
+    job = Job(
+        id=job_id,
+        url=request.url,
+        start_time=request.start_time,
+        end_time=request.end_time,
+        format_id=request.format_id,
+        status=JobStatus.queued,
+    )
 
-        # 3. Save the job metadata in Redis
-        job_key = f"job:{new_job.id}"
-        await get_async_redis().hmset(job_key, new_job.dict())
+    # Use job_id as the key for the Redis hash
+    clips_queue.enqueue(
+        "worker.video_processor.process_video_sync",
+        job_id=job.id,
+        url=str(job.url),  # Pass URL as string
+        start_time=job.start_time,
+        end_time=job.end_time,
+        format_id=job.format_id,
+        job_timeout="2h",
+        result_ttl=86400,  # Keep result for 1 day
+    )
 
-        logger.info(f"✅ Enqueued job {new_job.id} for URL: {new_job.url}")
-
-        return new_job
-
-    except Exception as e:
-        logger.error(f"❌ Failed to create clip job for {request.url}: {e}")
-        # Use a more specific error message for job creation failure
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create clipping job. Please try again later.",
-        )
+    logger.info(f"Enqueued job {job.id} for processing.")
+    return job
 
 
 @router.post("/metadata/extract", response_model=VideoMetadata)

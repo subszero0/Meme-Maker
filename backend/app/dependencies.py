@@ -1,6 +1,7 @@
+from rq import Queue
+
 from app.storage import LocalStorageManager
 from app.storage_factory import storage_manager
-from rq import Queue
 
 from . import redis as redis_client
 
