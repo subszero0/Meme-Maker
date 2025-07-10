@@ -208,7 +208,7 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
             "extract_flat": False,
             "skip_download": True,
             "http_headers": instagram_base_headers,
-            "socket_timeout": 30,
+            "socket_timeout": 120,  # Increased from 30s to 120s for Instagram
             "retries": 3,
         }
 
@@ -482,11 +482,40 @@ async def extract_video_metadata(
 
     except DownloadError as e:
         error_str = str(e).lower()
+        url_str = str(request.url).lower()
+
+        # Instagram-specific error handling
+        if "instagram.com" in url_str:
+            if any(
+                keyword in error_str
+                for keyword in ["login", "authentication", "cookies", "sign in"]
+            ):
+                logger.warning(
+                    f"Instagram authentication required for {request.url}: {e}"
+                )
+                raise HTTPException(
+                    status_code=429,
+                    detail="Instagram requires authentication for this content. Please try again later or use a different URL.",
+                )
+            elif "timeout" in error_str or "timed out" in error_str:
+                logger.warning(f"Instagram timeout for {request.url}: {e}")
+                raise HTTPException(
+                    status_code=504,
+                    detail="Instagram is taking too long to respond. Please try again in a moment.",
+                )
+
+        # YouTube-specific error handling
         if "http error 429" in error_str or "too many requests" in error_str:
-            logger.warning(f"YouTube blocking detected for {request.url}: {e}")
+            logger.warning(f"Rate limiting detected for {request.url}: {e}")
             raise HTTPException(
-                status_code=429,  # Use 429 directly
-                detail="YouTube is temporarily blocking requests from our server. Please try again in a few minutes.",
+                status_code=429,
+                detail="Too many requests to the video service. Please try again in a few minutes.",
+            )
+        elif "timeout" in error_str or "timed out" in error_str:
+            logger.warning(f"Timeout error for {request.url}: {e}")
+            raise HTTPException(
+                status_code=504,
+                detail="The video service is taking too long to respond. Please try again.",
             )
         else:
             logger.error(f"DownloadError for {request.url}: {e}")
