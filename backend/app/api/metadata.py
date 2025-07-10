@@ -5,14 +5,14 @@ import time
 from typing import Dict, List, Optional
 
 import yt_dlp
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, HttpUrl
 from rq import Queue
 from yt_dlp.utils import DownloadError
 
 from ..cache.metadata_cache import MetadataCache
 from ..dependencies import get_async_redis, get_clips_queue
-from ..models import Job, JobCreateRequest, JobStatus, MetadataRequest
+from ..models import Job, JobCreateRequest, JobStatus
 from ..utils.job_utils import generate_job_id
 
 router = APIRouter()
