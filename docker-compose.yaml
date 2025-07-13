@@ -28,6 +28,7 @@ services:
       - CLIPS_DIR=/app/clips
       - BASE_URL=https://memeit.pro
       - CORS_ORIGINS=["https://memeit.pro", "https://www.memeit.pro", "http://memeit.pro", "http://13.126.173.223"]
+      - INSTAGRAM_COOKIES_B64=${INSTAGRAM_COOKIES_B64}
     ports:
       - "8000:8000"  # Expose backend on host port 8000 to match health check
     volumes:

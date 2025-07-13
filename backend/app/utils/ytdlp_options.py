@@ -19,6 +19,45 @@ def _detect_cookie_file() -> str | None:
     if env_cookie and Path(env_cookie).expanduser().is_file():
         return str(Path(env_cookie).expanduser())
 
+    # NEW: Insta cookie content passed in environment variables
+
+    import base64, tempfile, logging
+
+    logger = logging.getLogger(__name__)
+
+    # Check for base64 encoded cookie content in environment variable
+    env_cookie_b64 = os.getenv("INSTAGRAM_COOKIES_B64")
+    if env_cookie_b64:
+        try:
+            cookie_content = base64.b64decode(env_cookie_b64).decode("utf-8")
+            temp_dir = Path(tempfile.gettempdir())
+            temp_cookie_file = temp_dir / "instagram_cookies_temp.txt"
+            temp_cookie_file.write_text(cookie_content)
+            logger.info(
+                f"✅ Created temporary cookie file from INSTAGRAM_COOKIES_B64 env var: {temp_cookie_file}"
+            )
+            return str(temp_cookie_file)
+        except Exception as e:
+            logger.warning(
+                f"⚠️ Failed to decode INSTAGRAM_COOKIES_B64 env var into cookie file: {e}"
+            )
+
+    # Check for plain text cookie content in env variable
+    env_cookie_content = os.getenv("INSTAGRAM_COOKIES")
+    if env_cookie_content:
+        try:
+            temp_dir = Path(tempfile.gettempdir())
+            temp_cookie_file = temp_dir / "instagram_cookies_temp.txt"
+            temp_cookie_file.write_text(env_cookie_content)
+            logger.info(
+                f"✅ Created temporary cookie file from INSTAGRAM_COOKIES env var: {temp_cookie_file}"
+            )
+            return str(temp_cookie_file)
+        except Exception as e:
+            logger.warning(
+                f"⚠️ Failed to write INSTAGRAM_COOKIES env var into cookie file: {e}"
+            )
+
     # 2. Conventional locations under <project_root>/cookies/
     cookies_dir = Path(__file__).resolve().parent.parent.parent.parent / "cookies"
 
