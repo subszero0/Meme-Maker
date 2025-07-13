@@ -32,8 +32,19 @@ export function getBestVideoUrl(metadata: VideoMetadata): string {
 
   // If no formats available, fall back to original URL
   if (!formats || formats.length === 0) {
+    console.warn('⚠️ No formats available, using original URL');
     return originalUrl;
   }
+
+  console.log('🔍 All available formats:', formats.map(f => ({
+    id: f.format_id,
+    resolution: f.resolution,
+    vcodec: f.vcodec,
+    acodec: f.acodec,
+    hasVideo: f.vcodec && f.vcodec !== 'none',
+    hasAudio: f.acodec && f.acodec !== 'none',
+    url: f.url ? 'present' : 'missing'
+  })));
 
   // Filter formats that have both video and audio
   const audioVideoFormats = formats.filter(
@@ -42,6 +53,13 @@ export function getBestVideoUrl(metadata: VideoMetadata): string {
       format.acodec && format.acodec !== 'none' &&
       format.url && format.url.trim() !== ''
   );
+
+  console.log('🎵 Audio+Video formats found:', audioVideoFormats.length, audioVideoFormats.map(f => ({
+    id: f.format_id,
+    resolution: f.resolution,
+    vcodec: f.vcodec,
+    acodec: f.acodec
+  })));
 
   // If we have audio+video combined formats, use the best one
   if (audioVideoFormats.length > 0) {
@@ -67,7 +85,7 @@ export function getBestVideoUrl(metadata: VideoMetadata): string {
       return (b.filesize || 0) - (a.filesize || 0);
     })[0];
 
-    console.log(`🎵 Using audio+video format: ${bestFormat.format_id} (${bestFormat.resolution}) with audio codec: ${bestFormat.acodec}`);
+    console.log(`🎵 ✅ SELECTED audio+video format: ${bestFormat.format_id} (${bestFormat.resolution}) with audio codec: ${bestFormat.acodec}`);
     return bestFormat.url;
   }
 

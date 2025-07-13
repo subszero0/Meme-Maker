@@ -57,11 +57,21 @@ export default function Home() {
 
     try {
       console.log(
-        "Making API request to:",
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/metadata`,
+        "🏠 HomePage: Making API request to:",
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/metadata/extract`,
       );
       const metadata = await fetchVideoMetadata(url);
-      console.log("API response received:", metadata);
+      console.log("🏠 HomePage: API response received:", metadata);
+      console.log("🏠 HomePage: Formats received:", {
+        count: metadata.formats?.length || 0,
+        formats: metadata.formats?.map(f => ({
+          id: f.format_id,
+          resolution: f.resolution,
+          vcodec: f.vcodec,
+          acodec: f.acodec,
+          hasAudio: f.acodec && f.acodec !== 'none'
+        }))
+      });
       setState({ phase: "trim", metadata });
       pushToast({ type: "success", message: "Video loaded successfully!" });
     } catch (error) {

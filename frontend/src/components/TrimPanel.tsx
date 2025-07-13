@@ -52,6 +52,23 @@ function trimReducer(state: TrimState, action: TrimAction): TrimState {
 }
 
 export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
+  // Add debugging for jobMeta formats
+  console.log('🎭 TrimPanel: jobMeta received:', {
+    title: jobMeta.title,
+    duration: jobMeta.duration,
+    formatsCount: jobMeta.formats?.length || 0,
+    formats: jobMeta.formats?.map(f => ({
+      id: f.format_id,
+      resolution: f.resolution,
+      vcodec: f.vcodec,
+      acodec: f.acodec,
+      hasAudio: f.acodec && f.acodec !== 'none'
+    }))
+  });
+
+  const bestVideoUrl = getBestVideoUrl(jobMeta);
+  console.log('🎭 TrimPanel: getBestVideoUrl returned:', bestVideoUrl);
+
   const { pushToast } = useToast();
   const [state, dispatch] = useReducer(trimReducer, {
     in: 0,
@@ -165,7 +182,7 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
       {/* Video Preview */}
       <div className="aspect-video bg-black rounded-lg overflow-hidden">
         <ReactPlayer
-          url={getBestVideoUrl(jobMeta)}
+          url={bestVideoUrl}
           width="100%"
           height="100%"
           controls={true}
