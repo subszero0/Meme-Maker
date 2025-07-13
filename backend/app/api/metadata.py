@@ -88,9 +88,9 @@ class VideoFormat(BaseModel):
     url: str
     filesize: Optional[int] = None
     fps: Optional[float] = None
-    vcodec: str
-    acodec: str
-    format_note: str
+    vcodec: Optional[str] = None
+    acodec: Optional[str] = None
+    format_note: Optional[str] = None
 
 
 class VideoMetadata(BaseModel):
@@ -434,9 +434,9 @@ async def extract_video_metadata(
                 url=f.get("url", ""),
                 filesize=f.get("filesize"),
                 fps=f.get("fps"),
-                vcodec=f.get("vcodec", "none"),
-                acodec=f.get("acodec", "none"),
-                format_note=f.get("format_note", ""),
+                vcodec=f.get("vcodec") or "none",
+                acodec=f.get("acodec") or "none",
+                format_note=f.get("format_note") or "",
             )
             for f in processed_formats
             if f.get("resolution")
