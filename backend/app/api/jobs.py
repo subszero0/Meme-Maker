@@ -6,11 +6,12 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, HttpUrl, validator
+from rq import Queue
 
 # Import settings using direct file path to avoid package/module conflict
 # Import settings from the new configuration module
 from app.config.configuration import get_settings
-from app.dependencies import get_redis, get_storage
+from app.dependencies import get_redis, get_storage, get_clips_queue
 from app.models import Job, JobResponse, JobStatus
 from app.storage import LocalStorageManager
 
@@ -46,7 +47,7 @@ class JobCreateRequest(BaseModel):
 
 
 @router.post("/jobs", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
-async def create_job(request: JobCreateRequest, redis=Depends(get_redis)):
+async def create_job(request: JobCreateRequest, redis=Depends(get_redis), clips_queue: Queue = Depends(get_clips_queue)):
     """Create a new video processing job"""
 
     if not redis:
@@ -91,11 +92,20 @@ async def create_job(request: JobCreateRequest, redis=Depends(get_redis)):
     redis.hset(job_key, mapping=job_data)
     redis.expire(job_key, 3600)  # 1 hour TTL
 
-    # Job is now queued in Redis with status 'queued'
-    # The worker will pick it up automatically from the polling loop
-    # No need to use RQ enqueue since we have custom worker polling
+    # FIXED: Queue job for processing using RQ
+    # Convert Decimal to float for worker compatibility
+    clips_queue.enqueue(
+        "worker.process_clip.process_clip",
+        job_id=job.id,
+        url=str(job.url),
+        in_ts=float(job.in_ts),  # Convert Decimal to float
+        out_ts=float(job.out_ts),   # Convert Decimal to float
+        resolution=job.format_id,  # Use 'resolution' parameter name that worker expects
+        job_timeout="2h",
+        result_ttl=86400,  # Keep result for 1 day
+    )
 
-    logger.info(f"Created job {job_id} for URL: {request.url}")
+    logger.info(f"Created and queued job {job_id} for URL: {request.url}")
 
     return JobResponse(
         id=job.id, status=job.status, created_at=job.created_at, format_id=job.format_id
