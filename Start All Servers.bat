@@ -12,8 +12,8 @@ if not exist "backend" (
     exit /b 1
 )
 
-if not exist "frontend" (
-    echo ❌ Error: frontend folder not found!
+if not exist "frontend-new" (
+    echo ❌ Error: frontend-new folder not found!
     echo Please run this script from the Meme-Maker root directory
     pause
     exit /b 1
@@ -23,7 +23,7 @@ echo 📋 Starting services in order:
 echo    1. Redis (Docker)
 echo    2. Backend API (FastAPI)
 echo    3. RQ Worker
-echo    4. Frontend (Next.js)
+echo    4. Frontend (React/Vite)
 echo.
 
 REM Start Redis in Docker
@@ -58,7 +58,7 @@ timeout /t 3 /nobreak >nul
 REM Start Frontend
 echo.
 echo 🟢 Starting Frontend development server...
-start "Frontend Dev" cmd /k "cd frontend && npm run dev"
+start "Frontend Dev" cmd /k "cd frontend-new && npm run dev"
 
 echo.
 echo ==========================================
@@ -74,6 +74,7 @@ echo 📝 Notes:
 echo    - Wait ~30 seconds for all services to fully start
 echo    - Check the opened terminal windows for any errors
 echo    - Press Ctrl+C in any terminal to stop that service
+echo    - Frontend now uses the updated interface (Facebook/Instagram/X only)
 echo.
 echo 🧪 Test the audio fix with:
 echo    https://www.instagram.com/reel/DHAwk1mS_5I/?igsh=dW1wdTQydzF6d2F3
