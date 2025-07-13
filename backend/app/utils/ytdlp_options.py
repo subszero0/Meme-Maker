@@ -21,7 +21,9 @@ def _detect_cookie_file() -> str | None:
 
     # NEW: Insta cookie content passed in environment variables
 
-    import base64, tempfile, logging
+    import base64
+    import logging
+    import tempfile
 
     logger = logging.getLogger(__name__)
 
