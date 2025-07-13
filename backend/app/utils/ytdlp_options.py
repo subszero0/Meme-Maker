@@ -19,15 +19,19 @@ def _detect_cookie_file() -> str | None:
     if env_cookie and Path(env_cookie).expanduser().is_file():
         return str(Path(env_cookie).expanduser())
 
-    # 2. Conventional location: <project_root>/cookies/youtube_cookies.txt
-    fallback = (
-        Path(__file__).resolve().parent.parent.parent
-        / "cookies"
-        / "youtube_cookies.txt"
-    )
-    if fallback.is_file():
-        return str(fallback)
+    # 2. Conventional locations under <project_root>/cookies/
+    cookies_dir = Path(__file__).resolve().parent.parent.parent.parent / "cookies"
 
+    # Search order matters – prefer Instagram-specific cookies when present
+    for candidate in [
+        "instagram_cookies.txt",  # Instagram first because reels/posts frequently need auth
+        "youtube_cookies.txt",  # Legacy YouTube cookies fallback
+    ]:
+        candidate_path = cookies_dir / candidate
+        if candidate_path.is_file():
+            return str(candidate_path)
+
+    # 3. No cookie file found
     return None
 
 

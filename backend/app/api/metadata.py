@@ -15,6 +15,9 @@ from ..dependencies import get_async_redis, get_clips_queue
 from ..models import Job, JobCreateRequest, JobStatus
 from ..utils.job_utils import generate_job_id
 
+# Ensure yt-dlp uses any available cookies (Instagram/Youtube) across all endpoints
+from ..utils.ytdlp_options import build_common_ydl_opts
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -202,14 +205,13 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
             "Referer": "https://www.instagram.com/",
         }
 
+        # Start with common options so that `cookiefile` (and other shared flags) are included.
         instagram_primary_opts = {
-            "quiet": True,
-            "no_warnings": True,
-            "extract_flat": False,
+            **build_common_ydl_opts(),  # Adds quiet, no_warnings, cookiefile, etc.
             "skip_download": True,
             "http_headers": instagram_base_headers,
-            "socket_timeout": 120,  # Increased from 30s to 120s for Instagram
-            "retries": 5,  # Increased retries for Instagram from 3 to 5
+            "socket_timeout": 120,  # Increased timeout for Instagram
+            "retries": 5,  # Slightly more aggressive retry strategy
         }
 
         # For Instagram we use multiple fallback strategies to handle IP blocking
