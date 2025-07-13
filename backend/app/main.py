@@ -15,7 +15,7 @@ except ImportError:
     PROMETHEUS_AVAILABLE = False
     print("Warning: prometheus_fastapi_instrumentator not available, metrics disabled")
 
-from .api import clips, jobs, metadata, health
+from .api import clips, jobs, metadata
 from .api import video_proxy
 from .config import get_settings
 from .middleware.security_headers import SecurityHeadersMiddleware
@@ -148,7 +148,6 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.include_router(clips.router, prefix="/api/v1", tags=["clips"])
 app.include_router(jobs.router, prefix="/api/v1", tags=["jobs"])
 app.include_router(metadata.router, prefix="/api/v1", tags=["metadata"])
-app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(video_proxy.router, prefix="/api/v1/video", tags=["video-proxy"])
 
 
