@@ -6,7 +6,8 @@ import { useDebouncedCallback } from "use-debounce";
 import { formatTime, parseTime } from "@/lib/formatTime";
 import { useToast } from "./ToastProvider";
 import ResolutionSelector from "./ResolutionSelector";
-import StreamAwareVideoPlayer from "./StreamAwareVideoPlayer";
+import ReactPlayer from "react-player";
+import { getBestVideoUrl } from "@/lib/videoUtils";
 
 interface TrimPanelProps {
   jobMeta: { url: string; title: string; duration: number }; // duration in seconds
@@ -162,11 +163,22 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
     <div className="space-y-6 max-w-4xl mx-auto p-6">
       {/* Video Preview */}
       <div className="aspect-video bg-black rounded-lg overflow-hidden">
-        <StreamAwareVideoPlayer
-          originalUrl={jobMeta.url}
-          className="w-full h-full"
-          autoPlay={false}
-          showControls={true}
+        <ReactPlayer
+          url={getBestVideoUrl(jobMeta)}
+          width="100%"
+          height="100%"
+          controls={true}
+          muted={false}
+          playing={false}
+          volume={0.8}
+          config={{
+            file: {
+              attributes: {
+                preload: 'metadata',
+                crossOrigin: 'anonymous',
+              }
+            }
+          }}
         />
       </div>
 
