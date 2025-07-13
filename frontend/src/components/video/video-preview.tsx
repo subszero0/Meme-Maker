@@ -27,7 +27,7 @@ export default function VideoPreview({
   url,
   onProgress,
   playing = false,
-  muted = true,
+  muted = false,
   className = "w-full h-64",
 }: VideoPreviewProps) {
   return (
@@ -40,10 +40,16 @@ export default function VideoPreview({
         muted={muted}
         controls={false}
         onProgress={onProgress}
+        volume={0.8}
         config={{
           youtube: {
             playerVars: { showinfo: 1 },
           },
+          file: {
+            attributes: {
+              preload: 'metadata',
+            }
+          }
         }}
       />
     </div>

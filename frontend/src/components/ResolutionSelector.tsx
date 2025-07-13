@@ -6,6 +6,7 @@ interface VideoFormat {
   format_id: string;
   ext: string;
   resolution: string;
+  url: string;
   filesize?: number;
   fps?: number;
   vcodec: string;
