@@ -22,10 +22,23 @@ interface VideoMetadata {
 }
 
 /**
+ * Get a proxied video URL that routes through our backend to bypass CORS restrictions
+ * 
+ * @param originalUrl The original video URL from Instagram/Facebook
+ * @returns Proxied URL that can be played in the browser
+ */
+export function getProxiedVideoUrl(originalUrl: string): string {
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const encodedUrl = encodeURIComponent(originalUrl);
+  return `${baseUrl}/api/v1/video/proxy?url=${encodedUrl}`;
+}
+
+/**
  * Get the best video URL for playback, prioritizing formats with audio
+ * Uses video proxy to bypass CORS restrictions for Instagram/Facebook videos
  * 
  * @param metadata Video metadata containing available formats
- * @returns Best video URL for playback with audio
+ * @returns Best video URL for playback with audio (proxied if needed)
  */
 export function getBestVideoUrl(metadata: VideoMetadata): string {
   const { formats, url: originalUrl } = metadata;
@@ -85,8 +98,10 @@ export function getBestVideoUrl(metadata: VideoMetadata): string {
       return (b.filesize || 0) - (a.filesize || 0);
     })[0];
 
+    const proxiedUrl = getProxiedVideoUrl(bestFormat.url);
     console.log(`🎵 ✅ SELECTED audio+video format: ${bestFormat.format_id} (${bestFormat.resolution}) with audio codec: ${bestFormat.acodec}`);
-    return bestFormat.url;
+    console.log(`🎵 🔄 Using proxied URL: ${proxiedUrl}`);
+    return proxiedUrl;
   }
 
   // If no combined formats, look for the best video-only format
@@ -111,11 +126,20 @@ export function getBestVideoUrl(metadata: VideoMetadata): string {
       return getResolutionScore(b.resolution) - getResolutionScore(a.resolution);
     })[0];
 
+    const proxiedUrl = getProxiedVideoUrl(bestVideoFormat.url);
     console.warn(`⚠️ Using video-only format: ${bestVideoFormat.format_id} (${bestVideoFormat.resolution}) - may not have audio`);
-    return bestVideoFormat.url;
+    console.log(`🔄 Using proxied URL: ${proxiedUrl}`);
+    return proxiedUrl;
   }
 
-  // Final fallback to original URL
+  // Final fallback to original URL (also proxied for Instagram/Facebook)
+  const shouldProxy = originalUrl.includes('instagram.') || originalUrl.includes('facebook.') || originalUrl.includes('fbcdn.net');
+  if (shouldProxy) {
+    const proxiedUrl = getProxiedVideoUrl(originalUrl);
+    console.warn(`⚠️ No suitable formats found, falling back to proxied original URL: ${proxiedUrl}`);
+    return proxiedUrl;
+  }
+
   console.warn(`⚠️ No suitable formats found, falling back to original URL: ${originalUrl}`);
   return originalUrl;
 } 

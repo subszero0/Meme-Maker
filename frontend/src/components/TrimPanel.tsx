@@ -189,12 +189,24 @@ export default function TrimPanel({ jobMeta, onSubmit }: TrimPanelProps) {
           muted={false}
           playing={false}
           volume={0.8}
+          onReady={() => console.log('🎭 ReactPlayer: Video ready')}
+          onError={(error) => console.error('🎭 ReactPlayer: Error:', error)}
+          onStart={() => console.log('🎭 ReactPlayer: Video started')}
+          onPlay={() => console.log('🎭 ReactPlayer: Video playing')}
+          onPause={() => console.log('🎭 ReactPlayer: Video paused')}
           config={{
             file: {
               attributes: {
                 preload: 'metadata',
                 crossOrigin: 'anonymous',
-              }
+                controls: true,
+                // Force audio to be enabled
+                muted: false,
+                // Ensure video element shows audio controls
+                controlsList: ''
+              },
+              forceAudio: true,
+              forceVideo: true
             }
           }}
         />

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Video Audio Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        video {
+            width: 100%;
+            max-width: 400px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-info {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c00;
+        }
+        .success {
+            background: #efe;
+            border: 1px solid #cfc;
+            color: #060;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Instagram Video Audio Test</h1>
+        
+        <div class="test-info">
+            <strong>Purpose:</strong> Test if Instagram video URLs work with audio in the browser<br>
+            <strong>Expected:</strong> Video should play with audio controls enabled
+        </div>
+
+        <h3>Test 1: Audio+Video Format URL</h3>
+        <div id="test1-status" class="test-info">Loading...</div>
+        <video id="video1" controls preload="metadata" crossorigin="anonymous">
+            <source src="" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+
+        <h3>Test 2: Original Instagram URL</h3>
+        <div id="test2-status" class="test-info">Loading...</div>
+        <video id="video2" controls preload="metadata" crossorigin="anonymous">
+            <source src="https://www.instagram.com/reel/DHAwk1mS_5I/?igsh=dW1wdTQydzF6d2F3" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+
+        <h3>Debug Info</h3>
+        <div id="debug-info" class="test-info">
+            <div id="metadata-info">Fetching metadata...</div>
+            <div id="format-info"></div>
+        </div>
+    </div>
+
+    <script>
+        async function testVideoAudio() {
+            try {
+                // Fetch metadata from our API
+                console.log('🔍 Fetching metadata...');
+                const response = await fetch('http://localhost:8000/api/v1/metadata/extract', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        url: 'https://www.instagram.com/reel/DHAwk1mS_5I/?igsh=dW1wdTQydzF6d2F3'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+
+                const metadata = await response.json();
+                console.log('📊 Metadata received:', metadata);
+
+                // Find the audio+video format
+                const audioVideoFormat = metadata.formats.find(f => 
+                    f.vcodec && f.vcodec !== 'none' &&
+                    f.acodec && f.acodec !== 'none'
+                );
+
+                if (audioVideoFormat) {
+                    console.log('🎵 Found audio+video format:', audioVideoFormat);
+                    
+                    // Set the video source
+                    const video1 = document.getElementById('video1');
+                    video1.src = audioVideoFormat.url;
+                    
+                    // Update status
+                    document.getElementById('test1-status').innerHTML = `
+                        <strong>✅ Audio+Video Format Found:</strong><br>
+                        Format ID: ${audioVideoFormat.format_id}<br>
+                        Resolution: ${audioVideoFormat.resolution}<br>
+                        Video Codec: ${audioVideoFormat.vcodec}<br>
+                        Audio Codec: ${audioVideoFormat.acodec}<br>
+                        URL: ${audioVideoFormat.url.substring(0, 100)}...
+                    `;
+                    document.getElementById('test1-status').className = 'test-info success';
+
+                    // Test video events
+                    video1.addEventListener('loadedmetadata', () => {
+                        console.log('🎭 Video metadata loaded');
+                        console.log('🎭 Video duration:', video1.duration);
+                        console.log('🎭 Video has audio tracks:', video1.audioTracks ? video1.audioTracks.length : 'unknown');
+                    });
+
+                    video1.addEventListener('error', (e) => {
+                        console.error('🎭 Video error:', e);
+                        document.getElementById('test1-status').innerHTML = `
+                            <strong>❌ Video Error:</strong> ${e.message || 'Unknown error'}
+                        `;
+                        document.getElementById('test1-status').className = 'test-info error';
+                    });
+
+                } else {
+                    document.getElementById('test1-status').innerHTML = `
+                        <strong>❌ No Audio+Video Format Found</strong><br>
+                        Available formats: ${metadata.formats.length}<br>
+                        ${metadata.formats.map(f => `${f.format_id}: ${f.vcodec}/${f.acodec}`).join('<br>')}
+                    `;
+                    document.getElementById('test1-status').className = 'test-info error';
+                }
+
+                // Update debug info
+                document.getElementById('metadata-info').innerHTML = `
+                    <strong>Metadata:</strong><br>
+                    Title: ${metadata.title}<br>
+                    Duration: ${metadata.duration}s<br>
+                    Formats: ${metadata.formats.length}
+                `;
+
+                document.getElementById('format-info').innerHTML = `
+                    <strong>All Formats:</strong><br>
+                    ${metadata.formats.map(f => `
+                        ${f.format_id}: ${f.resolution} (${f.vcodec}/${f.acodec})
+                    `).join('<br>')}
+                `;
+
+            } catch (error) {
+                console.error('❌ Test failed:', error);
+                document.getElementById('test1-status').innerHTML = `
+                    <strong>❌ API Error:</strong> ${error.message}
+                `;
+                document.getElementById('test1-status').className = 'test-info error';
+                
+                document.getElementById('metadata-info').innerHTML = `
+                    <strong>❌ Failed to fetch metadata:</strong> ${error.message}
+                `;
+            }
+        }
+
+        // Test original Instagram URL
+        const video2 = document.getElementById('video2');
+        video2.addEventListener('error', (e) => {
+            console.error('🎭 Original URL error:', e);
+            document.getElementById('test2-status').innerHTML = `
+                <strong>❌ Original URL Error:</strong> Instagram URLs don't work directly in browser (expected)
+            `;
+            document.getElementById('test2-status').className = 'test-info error';
+        });
+
+        video2.addEventListener('loadedmetadata', () => {
+            console.log('🎭 Original URL loaded (unexpected!)');
+            document.getElementById('test2-status').innerHTML = `
+                <strong>✅ Original URL Works:</strong> Unexpected but good!
+            `;
+            document.getElementById('test2-status').className = 'test-info success';
+        });
+
+        // Start the test
+        testVideoAudio();
+    </script>
+</body>
+</html> 
