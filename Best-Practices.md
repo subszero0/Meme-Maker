@@ -348,6 +348,96 @@ curl -X GET "https://api.platform.com/v1/endpoint" -H "Authorization: Bearer tok
 **Why It Matters**: 
 Platform restrictions are business constraints, not technical failures. Distinguishing them from infrastructure issues prevents unnecessary technical debt, maintains system confidence, and focuses engineering effort on actual problems rather than platform limitations.
 
+### **BP #33: Implement Comprehensive Change Propagation Analysis**
+**Principle**: When implementing architectural changes (especially authentication, data models, or environment configuration), systematically identify and update ALL affected components in a single session. Never implement partial changes that require progressive error discovery to complete.
+
+**Implementation**:
+
+**Step 1: Change Impact Analysis Before Implementation**
+```bash
+# Before making ANY changes, map the complete data/control flow
+# Example: Adding Instagram cookie authentication
+
+# 1. Identify ALL services that need authentication
+grep -r "yt-dlp\|ytdl" . --include="*.py" | grep -v "__pycache__"
+
+# 2. Identify ALL environment variable usage points  
+grep -r "INSTAGRAM_COOKIES" . --include="*.py" --include="*.yml" --include="*.yaml"
+
+# 3. Identify ALL data model dependencies
+grep -r "VideoFormat\|vcodec\|acodec" . --include="*.py"
+```
+
+**Step 2: Comprehensive Change Planning**
+Create a checklist of ALL components that need updates:
+
+**Authentication Flow Example**:
+- [ ] Backend cookie detection logic
+- [ ] Worker cookie detection logic  
+- [ ] Docker Compose environment variables (both services)
+- [ ] Production environment configuration
+- [ ] Data models handling API responses
+- [ ] Error handling for missing fields
+- [ ] Validation logic for optional fields
+
+**Step 3: Systematic Implementation Order**
+1. **Code Changes First**: Update all application logic before environment changes
+2. **Environment Configuration**: Update all environment files (local + production) 
+3. **Data Model Updates**: Handle all validation and optional field scenarios
+4. **Deployment Coordination**: Deploy all changes together, not incrementally
+
+**Step 4: Comprehensive Testing Checklist**
+```bash
+# Test ALL affected components together
+# Don't test just the "main" component
+
+# 1. Test authentication in backend
+# 2. Test authentication in worker  
+# 3. Test environment variable propagation
+# 4. Test data model validation with real API responses
+# 5. Test error handling for edge cases
+```
+
+**Real-World Example from Instagram Authentication Implementation**:
+- **Partial Implementation**: Only updated backend cookie detection
+- **Progressive Errors**: 
+  1. Worker still hardcoded cookies → Docker Compose inconsistency
+  2. Production environment missing variable → Backend authentication failure  
+  3. Data model validation errors → Pydantic field requirements
+  4. Error handling gaps → TypeError on None values
+- **Result**: 4 separate debugging sessions instead of 1 comprehensive implementation
+
+**Correct Comprehensive Approach**:
+```bash
+# Step 1: Identify ALL affected components
+- Backend cookie detection ✓
+- Worker cookie detection ✓  
+- Docker Compose configuration ✓
+- Production environment ✓
+- VideoFormat data model ✓
+- Error handling logic ✓
+
+# Step 2: Update ALL components in single session
+# Step 3: Test complete flow end-to-end
+# Step 4: Deploy all changes together
+```
+
+**Change Propagation Checklist Questions**:
+1. **Authentication**: Where else is this service/API called?
+2. **Environment Variables**: Which containers/services need this configuration?
+3. **Data Models**: What other fields might be missing/optional from this API?
+4. **Error Handling**: What edge cases does this change introduce?
+5. **Deployment**: What environment configurations need updating?
+
+**Anti-Patterns to Avoid**:
+- **Incremental Authentication**: Adding cookies to one service but not others
+- **Partial Environment Updates**: Updating local but not production configuration
+- **Single-Field Data Model Updates**: Making one field optional without checking related fields
+- **Progressive Error Discovery**: Fixing errors as they appear instead of anticipating them
+
+**Why It Matters**: 
+Architectural changes have ripple effects across multiple system components. Implementing partial changes creates a "debugging debt" where each deployment reveals the next missing piece. Comprehensive change analysis prevents this by identifying and addressing all affected components upfront, reducing total implementation time and deployment cycles.
+
 ### **BP #13: Comprehensive Cache Clearing Techniques**
 **Principle**: Basic cache clearing through browser settings is often insufficient for debugging. Use multiple cache clearing methods to ensure complete cache invalidation.
 
@@ -1134,5 +1224,6 @@ After each debugging session:
 29. **Verify static assets are part of the repository & build** - Catch missing files in local and production builds
 31. **Prefer URL imports over `ReactComponent` for simple SVGs in Vite** - Avoid build failures in production
 32. **Distinguish platform behavior from infrastructure issues** - Use systematic layer-by-layer testing to prevent misattributing platform restrictions to infrastructure problems
+33. **Implement comprehensive change propagation analysis** - When making architectural changes, systematically identify and update ALL affected components in a single session to prevent progressive error discovery
 
 These practices work together to create a systematic, safe, and effective approach to production problem resolution that minimizes system disruption while maximizing learning and long-term stability. Future investigations should use systematic layer-by-layer approaches to distinguish platform behavior from infrastructure issues. 
