@@ -413,7 +413,7 @@ async def extract_video_metadata(
         thumbnail_url = info.get("thumbnail", "")
         uploader = info.get("uploader", "Unknown Uploader")
         upload_date = info.get("upload_date", "Unknown Date")
-        view_count = int(info.get("view_count", 0))
+        view_count = int(info.get("view_count") or 0)
 
         # Get available formats, ensuring it's a list
         raw_formats = info.get("formats", [])
@@ -446,7 +446,8 @@ async def extract_video_metadata(
         # Sort formats from best to worst resolution, then by file extension
         def resolution_sort_key(fmt):
             try:
-                width, height = map(int, fmt.resolution.split("x"))
+                resolution = fmt.resolution or "0x0"
+                width, height = map(int, resolution.split("x"))
                 filesize = fmt.filesize or 0
                 return (width * height, filesize)
             except (ValueError, AttributeError):
