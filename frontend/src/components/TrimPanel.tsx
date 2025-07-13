@@ -8,9 +8,10 @@ import { useToast } from "./ToastProvider";
 import ResolutionSelector from "./ResolutionSelector";
 import ReactPlayer from "react-player";
 import { getBestVideoUrl } from "@/lib/videoUtils";
+import { VideoMetadata } from "@/lib/api";
 
 interface TrimPanelProps {
-  jobMeta: { url: string; title: string; duration: number }; // duration in seconds
+  jobMeta: VideoMetadata;
   onSubmit(params: {
     in: number;
     out: number;

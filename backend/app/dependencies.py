@@ -76,4 +76,5 @@ def get_clips_queue() -> Queue:
     """
     Returns a Redis Queue instance for the 'clips' queue.
     """
-    return Queue("clips", connection=redis_client)
+    redis_connection = get_redis()
+    return Queue("clips", connection=redis_connection)
