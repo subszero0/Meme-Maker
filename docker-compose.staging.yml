@@ -25,13 +25,16 @@ services:
       - CLIPS_DIR=/app/storage/clips
       - INSTAGRAM_COOKIES_PATH=/app/cookies/instagram_cookies.txt
     volumes:
-      - ./storage:/app/storage
-      - ./cookies:/app/cookies:ro
+      - ./.env:/app/.env:ro                    # Mount .env file
+      - ./storage:/app/storage                # Storage mount
+      - ./cookies:/app/cookies:ro             # Cookies mount
     depends_on:
       - redis-staging
     networks:
       - staging-network
     restart: unless-stopped
+    # Ensure proper permissions for storage
+    user: "1000:1000"
 
   worker-staging:
     build:
@@ -44,14 +47,17 @@ services:
       - CLIPS_DIR=/app/storage/clips
       - INSTAGRAM_COOKIES_PATH=/app/cookies/instagram_cookies.txt
     volumes:
-      - ./storage:/app/storage
-      - ./cookies:/app/cookies:ro
+      - ./.env:/app/.env:ro                    # Mount .env file for worker
+      - ./storage:/app/storage                # Storage mount with proper permissions
+      - ./cookies:/app/cookies:ro             # Cookies mount
     depends_on:
       - redis-staging
       - backend-staging
     networks:
       - staging-network
     restart: unless-stopped
+    # Ensure proper permissions for storage
+    user: "1000:1000"
 
   frontend-staging:
     build:

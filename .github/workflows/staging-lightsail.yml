@@ -115,6 +115,18 @@ jobs:
           git reset --hard origin/${{ github.ref_name }}
           echo "✅ Pulled staging branch: ${{ github.ref_name }}"
           
+          # Create required directories with proper permissions
+          mkdir -p storage/clips cookies
+          sudo chown -R 1000:1000 storage cookies
+          chmod -R 755 storage cookies
+          echo "✅ Created storage directories with proper permissions"
+          
+          # Ensure .env file exists (copy from env.template if needed)
+          if [ ! -f ".env" ]; then
+            cp env.template .env
+            echo "✅ Created .env from template"
+          fi
+          
           # Stop staging services
           docker-compose -f docker-compose.staging.yml down --volumes --remove-orphans || echo "No staging services to stop"
           
