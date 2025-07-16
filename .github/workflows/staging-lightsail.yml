@@ -91,16 +91,24 @@ jobs:
     - name: Deploy to Staging via SSH
       uses: appleboy/ssh-action@v1.0.3
       with:
-        host: ${{ secrets.STAGING_HOST }}  # Different server or different port
-        username: ${{ secrets.STAGING_USER }}
-        key: ${{ secrets.STAGING_SSH_KEY }}
+        host: ${{ secrets.DEPLOY_HOST }}     # Use same server as production
+        username: ${{ secrets.DEPLOY_USER }} # Use same user as production  
+        key: ${{ secrets.DEPLOY_SSH_KEY }}   # Use same SSH key as production
         script: |
           set -e
           
           # STAGING DEPLOYMENT - Port 8081 (to avoid conflict with production)
           
+          # Create staging directory if it doesn't exist
+          mkdir -p /home/ubuntu/Meme-Maker-Staging
+          
           # Navigate to staging directory
           cd /home/ubuntu/Meme-Maker-Staging
+          
+          # Clone or update repository
+          if [ ! -d ".git" ]; then
+            git clone https://github.com/${{ github.repository }} .
+          fi
           
           # Pull the feature branch (not master)
           git fetch origin
