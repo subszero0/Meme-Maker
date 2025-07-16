@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  redis-staging:
+    image: redis:alpine
+    ports:
+      - "6380:6379"  # Different port from production
+    volumes:
+      - staging_redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - staging-network
+
+  backend-staging:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8001:8000"  # Different port from production
+    environment:
+      - MODE=production
+      - REDIS_URL=redis://redis-staging:6379
+      - CORS_ORIGINS=http://localhost:8082,http://staging.memeit.pro:8081
+      - STORAGE_TYPE=local
+      - CLIPS_DIR=/app/storage/clips
+      - INSTAGRAM_COOKIES_PATH=/app/cookies/instagram_cookies.txt
+    volumes:
+      - ./storage:/app/storage
+      - ./cookies:/app/cookies:ro
+    depends_on:
+      - redis-staging
+    networks:
+      - staging-network
+    restart: unless-stopped
+
+  worker-staging:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - MODE=production
+      - REDIS_URL=redis://redis-staging:6379
+      - STORAGE_TYPE=local
+      - CLIPS_DIR=/app/storage/clips
+      - INSTAGRAM_COOKIES_PATH=/app/cookies/instagram_cookies.txt
+    volumes:
+      - ./storage:/app/storage
+      - ./cookies:/app/cookies:ro
+    depends_on:
+      - redis-staging
+      - backend-staging
+    networks:
+      - staging-network
+    restart: unless-stopped
+
+  frontend-staging:
+    build:
+      context: frontend-new
+      dockerfile: Dockerfile.dev
+      args:
+        - VITE_API_BASE_URL=http://staging.memeit.pro:8081/api
+    ports:
+      - "8082:80"  # Different port from production
+    depends_on:
+      - backend-staging
+    networks:
+      - staging-network
+    restart: unless-stopped
+
+networks:
+  staging-network:
+    driver: bridge
+
+volumes:
+  staging_redis_data: 
