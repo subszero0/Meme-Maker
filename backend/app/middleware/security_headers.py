@@ -56,22 +56,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             logger.warning("CORS is set to allow all origins (*) in production mode")
             self._warned = True
 
-        # Handle preflight OPTIONS requests
-        if request.method == "OPTIONS":
-            response = Response()
-            self._add_cors_headers(response, request, settings)
-            response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
-            response.headers[
-                "Access-Control-Allow-Headers"
-            ] = "Content-Type, Authorization"
-            response.headers["Access-Control-Max-Age"] = "86400"  # 24 hours
-            return response
-
         response = await call_next(request)
 
         # Add security headers (but skip CSP for Swagger UI endpoints)
         self._add_security_headers(response, request)
-        self._add_cors_headers(response, request, settings)
 
         return response
 
@@ -105,22 +93,3 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         }
 
         response.headers.update(security_headers)
-
-    def _add_cors_headers(self, response: Response, request: Request, settings) -> None:
-        """Add CORS headers based on settings"""
-        origin = request.headers.get("origin")
-
-        if "*" in settings.cors_origins:
-            # Allow all origins
-            response.headers["Access-Control-Allow-Origin"] = "*"
-        elif origin and origin in settings.cors_origins:
-            # Allow specific origin
-            response.headers["Access-Control-Allow-Origin"] = origin
-        elif len(settings.cors_origins) == 1 and not origin:
-            # For same-origin requests, use the first configured origin
-            response.headers["Access-Control-Allow-Origin"] = settings.cors_origins[0]
-
-        # Add other CORS headers if we set an origin
-        if "Access-Control-Allow-Origin" in response.headers:
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Vary"] = "Origin"

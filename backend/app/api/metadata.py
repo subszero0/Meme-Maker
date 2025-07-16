@@ -37,8 +37,13 @@ REDDIT_URL_RE = re.compile(
 
 
 def _is_instagram_url(url: str) -> bool:
-    """Return True if the provided url points to an Instagram reel / post / tv video."""
-    return bool(INSTAGRAM_URL_RE.match(url))
+    """Check if URL is from Instagram"""
+    return "instagram.com" in url
+
+
+def _is_facebook_url(url: str) -> bool:
+    """Check if URL is from Facebook"""
+    return "facebook.com" in url or "fb.watch" in url
 
 
 def _is_reddit_url(url: str) -> bool:
@@ -48,33 +53,66 @@ def _is_reddit_url(url: str) -> bool:
 
 def _process_formats_for_audio(formats: List[Dict]) -> List[Dict]:
     """
-    If separate audio and video streams are detected (common in DASH),
-    update video-only formats to indicate that audio will be merged.
+    Process formats to prioritize merged formats over DASH streams.
+    For Facebook/Instagram DASH streams, filter out video-only formats when
+    we can't guarantee audio merging will work in the browser.
     """
-    # Check if there are any audio-only streams available
-    has_audio_streams = any(
-        f.get("acodec") != "none" and f.get("vcodec") == "none" for f in formats
-    )
+    # Separate formats by type
+    merged_formats = []  # Formats with both video and audio
+    video_only_formats = []  # Video-only formats
+    audio_only_formats = []  # Audio-only formats
 
-    if not has_audio_streams:
-        # No separate audio streams, so return formats as-is
-        return formats
-
-    # If we are here, it means there are separate audio streams.
-    # We can assume the downloader (yt-dlp) will merge the best one.
-    processed_formats = []
     for f in formats:
-        # If a format is video-only, but audio streams are available,
-        # we can infer that audio will be included in the final download.
-        if f.get("vcodec") != "none" and f.get("acodec") == "none":
-            # Update the format to signal that audio is present.
-            # The frontend will use this to show the correct icon.
-            f["acodec"] = "aac"  # Common audio codec
-            f["format_note"] = f"{f.get('format_note', '')} (audio will be merged)"
+        vcodec = f.get("vcodec", "none")
+        acodec = f.get("acodec", "none")
 
-        processed_formats.append(f)
+        if vcodec != "none" and acodec != "none":
+            # This format has both video and audio - preferred!
+            merged_formats.append(f)
+        elif vcodec != "none" and acodec == "none":
+            # Video-only format
+            video_only_formats.append(f)
+        elif vcodec == "none" and acodec != "none":
+            # Audio-only format
+            audio_only_formats.append(f)
 
-    return processed_formats
+    # Strategy 1: If we have merged formats, prioritize those
+    if merged_formats:
+        logger.info(f"✅ Found {len(merged_formats)} merged formats with audio+video")
+        return merged_formats
+
+    # Strategy 2: If no merged formats but we have both video and audio streams,
+    # we'll keep video-only formats but mark them clearly
+    if video_only_formats and audio_only_formats:
+        logger.warning(
+            f"⚠️ Only DASH streams available: {len(video_only_formats)} video-only, {len(audio_only_formats)} audio-only"
+        )
+        logger.warning("⚠️ Browser playback may not have audio due to DASH limitation")
+
+        processed_formats = []
+        for f in video_only_formats:
+            # Mark clearly that this requires merging
+            f[
+                "format_note"
+            ] = f"{f.get('format_note', '')} (DASH video-only - audio merging required)"
+            processed_formats.append(f)
+
+        # Also include ONE representative audio-only stream (smallest filesize) for frontend audio merge
+        audio_only_formats.sort(
+            key=lambda a: a.get("filesize", a.get("filesize_approx", 0)) or 0
+        )
+        if audio_only_formats:
+            audio_stream = audio_only_formats[0]
+            audio_stream["format_note"] = f"audio-only ({audio_stream.get('acodec')})"
+            processed_formats.append(audio_stream)
+
+        return processed_formats
+
+    # Strategy 3: Return whatever we have
+    logger.warning(
+        f"⚠️ Limited format availability: merged={len(merged_formats)}, video={len(video_only_formats)}, audio={len(audio_only_formats)}"
+    )
+    return formats
 
 
 class UrlRequest(BaseModel):
@@ -111,7 +149,8 @@ def get_optimized_ydl_opts() -> Dict:
         "no_warnings": True,
         "extract_flat": False,
         "skip_download": True,
-        # "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best", # This may be causing issues
+        # Prioritize merged formats with audio over video-only DASH streams
+        "format": "best[vcodec!=none][acodec!=none]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
         # "prefer_ffmpeg": True,
         "http_headers": {
             "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
@@ -242,6 +281,52 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
                 "retries": 2,
             },
         ]
+    elif _is_facebook_url(url):
+        facebook_base_headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+                "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+            ),
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Referer": "https://www.facebook.com/",
+        }
+
+        facebook_primary_opts = {
+            **build_common_ydl_opts(),
+            "skip_download": True,
+            # Facebook-specific format selection: prioritize merged formats with audio
+            "format": "best[vcodec!=none][acodec!=none]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+            "http_headers": facebook_base_headers,
+            "socket_timeout": 120,
+            "retries": 5,
+        }
+
+        configs = [
+            facebook_primary_opts,
+            {
+                **facebook_primary_opts,
+                "http_headers": {
+                    k: v for k, v in facebook_base_headers.items() if k != "Referer"
+                },
+            },
+            {
+                **facebook_primary_opts,
+                "http_headers": {
+                    **facebook_base_headers,
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                },
+                "retries": 3,
+            },
+            {
+                "quiet": True,
+                "no_warnings": True,
+                "extract_flat": False,
+                "skip_download": True,
+                "socket_timeout": 120,
+                "retries": 2,
+            },
+        ]
     elif _is_reddit_url(url):
         # Reddit URLs are handled separately
         reddit_primary_opts = {
@@ -351,12 +436,12 @@ async def create_clip_job(
 
     # Use job_id as the key for the Redis hash
     clips_queue.enqueue(
-        "worker.video_processor.process_video_sync",
+        "worker.process_clip.process_clip",
         job_id=job.id,
         url=str(job.url),  # Pass URL as string
-        start_time=job.start_time,
-        end_time=job.end_time,
-        format_id=job.format_id,
+        in_ts=job.start_time,  # Use correct parameter names that worker expects
+        out_ts=job.end_time,  # Use correct parameter names that worker expects
+        resolution=job.format_id,  # Use 'resolution' parameter name that worker expects
         job_timeout="2h",
         result_ttl=86400,  # Keep result for 1 day
     )
@@ -423,6 +508,26 @@ async def extract_video_metadata(
         # Process formats for audio merging *before* converting to Pydantic models
         logger.info("Processing formats to check for separate audio streams...")
         processed_formats = _process_formats_for_audio(raw_formats)
+
+        # TEMP DEBUG: Log format counts
+        merged_count = sum(
+            1
+            for f in processed_formats
+            if f.get("vcodec") != "none" and f.get("acodec") != "none"
+        )
+        video_only_count = sum(
+            1
+            for f in processed_formats
+            if f.get("vcodec") != "none" and f.get("acodec") == "none"
+        )
+        audio_only_count = sum(
+            1
+            for f in processed_formats
+            if f.get("vcodec") == "none" and f.get("acodec") != "none"
+        )
+        logger.info(
+            f"🔍 DEBUG counts after processing: merged={merged_count}, video_only={video_only_count}, audio_only={audio_only_count}"
+        )
         logger.info("Format processing complete.")
 
         # Create Pydantic models from the processed data
@@ -439,8 +544,17 @@ async def extract_video_metadata(
                 format_note=f.get("format_note") or "",
             )
             for f in processed_formats
-            if f.get("resolution")
-            and f.get("vcodec") != "none"  # Only include formats with video
+            if (
+                (
+                    f.get("vcodec") != "none"  # video stream (must have resolution)
+                    and f.get("resolution")
+                )
+                or (
+                    f.get("vcodec") == "none"
+                    and f.get("acodec")
+                    != "none"  # audio-only (keep even w/o resolution)
+                )
+            )
         ]
 
         # Sort formats from best to worst resolution, then by file extension
@@ -455,8 +569,60 @@ async def extract_video_metadata(
 
         video_formats.sort(key=resolution_sort_key, reverse=True)
 
+        # Decide whether we need to keep an audio-only track.
+        has_merged_video = any(
+            fmt.vcodec != "none" and fmt.acodec != "none" for fmt in video_formats
+        )
+
+        MAX_FORMATS = 20  # Global cap on number of formats returned
+
+        if has_merged_video:
+            # Merged formats already contain audio – drop any extra audio-only tracks
+            video_formats = [
+                fmt
+                for fmt in video_formats
+                if not (fmt.vcodec == "none" and fmt.acodec != "none")
+            ][:MAX_FORMATS]
+        else:
+            # DASH scenario – ensure at least one audio-only track is preserved
+            audio_only_fmt = next(
+                (
+                    fmt
+                    for fmt in video_formats
+                    if fmt.vcodec == "none" and fmt.acodec != "none"
+                ),
+                None,
+            )
+
+            non_audio_formats = [
+                fmt
+                for fmt in video_formats
+                if not (fmt.vcodec == "none" and fmt.acodec != "none")
+            ]
+
+            trimmed_non_audio = non_audio_formats[
+                : MAX_FORMATS - (1 if audio_only_fmt else 0)
+            ]
+            video_formats = trimmed_non_audio + (
+                [audio_only_fmt] if audio_only_fmt else []
+            )
+
+        # TEMP DEBUG: Log format counts to diagnose Facebook audio issue
+        merged_count = sum(
+            1 for f in video_formats if f.vcodec != "none" and f.acodec != "none"
+        )
+        video_only_count = sum(
+            1 for f in video_formats if f.vcodec != "none" and f.acodec == "none"
+        )
+        audio_only_count = sum(
+            1 for f in video_formats if f.vcodec == "none" and f.acodec != "none"
+        )
+        logger.info(
+            f"🔍 DEBUG counts after processing: merged={merged_count}, video_only={video_only_count}, audio_only={audio_only_count}"
+        )
+
         # Limit to reasonable number of formats
-        video_formats = video_formats[:20]
+        # video_formats = video_formats[:20]
 
         metadata = VideoMetadata(
             title=title,
@@ -553,6 +719,51 @@ async def extract_video_metadata(
                 raise HTTPException(
                     status_code=503,
                     detail="Instagram content temporarily unavailable. This may be due to regional restrictions or temporary blocking. Please try again later or use a different URL.",
+                )
+
+        # Facebook-specific error handling
+        if "facebook.com" in url_str or "fb.watch" in url_str:
+            if any(
+                keyword in error_str
+                for keyword in ["login", "authentication", "cookies", "sign in"]
+            ):
+                logger.warning(
+                    f"Facebook authentication required for {request.url}: {e}"
+                )
+                raise HTTPException(
+                    status_code=429,
+                    detail="Facebook requires authentication for this content. Please try again later or use a different URL.",
+                )
+            elif "timeout" in error_str or "timed out" in error_str:
+                logger.warning(f"Facebook timeout for {request.url}: {e}")
+                raise HTTPException(
+                    status_code=504,
+                    detail="Facebook is taking too long to respond. Please try again in a moment.",
+                )
+            elif any(
+                keyword in error_str
+                for keyword in [
+                    "private",
+                    "unavailable",
+                    "not found",
+                    "does not exist",
+                    "blocked",
+                    "restricted",
+                ]
+            ):
+                logger.warning(f"Facebook content unavailable for {request.url}: {e}")
+                raise HTTPException(
+                    status_code=422,
+                    detail="This Facebook content is private, unavailable, or restricted in your region. Please try a different URL.",
+                )
+            else:
+                # Enhanced logging for unhandled Facebook errors
+                logger.error(f"Unhandled Facebook error for {request.url}: {e}")
+                logger.error(f"Error type: {type(e).__name__}")
+                logger.error(f"Full error message: {str(e)}")
+                raise HTTPException(
+                    status_code=503,
+                    detail="Facebook content temporarily unavailable. This may be due to regional restrictions or temporary blocking. Please try again later or use a different URL.",
                 )
 
         # YouTube-specific error handling

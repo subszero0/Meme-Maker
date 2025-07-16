@@ -19,7 +19,7 @@ def _detect_cookie_file() -> str | None:
     if env_cookie and Path(env_cookie).expanduser().is_file():
         return str(Path(env_cookie).expanduser())
 
-    # NEW: Insta cookie content passed in environment variables
+    # NEW: Instagram and Facebook cookie content passed in environment variables
 
     import base64
     import logging
@@ -27,7 +27,7 @@ def _detect_cookie_file() -> str | None:
 
     logger = logging.getLogger(__name__)
 
-    # Check for base64 encoded cookie content in environment variable
+    # Check for base64 encoded Instagram cookie content in environment variable
     env_cookie_b64 = os.getenv("INSTAGRAM_COOKIES_B64")
     if env_cookie_b64:
         try:
@@ -44,7 +44,24 @@ def _detect_cookie_file() -> str | None:
                 f"⚠️ Failed to decode INSTAGRAM_COOKIES_B64 env var into cookie file: {e}"
             )
 
-    # Check for plain text cookie content in env variable
+    # Check for base64 encoded Facebook cookie content in environment variable
+    facebook_cookie_b64 = os.getenv("FACEBOOK_COOKIES_B64")
+    if facebook_cookie_b64:
+        try:
+            cookie_content = base64.b64decode(facebook_cookie_b64).decode("utf-8")
+            temp_dir = Path(tempfile.gettempdir())
+            temp_cookie_file = temp_dir / "facebook_cookies_temp.txt"
+            temp_cookie_file.write_text(cookie_content)
+            logger.info(
+                f"✅ Created temporary cookie file from FACEBOOK_COOKIES_B64 env var: {temp_cookie_file}"
+            )
+            return str(temp_cookie_file)
+        except Exception as e:
+            logger.warning(
+                f"⚠️ Failed to decode FACEBOOK_COOKIES_B64 env var into cookie file: {e}"
+            )
+
+    # Check for plain text Instagram cookie content in env variable
     env_cookie_content = os.getenv("INSTAGRAM_COOKIES")
     if env_cookie_content:
         try:
@@ -60,12 +77,29 @@ def _detect_cookie_file() -> str | None:
                 f"⚠️ Failed to write INSTAGRAM_COOKIES env var into cookie file: {e}"
             )
 
+    # Check for plain text Facebook cookie content in env variable
+    facebook_cookie_content = os.getenv("FACEBOOK_COOKIES")
+    if facebook_cookie_content:
+        try:
+            temp_dir = Path(tempfile.gettempdir())
+            temp_cookie_file = temp_dir / "facebook_cookies_temp.txt"
+            temp_cookie_file.write_text(facebook_cookie_content)
+            logger.info(
+                f"✅ Created temporary cookie file from FACEBOOK_COOKIES env var: {temp_cookie_file}"
+            )
+            return str(temp_cookie_file)
+        except Exception as e:
+            logger.warning(
+                f"⚠️ Failed to write FACEBOOK_COOKIES env var into cookie file: {e}"
+            )
+
     # 2. Conventional locations under <project_root>/cookies/
     cookies_dir = Path(__file__).resolve().parent.parent.parent.parent / "cookies"
 
-    # Search order matters – prefer Instagram-specific cookies when present
+    # Search order matters – prefer platform-specific cookies when present
     for candidate in [
-        "instagram_cookies.txt",  # Instagram first because reels/posts frequently need auth
+        "facebook_cookies.txt",  # Facebook cookies
+        "instagram_cookies.txt",  # Instagram cookies
         "youtube_cookies.txt",  # Legacy YouTube cookies fallback
     ]:
         candidate_path = cookies_dir / candidate

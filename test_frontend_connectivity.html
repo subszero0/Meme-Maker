@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Frontend-Backend Connectivity Test</title>
+</head>
+<body>
+    <h1>🔍 Testing Frontend-Backend Connectivity</h1>
+    <button onclick="testInstagram()">Test Instagram Video</button>
+    <button onclick="testFacebook()">Test Facebook Video</button>
+    <div id="results"></div>
+
+    <script>
+    async function testInstagram() {
+        const results = document.getElementById('results');
+        results.innerHTML = '<p>🔍 Testing Instagram video...</p>';
+        
+        try {
+            const response = await fetch('http://localhost:8000/api/v1/metadata/extract', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    url: 'https://www.instagram.com/reel/DLiGaJABO_a/?igsh=MWQwc3BqcHA2M2k3Mw=='
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const audioFormats = data.formats.filter(f => f.acodec && f.acodec !== 'none');
+                results.innerHTML = `
+                    <h3>✅ Instagram Test PASSED</h3>
+                    <p><strong>Title:</strong> ${data.title}</p>
+                    <p><strong>Duration:</strong> ${data.duration} seconds</p>
+                    <p><strong>Audio Formats:</strong> ${audioFormats.length} formats with audio</p>
+                    <p><strong>Audio Codecs:</strong> ${audioFormats.map(f => f.acodec).join(', ')}</p>
+                `;
+            } else {
+                results.innerHTML = `<p>❌ Instagram Test FAILED: ${response.status}</p>`;
+            }
+        } catch (error) {
+            results.innerHTML = `<p>❌ Instagram Test FAILED: ${error.message}</p>`;
+        }
+    }
+
+    async function testFacebook() {
+        const results = document.getElementById('results');
+        results.innerHTML = '<p>🔍 Testing Facebook video...</p>';
+        
+        try {
+            const response = await fetch('http://localhost:8000/api/v1/metadata/extract', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    url: 'https://www.facebook.com/100067287620266/videos/1481060365360701/?__so__=video_home_channel&__rv__=video_home_www_topic'
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const audioFormats = data.formats.filter(f => f.acodec && f.acodec !== 'none');
+                results.innerHTML = `
+                    <h3>✅ Facebook Test PASSED</h3>
+                    <p><strong>Title:</strong> ${data.title}</p>
+                    <p><strong>Duration:</strong> ${data.duration} seconds</p>
+                    <p><strong>Audio Formats:</strong> ${audioFormats.length} formats with audio</p>
+                    <p><strong>Audio Codecs:</strong> ${audioFormats.map(f => f.acodec).join(', ')}</p>
+                `;
+            } else {
+                results.innerHTML = `<p>❌ Facebook Test FAILED: ${response.status}</p>`;
+            }
+        } catch (error) {
+            results.innerHTML = `<p>❌ Facebook Test FAILED: ${error.message}</p>`;
+        }
+    }
+    </script>
+</body>
+</html> 

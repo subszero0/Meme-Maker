@@ -32,8 +32,9 @@ export function ResolutionSelector({
   const uniqueFormats = useMemo(() => {
     const seen = new Set<string>();
     return formats.filter((format) => {
+      // Require a resolution and a video codec (skip pure audio-only formats)
       if (!format.resolution || format.vcodec === "none") return false;
-      if (format.acodec === "none") return false;
+      // Allow video-only DASH formats so users can still pick a resolution
       if (seen.has(format.resolution)) return false;
       seen.add(format.resolution);
       return true;
@@ -68,7 +69,7 @@ export function ResolutionSelector({
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm text-gray-600 font-medium">Select Format</h3>
+      <h3 className="text-sm text-gray-600 font-medium">Select Resolution</h3>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button

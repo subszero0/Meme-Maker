@@ -11,7 +11,7 @@ from rq import Queue
 # Import settings using direct file path to avoid package/module conflict
 # Import settings from the new configuration module
 from app.config.configuration import get_settings
-from app.dependencies import get_redis, get_storage, get_clips_queue
+from app.dependencies import get_clips_queue, get_redis, get_storage
 from app.models import Job, JobResponse, JobStatus
 from app.storage import LocalStorageManager
 
@@ -47,7 +47,11 @@ class JobCreateRequest(BaseModel):
 
 
 @router.post("/jobs", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
-async def create_job(request: JobCreateRequest, redis=Depends(get_redis), clips_queue: Queue = Depends(get_clips_queue)):
+async def create_job(
+    request: JobCreateRequest,
+    redis=Depends(get_redis),
+    clips_queue: Queue = Depends(get_clips_queue),
+):
     """Create a new video processing job"""
 
     if not redis:
@@ -99,7 +103,7 @@ async def create_job(request: JobCreateRequest, redis=Depends(get_redis), clips_
         job_id=job.id,
         url=str(job.url),
         in_ts=float(job.in_ts),  # Convert Decimal to float
-        out_ts=float(job.out_ts),   # Convert Decimal to float
+        out_ts=float(job.out_ts),  # Convert Decimal to float
         resolution=job.format_id,  # Use 'resolution' parameter name that worker expects
         job_timeout="2h",
         result_ttl=86400,  # Keep result for 1 day

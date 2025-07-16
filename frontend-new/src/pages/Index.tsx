@@ -99,31 +99,57 @@ const Index = () => {
 
       // --- Robust URL Selection Logic ---
       const getPreviewUrl = (): string => {
-        // 1. Prioritize manifest URL for adaptive streaming
-        if (metadata.manifest_url) {
-          console.log("Using manifest URL for preview:", metadata.manifest_url);
-          return metadata.manifest_url;
-        }
-
-        // 2. Fallback to finding a direct format URL with video
-        const suitableFormat =
-          metadata.formats?.find(
-            (f) => f.vcodec !== "none" && f.acodec !== "none" && f.url,
-          ) || metadata.formats?.find((f) => f.vcodec !== "none" && f.url);
-
-        if (suitableFormat) {
+        // 1. PRIORITY: Use manifest_url (DASH/HLS) if provided – this contains both audio and video.
+        if (metadata?.manifest_url) {
+          const apiBase = import.meta.env.DEV ? "http://localhost:8000" : "";
+          const proxyUrl = `${apiBase}/api/v1/video/proxy?url=${encodeURIComponent(metadata.manifest_url)}`;
           console.log(
-            "Using direct format URL for preview:",
-            suitableFormat.url,
+            "Using backend proxy for manifest URL:",
+            metadata.manifest_url,
           );
-          return suitableFormat.url;
+          console.log("Proxy URL:", proxyUrl);
+          return proxyUrl;
         }
 
-        // 3. As a last resort, use the original URL
-        console.warn(
-          "No ideal preview URL found. Falling back to original URL.",
-        );
-        return url;
+        // 2. Fallback: Use the best available video format URL from metadata for proxy
+        // The proxy is designed to stream direct video file URLs, not post URLs
+
+        if (metadata?.formats && metadata.formats.length > 0) {
+          // Find the best format for preview (prefer mp4, reasonable quality)
+          const mp4Formats = metadata.formats.filter(
+            (f) =>
+              f.url &&
+              (f.ext === "mp4" ||
+                f.format_note?.toLowerCase().includes("mp4")) &&
+              f.url.startsWith("https://"),
+          );
+
+          const selectedFormat =
+            mp4Formats.find(
+              (f) =>
+                f.format_note?.toLowerCase().includes("720p") ||
+                f.format_note?.toLowerCase().includes("medium"),
+            ) ||
+            mp4Formats[0] ||
+            metadata.formats[0];
+
+          if (selectedFormat?.url) {
+            // Use direct FastAPI URL in development to bypass Vite proxy issues with video streams
+            // This ensures audio playback works reliably (Vite proxy interferes with media streaming)
+            const apiBase = import.meta.env.DEV ? "http://localhost:8000" : "";
+            const proxyUrl = `${apiBase}/api/v1/video/proxy?url=${encodeURIComponent(selectedFormat.url)}`;
+            console.log(
+              "Using backend proxy for video file:",
+              selectedFormat.url,
+            );
+            console.log("Proxy URL:", proxyUrl);
+            return proxyUrl;
+          }
+        }
+
+        // Fallback: if no formats available, return a placeholder
+        console.warn("No suitable video format found for preview");
+        return "";
       };
 
       const previewUrl = getPreviewUrl();

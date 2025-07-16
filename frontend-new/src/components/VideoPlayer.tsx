@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import ReactPlayer from "react-player";
 import {
   Play,
@@ -11,11 +11,11 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
 import { formatDuration } from "../lib/api";
-import type { MetadataResponse } from "@/types/metadata";
+import type { VideoMetadata } from "@/types/metadata";
 
 interface VideoPlayerProps {
   videoUrl: string;
-  metadata?: MetadataResponse;
+  metadata?: VideoMetadata;
   onDurationChange: (duration: number) => void;
   onCurrentTimeChange?: (time: number) => void;
 }
@@ -34,12 +34,48 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const playerRef = useRef<ReactPlayer>(null);
+  const audioRef = useRef<ReactPlayer>(null);
+
+  // Determine audio URL if available (audio-only format)
+  const audioUrl = useMemo(() => {
+    if (!metadata?.formats) return null;
+
+    // If any of the reported formats already contains both video *and* audio we
+    // don't need a separate audio track – using one would cause double audio.
+    const hasMerged = metadata.formats.some(
+      (f) => f.vcodec !== "none" && f.acodec !== "none",
+    );
+    if (hasMerged) return null;
+
+    // Otherwise look for a dedicated audio-only stream (common for Facebook DASH)
+    const audioFormat = metadata.formats.find(
+      (f) =>
+        f.acodec !== "none" && f.vcodec === "none" && f.url?.startsWith("http"),
+    );
+    if (!audioFormat?.url) return null;
+
+    const apiBase = import.meta.env.DEV ? "http://localhost:8000" : "";
+    const u = `${apiBase}/api/v1/video/proxy?url=${encodeURIComponent(
+      audioFormat.url,
+    )}`;
+    console.log("Audio URL selected:", u);
+    return u;
+  }, [metadata]);
 
   useEffect(() => {
     console.log("VideoPlayer: URL received:", videoUrl);
     setIsReady(false);
     setError(null);
   }, [videoUrl]);
+
+  // Sync audio player with video player
+  useEffect(() => {
+    if (!audioUrl || !audioRef.current || !playerRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.seekTo(currentTime, "seconds");
+    }
+  }, [currentTime, isPlaying, audioUrl]);
 
   // Initialize duration from metadata
   useEffect(() => {
@@ -62,6 +98,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     );
     if (isReady) {
       setIsPlaying(!isPlaying);
+      if (audioUrl && audioRef.current) {
+        // Toggle audio playback in sync
+        if (isPlaying) {
+          audioRef.current.getInternalPlayer()?.pause?.();
+        } else {
+          audioRef.current.getInternalPlayer()?.play?.();
+        }
+      }
     } else {
       console.warn("VideoPlayer: Tried to play but player is not ready.");
     }
@@ -137,10 +181,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       )}
 
       {/* Video Thumbnail (before ready) */}
-      {!isReady && metadata?.thumbnail_url && (
+      {!isReady && metadata?.thumbnail && (
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${metadata.thumbnail_url})` }}
+          style={{ backgroundImage: `url(${metadata.thumbnail})` }}
         >
           <div className="absolute inset-0 bg-black/30" />
         </div>
@@ -153,7 +197,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         width="100%"
         height="100%"
         playing={isPlaying}
-        volume={volume}
+        volume={audioUrl ? 0 : volume} // Mute main player when external audio is used
+        muted={!!audioUrl}
         onReady={handleReady}
         onPlay={handlePlay}
         onPause={handlePause}
@@ -164,8 +209,33 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           youtube: {
             playerVars: { showinfo: 0, controls: 0, modestbranding: 1 },
           },
+          file: {
+            attributes: {
+              crossOrigin: "anonymous",
+              preload: "metadata",
+            },
+            tracks: [],
+            forceHLS: false,
+            forceVideo: true,
+          },
         }}
       />
+
+      {/* Hidden Audio Player for DASH video-only streams */}
+      {audioUrl && (
+        <ReactPlayer
+          ref={audioRef}
+          url={audioUrl}
+          playing={isPlaying}
+          volume={volume}
+          width={0}
+          height={0}
+          style={{ display: "none" }}
+          config={{ file: { forceAudio: true } }}
+          onReady={() => console.log("AudioPlayer ready", audioUrl)}
+          onError={(e) => console.error("AudioPlayer error", e)}
+        />
+      )}
 
       {/* Video Controls Overlay */}
       {showControls && isReady && (

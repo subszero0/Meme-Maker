@@ -1171,6 +1171,59 @@ Modern browsers aggressively optimize touch events for smooth scrolling. Develop
 
 **Why It Matters**: Minimizing build-time plugins keeps the production image smaller and the build process simpler.
 
+### **Media & Streaming Content**
+#### **BP #34: Distinguish Media Streaming from API Request Debugging**
+**Principle**: Debugging media streams is not the same as debugging JSON APIs. **Assume nothing**—verify the entire chain from the client request to the backend proxy and the final `Content-Type` header. A successful network request in the browser's DevTools does not guarantee a valid, playable media stream.
+
+**Implementation: A Diagnostic Workflow**
+1.  **Check the Final Output First**: Test the media URL directly in a new browser tab. If it doesn't play there, the problem is likely on the backend or with the source URL itself.
+2.  **Validate the `Content-Type`**: Use a diagnostic `fetch` call in the browser console to inspect the response headers.
+    ```javascript
+    // Diagnostic fetch to check what's actually being served
+    const response = await fetch(videoUrl);
+    console.log('Response Status:', response.status);
+    console.log('Content-Type:', response.headers.get('content-type'));
+    // MUST be a media type (e.g., 'video/mp4'), NOT 'text/html'.
+    ```
+3.  **Verify Backend Logs**: Confirm that the request to your video proxy endpoint is actually being received and processed by the backend. No log entry means the request was intercepted before it reached your application.
+4.  **Isolate Component vs. Stream Errors**: If the stream plays correctly via direct URL but fails in your player component (e.g., ReactPlayer), the issue is likely with the component's configuration or how it handles the URL, not the stream itself.
+5.  **Review Proxy Domain Validation**: Ensure the backend proxy's allowlist includes all necessary source domains, especially CDN domains (e.g., `*.fbcdn.net`) which may differ from the user-facing domain (e.g., `instagram.com`).
+
+**Real-World Example from Video Player Audio Fix**:
+-   **Symptom**: `ReactPlayer` showed "Video Error: Failed to load video" in development.
+-   **Investigation Step 1 (Domain Validation)**: The initial fix was to allow Instagram's CDN domain (`*.fna.fbcdn.net`) in the backend proxy.
+-   **Investigation Step 2 (`Content-Type` Check)**: After the fix, a diagnostic `fetch` revealed the browser was still receiving `content-type: text/html` instead of `video/mp4`.
+-   **Root Cause**: Vite's dev proxy was intercepting the video stream request and returning the HTML of the single-page application, preventing the request from ever reaching the backend proxy.
+-   **Lesson**: Video streaming debugging requires a multi-layered approach. Fixing one issue (domain validation) can reveal a deeper, more subtle issue (proxy interference).
+
+**Why It Matters**:
+Media streaming has unique requirements for `Content-Type` headers, payload sizes, and connection handling that are invisible during standard API debugging. Treating them differently is essential for a quick resolution.
+
+#### **BP #35: Understand Development Proxy Limitations for Streaming Content**
+**Principle**: Development proxies (like Vite's) are built for API calls, not for streaming large media files. They can intercept and mishandle these requests. For reliable media playback in development, **bypass the dev proxy** and connect directly to your backend.
+
+**Implementation**:
+-   **Environment-Aware Media URLs**: Create a helper that provides the correct, full URL for media assets in development and a relative URL in production.
+    ```typescript
+    // Use the full backend URL in dev, but a relative path in prod
+    const apiBaseUrl = import.meta.env.DEV ? 'http://localhost:8000' : '';
+    const videoProxyUrl = `${apiBaseUrl}/api/v1/video/proxy?url=${encodeURIComponent(videoUrl)}`;
+    ```
+-   **Verify Proxy Configuration**: If you *must* proxy media, check the proxy's documentation for settings related to body size limits, timeouts, and buffer management.
+
+**Prevention**:
+-   **Establish separate URL patterns**: From the beginning of a project, use a dedicated function or helper for resolving media URLs that can account for environmental differences.
+-   **Document for the Team**: Ensure your project's `README.md` explains that media assets are served directly from the backend in development to prevent other developers from spending time debugging the proxy.
+
+**Real-World Example**:
+-   **Symptom**: `ReactPlayer` failed in the development environment, but a `curl` command to the backend's video proxy (`http://localhost:8000/...`) worked perfectly.
+-   **Discovery**: The backend logs showed no incoming requests from the browser, proving the request was being intercepted. The `Content-Type` was `text/html`.
+-   **Root Cause**: Vite's dev proxy was intercepting the request to `/api/v1/video/proxy` and, because it wasn't a typical API request, served the default `index.html` file instead of forwarding the request to the backend.
+-   **Solution**: The `apiBaseUrl` variable was introduced to bypass the proxy for video streams in development, solving the issue immediately.
+
+**Why It Matters**:
+Development convenience tools can create environment-specific bugs that are hard to diagnose. Understanding the limitations of these tools, especially for non-standard requests like media streaming, saves hours of debugging by pointing you to the right layer of the stack (the client-side environment) instead of the wrong one (the backend).
+
 ---
 
 ## **Meta-Practice: The Learning Loop**
@@ -1225,5 +1278,7 @@ After each debugging session:
 31. **Prefer URL imports over `ReactComponent` for simple SVGs in Vite** - Avoid build failures in production
 32. **Distinguish platform behavior from infrastructure issues** - Use systematic layer-by-layer testing to prevent misattributing platform restrictions to infrastructure problems
 33. **Implement comprehensive change propagation analysis** - When making architectural changes, systematically identify and update ALL affected components in a single session to prevent progressive error discovery
+34. **Distinguish media streaming from API request debugging** - Verify the entire chain, especially the final `Content-Type` header, as a successful network status is not enough.
+35. **Understand development proxy limitations for streaming content** - Bypass the dev proxy for media in development by connecting directly to the backend to avoid interception issues.
 
 These practices work together to create a systematic, safe, and effective approach to production problem resolution that minimizes system disruption while maximizing learning and long-term stability. Future investigations should use systematic layer-by-layer approaches to distinguish platform behavior from infrastructure issues. 

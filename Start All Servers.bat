@@ -49,8 +49,8 @@ timeout /t 8 /nobreak >nul
 
 REM Start RQ Worker
 echo.
-echo 🟡 Starting RQ Worker...
-start "RQ Worker" cmd /k "cd backend && poetry run rq worker clips --url redis://localhost:6379"
+echo 🟡 Starting Windows-compatible RQ Worker...
+start "RQ Worker" cmd /k "cd backend && poetry run python windows_worker.py"
 
 REM Wait for worker to start
 timeout /t 3 /nobreak >nul

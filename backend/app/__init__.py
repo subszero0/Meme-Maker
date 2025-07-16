@@ -43,7 +43,7 @@ def init_redis():
         # Initialize sync Redis client for RQ
         redis = Redis.from_url(
             redis_url,
-            decode_responses=True,
+            decode_responses=False,  # RQ stores pickled job data, keep binary responses
             socket_connect_timeout=10,
             socket_timeout=10,
             retry_on_timeout=True,
@@ -88,7 +88,7 @@ def init_redis():
             import fakeredis
             import fakeredis.aioredis
 
-            redis = fakeredis.FakeRedis(decode_responses=True)
+            redis = fakeredis.FakeRedis(decode_responses=False)
             async_redis_pool = "fake"  # Flag for fake Redis
             print(
                 "⚠️  Using FakeRedis for local development - "

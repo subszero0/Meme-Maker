@@ -2,7 +2,7 @@ services:
   redis:
     image: redis:7.2.5-alpine
     container_name: meme-maker-redis-dev
-    restart: unless-stopped
+    restart: always
     ports:
       - "6379:6379"
     command: ["redis-server"]
@@ -24,17 +24,20 @@ services:
         condition: service_healthy
     environment:
       - REDIS_URL=redis://redis:6379
-      - DEBUG=true
       - ENVIRONMENT=development
-      - STORAGE_BACKEND=local
       - CLIPS_DIR=/app/clips
       - BASE_URL=http://localhost:8000
-      - CORS_ORIGINS=*
+      - CORS_ORIGINS=["http://localhost:3000","http://localhost:8080"]
+      - INSTAGRAM_COOKIES_B64=${INSTAGRAM_COOKIES_B64}
     ports:
       - "8000:8000"
     volumes:
-      - clips-storage:/app/clips
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+      - ./storage:/app/clips
+    command: >
+      sh -c "
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload || 
+        (echo '❌ Backend failed to start. Review logs above for errors.' && exit 1)
+      "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -50,14 +53,13 @@ services:
     restart: unless-stopped
     environment:
       - VITE_API_BASE_URL=http://localhost:8000
-      - VITE_WS_BASE_URL=ws://localhost:8000
       - NODE_ENV=development
     ports:
       - "3000:3000"
     volumes:
       - ./frontend-new:/app
       - /app/node_modules
-      - /app/dist
+    command: npm run dev
     depends_on:
       - backend
 
@@ -72,13 +74,14 @@ services:
         condition: service_healthy
     environment:
       - REDIS_URL=redis://redis:6379
-      - STORAGE_BACKEND=local
+      - ENVIRONMENT=development
       - CLIPS_DIR=/app/clips
-      - BASE_URL=http://localhost:8000
+      - INSTAGRAM_COOKIES_B64=${INSTAGRAM_COOKIES_B64}
     volumes:
-      - clips-storage:/app/clips
-    command: ["python", "/app/worker/main.py"]
-
-volumes:
-  clips-storage:
-    driver: local 
+      - ./storage:/app/clips
+    command: >
+      sh -c "
+        cd /app/backend && 
+        python -m app.worker.main || 
+        (echo '❌ Worker failed to start. Review logs above for errors.' && exit 1)
+      " 

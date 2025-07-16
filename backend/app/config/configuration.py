@@ -2,13 +2,15 @@
 Centralized configuration management with validation.
 All configuration parameters are defined here with proper validation.
 """
+import json
 import os
 import sys
 from functools import lru_cache
 from pathlib import Path
+from typing import List, Union
 
 from dotenv import load_dotenv
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Correctly locate the .env file at the project root
@@ -41,13 +43,16 @@ class Settings(BaseSettings):
     # Environment settings
     debug: bool = Field(default=False, description="Debug mode enabled")
     testing: bool = Field(default=False, description="Testing mode enabled")
+    environment: str = Field(
+        default="development", description="Application environment"
+    )
     base_url: str = Field(
         default="http://localhost:8000", description="Base URL for the application"
     )
 
     # CORS settings
-    cors_origins: list[str] = Field(
-        default_factory=list, description="CORS allowed origins"
+    cors_origins: Union[str, List[str]] = Field(
+        default="[]", description="CORS allowed origins, comma-separated or JSON list"
     )
 
     # Redis settings
@@ -66,10 +71,12 @@ class Settings(BaseSettings):
 
     # FFmpeg settings
     ffmpeg_path: str = Field(
-        default="/usr/bin/ffmpeg", description="Path to FFmpeg executable"
+        default="ffmpeg",
+        description="Path to FFmpeg executable (relies on system PATH by default)",
     )
     ffprobe_path: str = Field(
-        default="ffprobe", description="Path to FFprobe executable"
+        default="ffprobe",
+        description="Path to FFprobe executable (relies on system PATH by default)",
     )
 
     # Job and cleanup settings
@@ -89,6 +96,27 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
     )
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        """
+        Parse the CORS_ORIGINS environment variable.
+        It can be a comma-separated string or a JSON-encoded list.
+        """
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            # If it's a JSON-like string, try to parse it
+            if v.startswith("[") and v.endswith("]"):
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    # Fallback for malformed JSON string, treat as comma-separated
+                    pass
+            # Treat as a comma-separated list
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return []
 
 
 @lru_cache

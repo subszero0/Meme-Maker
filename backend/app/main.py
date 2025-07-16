@@ -15,8 +15,7 @@ except ImportError:
     PROMETHEUS_AVAILABLE = False
     print("Warning: prometheus_fastapi_instrumentator not available, metrics disabled")
 
-from .api import clips, jobs, metadata
-from .api import video_proxy
+from .api import clips, jobs, metadata, video_proxy
 from .config import get_settings
 from .middleware.security_headers import SecurityHeadersMiddleware
 
@@ -120,7 +119,7 @@ app.add_middleware(
         "http://localhost:8080",
     ]
     + settings.cors_origins,
-    allow_credentials=False,  # Set to False for development to avoid credentials issues
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=[
         "Accept",

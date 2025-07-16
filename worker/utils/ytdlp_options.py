@@ -25,7 +25,7 @@ def _detect_cookie_file() -> str | None:
     """Detect available cookie files for yt-dlp authentication."""
     logger.info("🍪 Detecting cookie files...")
 
-    # NEW: Check for base64 encoded cookie content in environment variable
+    # NEW: Check for base64 encoded Instagram cookie content in environment variable
     env_cookie_b64 = os.getenv("INSTAGRAM_COOKIES_B64")
     if env_cookie_b64:
         try:
@@ -44,12 +44,36 @@ def _detect_cookie_file() -> str | None:
             with open(temp_cookie_file, 'w') as f:
                 f.write(cookie_content)
             
-            logger.info(f"✅ Created temporary cookie file from base64 environment variable: {temp_cookie_file}")
+            logger.info(f"✅ Created temporary cookie file from Instagram base64 environment variable: {temp_cookie_file}")
             return str(temp_cookie_file)
         except Exception as e:
-            logger.warning(f"⚠️ Failed to create temporary cookie file from base64 env var: {e}")
+            logger.warning(f"⚠️ Failed to create temporary cookie file from Instagram base64 env var: {e}")
 
-    # NEW: Check for cookie content in environment variable first
+    # NEW: Check for base64 encoded Facebook cookie content in environment variable
+    facebook_cookie_b64 = os.getenv("FACEBOOK_COOKIES_B64")
+    if facebook_cookie_b64:
+        try:
+            import base64
+            import tempfile
+            
+            # Decode the base64 content
+            cookie_content = base64.b64decode(facebook_cookie_b64).decode('utf-8')
+            
+            # Create a temporary cookie file from decoded content
+            temp_dir = Path("/tmp")
+            temp_dir.mkdir(exist_ok=True)
+            temp_cookie_file = temp_dir / "facebook_cookies_temp.txt"
+            
+            # Write the cookie content to the temporary file
+            with open(temp_cookie_file, 'w') as f:
+                f.write(cookie_content)
+            
+            logger.info(f"✅ Created temporary cookie file from Facebook base64 environment variable: {temp_cookie_file}")
+            return str(temp_cookie_file)
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to create temporary cookie file from Facebook base64 env var: {e}")
+
+    # NEW: Check for Instagram cookie content in environment variable first
     env_cookie_content = os.getenv("INSTAGRAM_COOKIES")
     if env_cookie_content:
         try:
@@ -63,10 +87,29 @@ def _detect_cookie_file() -> str | None:
             with open(temp_cookie_file, 'w') as f:
                 f.write(env_cookie_content)
             
-            logger.info(f"✅ Created temporary cookie file from environment variable: {temp_cookie_file}")
+            logger.info(f"✅ Created temporary cookie file from Instagram environment variable: {temp_cookie_file}")
             return str(temp_cookie_file)
         except Exception as e:
-            logger.warning(f"⚠️ Failed to create temporary cookie file from env var: {e}")
+            logger.warning(f"⚠️ Failed to create temporary cookie file from Instagram env var: {e}")
+
+    # NEW: Check for Facebook cookie content in environment variable
+    facebook_cookie_content = os.getenv("FACEBOOK_COOKIES")
+    if facebook_cookie_content:
+        try:
+            # Create a temporary cookie file from environment variable content
+            import tempfile
+            temp_dir = Path("/tmp")
+            temp_dir.mkdir(exist_ok=True)
+            temp_cookie_file = temp_dir / "facebook_cookies_temp.txt"
+            
+            # Write the cookie content to the temporary file
+            with open(temp_cookie_file, 'w') as f:
+                f.write(facebook_cookie_content)
+            
+            logger.info(f"✅ Created temporary cookie file from Facebook environment variable: {temp_cookie_file}")
+            return str(temp_cookie_file)
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to create temporary cookie file from Facebook env var: {e}")
 
     # Check environment variable for file path
     env_cookie = os.getenv("YTDLP_COOKIE_FILE")
@@ -77,6 +120,14 @@ def _detect_cookie_file() -> str | None:
             return str(expanded_path)
         else:
             logger.warning(f"⚠️ Cookie file from env var not found: {expanded_path}")
+
+    # Check for Facebook-specific cookies
+    facebook_cookies = (
+        Path(__file__).resolve().parent.parent / "cookies" / "facebook_cookies.txt"
+    )
+    if facebook_cookies.is_file():
+        logger.info(f"✅ Found Facebook-specific cookies: {facebook_cookies}")
+        return str(facebook_cookies)
 
     # Check for Instagram-specific cookies
     instagram_cookies = (
@@ -95,7 +146,7 @@ def _detect_cookie_file() -> str | None:
         return str(fallback)
 
     logger.warning(
-        "⚠️ No cookie files found. This may affect Instagram download success."
+        "⚠️ No cookie files found. This may affect Instagram/Facebook download success."
     )
     return None
 

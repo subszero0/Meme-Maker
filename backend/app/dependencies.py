@@ -3,8 +3,6 @@ from rq import Queue
 from app.storage import LocalStorageManager
 from app.storage_factory import storage_manager
 
-from . import redis as redis_client
-
 
 def get_storage() -> LocalStorageManager:
     """FastAPI dependency for storage manager"""
