@@ -5,13 +5,13 @@ name: "Staging Environment (Lightsail Instance)"
 
 on:
   push:
-    branches: [ fix-audio-playback-investigation ]
+    branches: [ fix-audio-playback-investigation, security-testing-staging ]
   workflow_dispatch:
     inputs:
       branch:
         description: 'Branch to deploy to staging'
         required: true
-        default: 'fix-audio-playback-investigation'
+        default: 'security-testing-staging'
 
 jobs:
   lint-test-staging:
