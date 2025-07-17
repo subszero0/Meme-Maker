@@ -66,7 +66,7 @@ services:
       args:
         - VITE_API_BASE_URL=http://staging.memeit.pro:8081/api
     ports:
-      - "8082:80"  # Different port from production
+      - "8082:3000"  # Fixed: Frontend dev server runs on port 3000, not 80
     depends_on:
       - backend-staging
     networks:
