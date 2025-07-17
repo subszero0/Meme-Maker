@@ -115,10 +115,13 @@ jobs:
           git reset --hard origin/${{ github.ref_name }}
           echo "✅ Pulled staging branch: ${{ github.ref_name }}"
           
+          # Ensure ubuntu user owns the project directory
+          sudo chown -R ubuntu:ubuntu /home/ubuntu/Meme-Maker-Staging
+          
           # Create required directories with proper permissions
           mkdir -p storage/clips cookies
           sudo chown -R 1000:1000 storage cookies
-          chmod -R 755 storage cookies
+          sudo chmod -R 755 storage cookies
           echo "✅ Created storage directories with proper permissions"
           
           # Ensure .env file exists (copy from env.template if needed)
