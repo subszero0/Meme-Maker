@@ -97,15 +97,17 @@ class Settings(BaseSettings):
 
     # Additional Redis settings
     redis_db: int = Field(default=0, description="Redis database number")
-    
+
     # Worker settings
     job_timeout: int = Field(default=300, description="Job timeout in seconds")
-    
+
     # Logging settings
     log_level: str = Field(default="INFO", description="Logging level")
-    
+
     # Instagram authentication
-    instagram_cookies_b64: str = Field(default="", description="Base64 encoded Instagram cookies")
+    instagram_cookies_b64: str = Field(
+        default="", description="Base64 encoded Instagram cookies"
+    )
 
     # Pydantic settings configuration
     model_config = SettingsConfigDict(

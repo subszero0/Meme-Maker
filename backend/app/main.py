@@ -118,7 +118,7 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://localhost:8080",
     ]
-    + settings.cors_origins,
+    + (settings.cors_origins if isinstance(settings.cors_origins, list) else []),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=[
