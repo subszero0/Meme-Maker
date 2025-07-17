@@ -15,8 +15,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Correctly locate the .env file at the project root
 # The configuration.py file is at backend/app/config/configuration.py
-# So we go up three levels to find the project root.
-env_path = Path(__file__).parent.parent.parent.parent / ".env"
+# In Docker: .env is mounted at /app/.env
+# In local: .env is at project root (go up 4 levels from this file)
+docker_env_path = Path("/app/.env")
+local_env_path = Path(__file__).parent.parent.parent.parent / ".env"
+
+# Use Docker path if it exists, otherwise use local path
+env_path = docker_env_path if docker_env_path.exists() else local_env_path
 
 # Load .env only when **not** running inside a pytest session to keep unit tests deterministic
 _running_tests = "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST") is not None
@@ -89,6 +94,18 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = Field(default=True, description="Enable rate limiting")
     rate_limit_times: int = Field(default=100, description="Rate limit times")
     rate_limit_seconds: int = Field(default=60, description="Rate limit seconds")
+
+    # Additional Redis settings
+    redis_db: int = Field(default=0, description="Redis database number")
+    
+    # Worker settings
+    job_timeout: int = Field(default=300, description="Job timeout in seconds")
+    
+    # Logging settings
+    log_level: str = Field(default="INFO", description="Logging level")
+    
+    # Instagram authentication
+    instagram_cookies_b64: str = Field(default="", description="Base64 encoded Instagram cookies")
 
     # Pydantic settings configuration
     model_config = SettingsConfigDict(
