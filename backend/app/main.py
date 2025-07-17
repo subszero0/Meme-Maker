@@ -15,21 +15,30 @@ except ImportError:
     PROMETHEUS_AVAILABLE = False
     print("Warning: prometheus_fastapi_instrumentator not available, metrics disabled")
 
-from .api import clips, jobs, metadata, video_proxy
+from .api import clips, jobs, metadata
+from .api import phase3_endpoints as admin
+from .api import video_proxy
 from .config import get_settings
+from .middleware.admin_auth import AdminAuthMiddleware
+from .middleware.queue_protection import QueueDosProtectionMiddleware
 from .middleware.security_headers import SecurityHeadersMiddleware
 
 # Get settings instance
 settings = get_settings()
 
 # Create FastAPI app with proper configuration
+# SECURITY: Disable API documentation in production (CRIT-001)
+docs_url = "/docs" if settings.environment != "production" else None
+redoc_url = "/redoc" if settings.environment != "production" else None
+openapi_url = "/openapi.json" if settings.environment != "production" else None
+
 app = FastAPI(
     title="Meme Maker API",
     version="0.1.0",
     description="A tool to clip and download videos from social media platforms",
-    docs_url="/docs",  # Explicitly enable Swagger UI
-    redoc_url="/redoc",  # Enable ReDoc as well
-    openapi_url="/openapi.json",  # Ensure OpenAPI spec is available
+    docs_url=docs_url,  # Environment-aware documentation
+    redoc_url=redoc_url,  # Environment-aware documentation
+    openapi_url=openapi_url,  # Environment-aware OpenAPI spec
 )
 
 # Production service restart fix - July 9, 2025
@@ -140,6 +149,12 @@ if PROMETHEUS_AVAILABLE:
     instrumentator = Instrumentator()
     instrumentator.instrument(app).expose(app, endpoint="/metrics")
 
+# 🚨 T-003 QUEUE DOS PROTECTION MIDDLEWARE (Critical)
+app.add_middleware(QueueDosProtectionMiddleware)
+
+# 🚨 CRIT-002: Admin authentication middleware (Critical)
+app.add_middleware(AdminAuthMiddleware, admin_api_key=settings.admin_api_key)
+
 # Security headers middleware (must be added before routers)
 app.add_middleware(SecurityHeadersMiddleware)
 
@@ -148,6 +163,7 @@ app.include_router(clips.router, prefix="/api/v1", tags=["clips"])
 app.include_router(jobs.router, prefix="/api/v1", tags=["jobs"])
 app.include_router(metadata.router, prefix="/api/v1", tags=["metadata"])
 app.include_router(video_proxy.router, prefix="/api/v1/video", tags=["video-proxy"])
+app.include_router(admin.router, tags=["admin"])  # Admin endpoints with authentication
 
 
 @app.get("/health", tags=["health"])

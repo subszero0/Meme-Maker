@@ -1,6 +1,7 @@
 """
 Tests for the centralized configuration management system.
 """
+
 import os
 import tempfile
 from unittest.mock import MagicMock, patch

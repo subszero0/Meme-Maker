@@ -30,7 +30,9 @@ try:
     ]
     if video_streams:
         video_stream = video_streams[0]
-        print(f'📺 Resolution: {video_stream.get("width")}x{video_stream.get("height")}')
+        print(
+            f'📺 Resolution: {video_stream.get("width")}x{video_stream.get("height")}'
+        )
         print(f'🎯 Codec: {video_stream.get("codec_name")}')
 
         # Check for rotation in tags

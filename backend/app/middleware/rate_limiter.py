@@ -2,6 +2,7 @@
 Rate limiting middleware using token bucket algorithm.
 Implements per-IP and per-endpoint rate limiting for API security.
 """
+
 import time
 from collections import defaultdict
 from dataclasses import dataclass

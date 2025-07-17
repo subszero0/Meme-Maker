@@ -5,6 +5,7 @@ Adds:
 2. `force_ipv4` flag to avoid IPv6-specific throttling.
 3. `http2` flag to mimic modern browsers.
 """
+
 from __future__ import annotations
 
 import os

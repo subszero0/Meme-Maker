@@ -41,8 +41,12 @@ class JobCreateRequest(BaseModel):
     def validate_duration(cls, v, values):
         if "in_ts" in values and v <= values["in_ts"]:
             raise ValueError("End time must be greater than start time")
-        if "in_ts" in values and (v - values["in_ts"]) > 180:  # 3 minutes max
-            raise ValueError("Clip duration cannot exceed 3 minutes")
+        if (
+            "in_ts" in values and (v - values["in_ts"]) > 60
+        ):  # 1 minute max for T-003 protection
+            raise ValueError(
+                "Clip duration cannot exceed 1 minute (T-003 DoS protection)"
+            )
         return v
 
 
@@ -60,12 +64,12 @@ async def create_job(
             detail="Redis service unavailable",
         )
 
-    # Check queue capacity
+    # Check queue capacity with T-003 protection
     queue_length = redis.llen("rq:queue:default")
-    if queue_length >= settings.max_concurrent_jobs:
+    if queue_length >= 15:  # T-003 reduced limit
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Queue is full. Try again later.",
+            detail="Queue at capacity. T-003 DoS protection active. Try again later.",
         )
 
     # Generate job ID
@@ -102,12 +106,12 @@ async def create_job(
         "worker.process_clip.process_clip",
         job_id=job.id,
         url=str(job.url),
-        in_ts=float(job.in_ts)
-        if job.in_ts is not None
-        else 0.0,  # Convert Decimal to float
-        out_ts=float(job.out_ts)
-        if job.out_ts is not None
-        else 0.0,  # Convert Decimal to float
+        in_ts=(
+            float(job.in_ts) if job.in_ts is not None else 0.0
+        ),  # Convert Decimal to float
+        out_ts=(
+            float(job.out_ts) if job.out_ts is not None else 0.0
+        ),  # Convert Decimal to float
         resolution=job.format_id,  # Use 'resolution' parameter name that worker expects
         job_timeout="2h",
         result_ttl=86400,  # Keep result for 1 day
@@ -154,9 +158,9 @@ async def get_job(job_id: str, redis=Depends(get_redis)):
         download_url=job_data.get("download_url"),
         error_code=job_data.get("error_code"),
         stage=job_data.get("stage"),
-        format_id=job_data.get("format_id")
-        if job_data.get("format_id") != ""
-        else None,
+        format_id=(
+            job_data.get("format_id") if job_data.get("format_id") != "" else None
+        ),
         video_title=job_data.get("video_title"),
     )
 

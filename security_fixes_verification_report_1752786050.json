@@ -1,0 +1,158 @@
+{
+  "timestamp": "2025-07-18 02:30:50",
+  "summary": {
+    "total_tests": 21,
+    "passed": 9,
+    "failed": 12,
+    "success_rate": 42.857142857142854
+  },
+  "results": [
+    {
+      "test": "Backend Connectivity",
+      "status": "PASS",
+      "details": "Health endpoint responding: {'status': 'ok'}",
+      "expected": "",
+      "timestamp": "2025-07-18 02:30:49"
+    },
+    {
+      "test": "Environment Debug Access",
+      "status": "PASS",
+      "details": "Debug endpoint accessible: {'CORS_ORIGINS': 'http://localhost:8082,http://staging.memeit.pro:8081', 'DEBUG': 'false'}",
+      "expected": "",
+      "timestamp": "2025-07-18 02:30:49"
+    },
+    {
+      "test": "CRIT-001: Swagger UI Documentation",
+      "status": "PASS",
+      "details": "Endpoint /docs correctly returns 404 in production",
+      "expected": "",
+      "timestamp": "2025-07-18 02:30:49"
+    },
+    {
+      "test": "CRIT-001: ReDoc API Documentation",
+      "status": "PASS",
+      "details": "Endpoint /redoc correctly returns 404 in production",
+      "expected": "",
+      "timestamp": "2025-07-18 02:30:49"
+    },
+    {
+      "test": "CRIT-001: OpenAPI Schema",
+      "status": "PASS",
+      "details": "Endpoint /openapi.json correctly returns 404 in production",
+      "expected": "",
+      "timestamp": "2025-07-18 02:30:49"
+    },
+    {
+      "test": "CRIT-002: Unauthenticated /api/v1/admin/cache/stats",
+      "status": "FAIL",
+      "details": "Returned 500 instead of 401",
+      "expected": "Should return 401 for unauthenticated admin access",
+      "timestamp": "2025-07-18 02:30:49"
+    },
+    {
+      "test": "CRIT-002: Invalid Auth /api/v1/admin/cache/stats",
+      "status": "FAIL",
+      "details": "Returned 500 instead of 403",
+      "expected": "Should return 403 for invalid admin API key",
+      "timestamp": "2025-07-18 02:30:50"
+    },
+    {
+      "test": "CRIT-002: Valid Auth /api/v1/admin/cache/stats",
+      "status": "PASS",
+      "details": "Valid API key accepted, returned 200",
+      "expected": "",
+      "timestamp": "2025-07-18 02:30:50"
+    },
+    {
+      "test": "CRIT-002: Unauthenticated /api/v1/admin/cache/clear",
+      "status": "FAIL",
+      "details": "Returned 500 instead of 401",
+      "expected": "Should return 401 for unauthenticated admin access",
+      "timestamp": "2025-07-18 02:30:50"
+    },
+    {
+      "test": "CRIT-002: Invalid Auth /api/v1/admin/cache/clear",
+      "status": "FAIL",
+      "details": "Returned 500 instead of 403",
+      "expected": "Should return 403 for invalid admin API key",
+      "timestamp": "2025-07-18 02:30:50"
+    },
+    {
+      "test": "CRIT-002: Valid Auth /api/v1/admin/cache/clear",
+      "status": "PASS",
+      "details": "Valid API key accepted, returned 405",
+      "expected": "",
+      "timestamp": "2025-07-18 02:30:50"
+    },
+    {
+      "test": "CRIT-002: Unauthenticated /api/v1/admin/storage/info",
+      "status": "FAIL",
+      "details": "Returned 500 instead of 401",
+      "expected": "Should return 401 for unauthenticated admin access",
+      "timestamp": "2025-07-18 02:30:50"
+    },
+    {
+      "test": "CRIT-002: Invalid Auth /api/v1/admin/storage/info",
+      "status": "FAIL",
+      "details": "Returned 500 instead of 403",
+      "expected": "Should return 403 for invalid admin API key",
+      "timestamp": "2025-07-18 02:30:50"
+    },
+    {
+      "test": "CRIT-002: Valid Auth /api/v1/admin/storage/info",
+      "status": "PASS",
+      "details": "Valid API key accepted, returned 200",
+      "expected": "",
+      "timestamp": "2025-07-18 02:30:50"
+    },
+    {
+      "test": "CRIT-002: Non-admin Endpoint Access",
+      "status": "PASS",
+      "details": "Non-admin endpoints work without authentication",
+      "expected": "",
+      "timestamp": "2025-07-18 02:30:50"
+    },
+    {
+      "test": "CRIT-003: Email Endpoint /api/v1/mail",
+      "status": "FAIL",
+      "details": "Found email endpoint returning 429",
+      "expected": "No email endpoints should exist",
+      "timestamp": "2025-07-18 02:30:50"
+    },
+    {
+      "test": "CRIT-003: Email Endpoint /api/v1/notifications",
+      "status": "FAIL",
+      "details": "Found email endpoint returning 429",
+      "expected": "No email endpoints should exist",
+      "timestamp": "2025-07-18 02:30:50"
+    },
+    {
+      "test": "CRIT-003: Email Endpoint /api/v1/send-email",
+      "status": "FAIL",
+      "details": "Found email endpoint returning 429",
+      "expected": "No email endpoints should exist",
+      "timestamp": "2025-07-18 02:30:50"
+    },
+    {
+      "test": "CRIT-003: Email Endpoint /email",
+      "status": "FAIL",
+      "details": "Found email endpoint returning 429",
+      "expected": "No email endpoints should exist",
+      "timestamp": "2025-07-18 02:30:50"
+    },
+    {
+      "test": "CRIT-003: Email Endpoint /mail",
+      "status": "FAIL",
+      "details": "Found email endpoint returning 429",
+      "expected": "No email endpoints should exist",
+      "timestamp": "2025-07-18 02:30:50"
+    },
+    {
+      "test": "CRIT-003: Root API Email References",
+      "status": "FAIL",
+      "details": "Root API returned 429",
+      "expected": "",
+      "timestamp": "2025-07-18 02:30:50"
+    }
+  ]
+}

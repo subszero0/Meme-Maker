@@ -2,6 +2,7 @@
 Platform detection utilities for video URL analysis and format mapping.
 Provides platform-specific format ID mapping for resolution selection.
 """
+
 from __future__ import annotations
 
 import re

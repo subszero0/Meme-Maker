@@ -4,7 +4,7 @@ services:
   redis-staging:
     image: redis:alpine
     ports:
-      - "6380:6379"  # Different port from production
+      - "6381:6379"  # Different port from production (6380 used by security-test)
     volumes:
       - staging_redis_data:/data
     command: redis-server --appendonly yes
@@ -25,7 +25,7 @@ services:
       - CLIPS_DIR=/app/storage/clips
       - INSTAGRAM_COOKIES_PATH=/app/cookies/instagram_cookies.txt
     volumes:
-      - ./.env:/app/.env:ro                    # Mount .env file
+      - ./.env.staging:/app/.env:ro           # Mount staging env file for security testing
       - ./storage:/app/storage                # Storage mount
       - ./cookies:/app/cookies:ro             # Cookies mount
     depends_on:
@@ -47,7 +47,7 @@ services:
       - CLIPS_DIR=/app/storage/clips
       - INSTAGRAM_COOKIES_PATH=/app/cookies/instagram_cookies.txt
     volumes:
-      - ./.env:/app/.env:ro                    # Mount .env file for worker
+      - ./.env.staging:/app/.env:ro           # Mount staging env file for worker
       - ./storage:/app/storage                # Storage mount with proper permissions
       - ./cookies:/app/cookies:ro             # Cookies mount
     depends_on:

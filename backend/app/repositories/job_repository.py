@@ -2,6 +2,7 @@
 Job repository layer for data access operations.
 Simplified version for testing configuration.
 """
+
 from datetime import datetime
 from typing import Dict, List, Optional
 

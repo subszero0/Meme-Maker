@@ -8,7 +8,7 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.112.0"
+fastapi = "^0.115.0"
 uvicorn = "^0.30.3"
 redis = "^5.0.4"
 rq = "*"
@@ -23,17 +23,21 @@ prometheus-fastapi-instrumentator = "^6.1.0"
 loguru = "^0.7.2"
 requests = "^2.32.4"
 httpx = "^0.25.2"
+starlette = "^0.40.0"
+pyjwt = "^2.10.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"
 pytest-asyncio = "^0.21.1"
 mypy = "^1.7.1"
-black = "^23.11.0"
+black = "^24.3.0"
 isort = "^5.12.0"
 flake8 = "^6.1.0"
 fakeredis = "^2.20.1"
 autoflake = "^2.3.1"
 types-aiofiles = "^24.1.0.20250606"
+bandit = "^1.8.6"
+safety = "^3.6.0"
 
 [build-system]
 requires = ["poetry-core"]

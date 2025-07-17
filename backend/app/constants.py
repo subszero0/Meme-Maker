@@ -118,19 +118,41 @@ class StorageConfig:
 
 
 class RateLimits:
-    """Rate limiting configuration"""
+    """Rate limiting configuration with T-003 Queue DoS protection"""
 
-    # Global limits (per IP)
-    REQUESTS_PER_MINUTE = 60
-    REQUESTS_PER_HOUR = 1000
+    # Global limits (per IP) - Reduced for DoS protection
+    REQUESTS_PER_MINUTE = 30  # Reduced from 60
+    REQUESTS_PER_HOUR = 200  # Reduced from 1000
 
-    # Endpoint-specific limits
-    JOBS_PER_HOUR = 50
-    METADATA_REQUESTS_PER_MINUTE = 30
+    # 🚨 T-003 CRITICAL PROTECTION: Enhanced job limits
+    JOBS_PER_HOUR = 5  # CRITICAL: Reduced from 50 to 5 jobs/IP/hour
+    JOBS_PER_DAY = 20  # NEW: Daily limit per IP
+    METADATA_REQUESTS_PER_MINUTE = 10  # Reduced from 30
+
+    # 🚨 T-003 QUEUE PROTECTION: Queue monitoring limits
+    MAX_QUEUE_DEPTH = 15  # Reduced from 20 for circuit breaker
+    QUEUE_WARNING_THRESHOLD = 10  # Warning when queue > 10
+    QUEUE_CRITICAL_THRESHOLD = 13  # Critical when queue > 13
+
+    # 🚨 T-003 JOB COMPLEXITY: Resource-based limits
+    MAX_CLIP_DURATION = 60  # Reduced from 180 seconds (1 minute max)
+    MAX_VIDEO_SIZE_MB = 25  # NEW: Max video size limit
+    CONCURRENT_JOBS_PER_IP = 2  # NEW: Max 2 concurrent jobs per IP
+
+    # 🚨 T-003 CIRCUIT BREAKER: Auto-protection thresholds
+    ERROR_RATE_THRESHOLD = 0.1  # Circuit breaker at 10% error rate
+    MIN_REQUESTS_FOR_CIRCUIT = 10  # Minimum requests before circuit activation
+    CIRCUIT_BREAKER_TIMEOUT = 300  # 5 minutes circuit breaker timeout
 
     # Rate limit windows
     MINUTE_WINDOW = 60  # seconds
     HOUR_WINDOW = 3600  # seconds
+    DAY_WINDOW = 86400  # seconds
+
+    # 🚨 T-003 EMERGENCY PROTECTION: Burst limits
+    BURST_DETECTION_WINDOW = 10  # seconds
+    MAX_BURST_REQUESTS = 5  # Max 5 requests in 10 seconds
+    BURST_PENALTY_MINUTES = 15  # 15 minute penalty for burst detection
 
 
 class MetricsConfig:
