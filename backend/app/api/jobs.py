@@ -102,8 +102,12 @@ async def create_job(
         "worker.process_clip.process_clip",
         job_id=job.id,
         url=str(job.url),
-        in_ts=float(job.in_ts) if job.in_ts is not None else 0.0,  # Convert Decimal to float
-        out_ts=float(job.out_ts) if job.out_ts is not None else 0.0,  # Convert Decimal to float
+        in_ts=float(job.in_ts)
+        if job.in_ts is not None
+        else 0.0,  # Convert Decimal to float
+        out_ts=float(job.out_ts)
+        if job.out_ts is not None
+        else 0.0,  # Convert Decimal to float
         resolution=job.format_id,  # Use 'resolution' parameter name that worker expects
         job_timeout="2h",
         result_ttl=86400,  # Keep result for 1 day
