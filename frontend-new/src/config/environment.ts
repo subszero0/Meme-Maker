@@ -33,10 +33,10 @@ const environmentConfigs: Record<string, Partial<EnvironmentConfig>> = {
     ENVIRONMENT: "development",
   },
   staging: {
-    API_BASE_URL: "https://staging-api.meme-maker.com",
-    WS_BASE_URL: "wss://staging-api.meme-maker.com",
-    ENABLE_ANALYTICS: true,
-    ENABLE_DEVTOOLS: false,
+    API_BASE_URL: "/api",  // Use relative path for API calls
+    WS_BASE_URL: "",      // WebSocket not needed in staging
+    ENABLE_ANALYTICS: false,
+    ENABLE_DEVTOOLS: true,  // Keep devtools for debugging
     ENVIRONMENT: "staging",
   },
   production: {

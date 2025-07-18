@@ -64,9 +64,13 @@ services:
       context: frontend-new
       dockerfile: Dockerfile.dev
       args:
-        - VITE_API_BASE_URL=http://staging.memeit.pro:8081/api
+        - VITE_API_BASE_URL=/api  # Use relative URL for API calls
+        - VITE_MODE=staging       # Set staging mode
+        - VITE_HMR_ENABLED=false  # Disable HMR in staging
+    environment:
+      - NODE_ENV=production       # Use production mode for better performance
     ports:
-      - "8082:3000"  # Fixed: Frontend dev server runs on port 3000, not 80
+      - "8082:80"  # Map to container's port 80 (nginx)
     depends_on:
       - backend-staging
     networks:
