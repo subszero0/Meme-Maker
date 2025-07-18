@@ -3,8 +3,22 @@ from datetime import datetime
 
 import fakeredis
 import pytest
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 from rq import Queue
+
+from app.api import clips, jobs, metadata
+from app.api import phase3_endpoints as admin
+from app.api import video_proxy
+from app.config import get_settings
+from app.dependencies import get_redis
+from app.main import app as main_app
+from app.middleware.admin_auth import AdminAuthMiddleware
+from app.middleware.queue_protection import QueueDosProtectionMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 
 
 @pytest.fixture
@@ -22,10 +36,76 @@ def fake_queue(fake_redis):
 @pytest.fixture
 def client_with_fake_redis(fake_redis, fake_queue):
     """Test client with mocked Redis and RQ"""
-    from app.dependencies import get_redis
-    from app.main import app
+    settings = get_settings()
 
-    # Override the dependency
+    # Create a new test app with the same configuration as main app
+    app = FastAPI(
+        title="Meme Maker API",
+        version="0.1.0",
+        description="A tool to clip and download videos from social media platforms",
+    )
+
+    # Add exception handlers
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ):
+        """Log and return detailed validation errors."""
+        error_messages = []
+        for error in exc.errors():
+            if isinstance(error.get("ctx", {}).get("error"), ValueError):
+                error_messages.append(str(error["ctx"]["error"]))
+            else:
+                error_messages.append(error["msg"])
+
+        print(
+            f"❌ Validation error for {request.method} {request.url}: {error_messages}"
+        )
+
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={
+                "detail": "Validation Error",
+                "errors": error_messages,
+            },
+        )
+
+    @app.exception_handler(ValueError)
+    async def value_error_exception_handler(request: Request, exc: ValueError):
+        """Handle raw ValueErrors, returning a 422 response."""
+        print(f"❌ ValueError caught for {request.method} {request.url}: {exc}")
+
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"detail": str(exc)},
+        )
+
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Add security middleware in the same order as main app
+    app.add_middleware(
+        QueueDosProtectionMiddleware,
+        redis_client=fake_redis,
+        bypass_protection_for_tests=True,
+    )
+    app.add_middleware(AdminAuthMiddleware, admin_api_key=settings.admin_api_key)
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    # Include routers in the same order
+    app.include_router(clips.router, prefix="/api/v1", tags=["clips"])
+    app.include_router(jobs.router, prefix="/api/v1", tags=["jobs"])
+    app.include_router(metadata.router, prefix="/api/v1", tags=["metadata"])
+    app.include_router(video_proxy.router, prefix="/api/v1/video", tags=["video-proxy"])
+    app.include_router(admin.router, tags=["admin"])
+
+    # Override the Redis dependency
     app.dependency_overrides[get_redis] = lambda: fake_redis
 
     try:
@@ -72,9 +152,10 @@ def test_create_job_duration_too_long(client_with_fake_redis):
 
     assert response.status_code == 422
     error_detail = response.json()["errors"]
-    # Pydantic validation errors are now in list format
+    # Check for the exact error message
     assert any(
-        "180" in str(error) or "3 minutes" in str(error) for error in error_detail
+        "Clip duration cannot exceed 1 minute (T-003 DoS protection)" == str(error)
+        for error in error_detail
     )
 
 
