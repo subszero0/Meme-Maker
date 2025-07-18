@@ -454,7 +454,7 @@ class QueueDosProtectionMiddleware(BaseHTTPMiddleware):
                 )
 
             return response
-        except Exception as e:
+        except Exception:  # Re-raise all exceptions after recording job failure
             # Record failed job completion
             if request.url.path.endswith("/jobs") and request.method == "POST":
                 self.protection.record_job_completion(

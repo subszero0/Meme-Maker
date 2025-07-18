@@ -15,7 +15,6 @@ from app.api import phase3_endpoints as admin
 from app.api import video_proxy
 from app.config import get_settings
 from app.dependencies import get_redis
-from app.main import app as main_app
 from app.middleware.admin_auth import AdminAuthMiddleware
 from app.middleware.queue_protection import QueueDosProtectionMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
