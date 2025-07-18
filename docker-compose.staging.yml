@@ -77,15 +77,14 @@ services:
   frontend-staging:
     build:
       context: frontend-new
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.staging  # Use staging-specific Dockerfile
       args:
         - VITE_API_BASE_URL=/api  # Use relative URL for API calls
         - VITE_MODE=staging       # Set staging mode
-        - VITE_HMR_ENABLED=false  # Disable HMR in staging
     environment:
       - NODE_ENV=production       # Use production mode for better performance
     ports:
-      - "8082:80"  # Map to container's port 80 (nginx)
+      - "8082:3000"  # FIXED: Map to container's port 3000 (production nginx port)
     depends_on:
       backend-staging:
         condition: service_healthy
@@ -93,7 +92,7 @@ services:
       - staging-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]  # FIXED: Use correct port
       interval: 15s
       timeout: 5s
       retries: 3
