@@ -77,14 +77,12 @@ services:
   frontend-staging:
     build:
       context: frontend-new
-      dockerfile: Dockerfile.staging  # Use staging-specific Dockerfile
+      dockerfile: Dockerfile.staging
       args:
-        - VITE_API_BASE_URL=""  # Use empty string since nginx handles /api prefix
-        - VITE_MODE=staging       # Set staging mode
-    environment:
-      - NODE_ENV=production       # Use production mode for better performance
+        - VITE_API_BASE_URL=http://13.126.173.223:8001 # Corrected port
+        - VITE_MODE=staging
     ports:
-      - "8082:3000"  # FIXED: Map to container's port 3000 (production nginx port)
+      - "8082:80" # Nginx runs on port 80
     depends_on:
       backend-staging:
         condition: service_healthy
@@ -92,7 +90,7 @@ services:
       - staging-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]  # FIXED: Use correct port
+      test: ["CMD", "curl", "-f", "http://localhost/health"] # Nginx serves health on /health
       interval: 15s
       timeout: 5s
       retries: 3
