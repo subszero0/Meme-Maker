@@ -151,8 +151,12 @@ class RateLimits:
 
     # 🚨 T-003 EMERGENCY PROTECTION: Burst limits
     BURST_DETECTION_WINDOW = 10  # seconds
-    MAX_BURST_REQUESTS = 8  # Increased from 5 to 8 requests in 10 seconds for job polling
-    BURST_PENALTY_MINUTES = 2  # Reduced from 15 to 2 minutes penalty for burst detection
+    MAX_BURST_REQUESTS = (
+        8  # Increased from 5 to 8 requests in 10 seconds for job polling
+    )
+    BURST_PENALTY_MINUTES = (
+        2  # Reduced from 15 to 2 minutes penalty for burst detection
+    )
 
 
 class MetricsConfig:
