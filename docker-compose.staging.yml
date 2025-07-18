@@ -10,6 +10,12 @@ services:
     command: redis-server --appendonly yes
     networks:
       - staging-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
 
   backend-staging:
     build:
@@ -29,12 +35,19 @@ services:
       - ./storage:/app/storage                # Storage mount
       - ./cookies:/app/cookies:ro             # Cookies mount
     depends_on:
-      - redis-staging
+      redis-staging:
+        condition: service_healthy
     networks:
       - staging-network
     restart: unless-stopped
     # Ensure proper permissions for storage
     user: "1000:1000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
 
   worker-staging:
     build:
@@ -51,8 +64,10 @@ services:
       - ./storage:/app/storage                # Storage mount with proper permissions
       - ./cookies:/app/cookies:ro             # Cookies mount
     depends_on:
-      - redis-staging
-      - backend-staging
+      redis-staging:
+        condition: service_healthy
+      backend-staging:
+        condition: service_healthy
     networks:
       - staging-network
     restart: unless-stopped
@@ -72,10 +87,17 @@ services:
     ports:
       - "8082:80"  # Map to container's port 80 (nginx)
     depends_on:
-      - backend-staging
+      backend-staging:
+        condition: service_healthy
     networks:
       - staging-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
 
 networks:
   staging-network:
