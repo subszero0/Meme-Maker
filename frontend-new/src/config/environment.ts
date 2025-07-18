@@ -33,10 +33,10 @@ const environmentConfigs: Record<string, Partial<EnvironmentConfig>> = {
     ENVIRONMENT: "development",
   },
   staging: {
-    API_BASE_URL: "/api",  // Use relative path for API calls
-    WS_BASE_URL: "",      // WebSocket not needed in staging
+    API_BASE_URL: "/api", // Use relative path for API calls
+    WS_BASE_URL: "", // WebSocket not needed in staging
     ENABLE_ANALYTICS: false,
-    ENABLE_DEVTOOLS: true,  // Keep devtools for debugging
+    ENABLE_DEVTOOLS: true, // Keep devtools for debugging
     ENVIRONMENT: "staging",
   },
   production: {
