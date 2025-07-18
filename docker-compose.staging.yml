@@ -79,7 +79,7 @@ services:
       context: frontend-new
       dockerfile: Dockerfile.staging  # Use staging-specific Dockerfile
       args:
-        - VITE_API_BASE_URL=/api  # Use relative URL for API calls
+        - VITE_API_BASE_URL=""  # Use empty string since nginx handles /api prefix
         - VITE_MODE=staging       # Set staging mode
     environment:
       - NODE_ENV=production       # Use production mode for better performance

@@ -33,7 +33,7 @@ const environmentConfigs: Record<string, Partial<EnvironmentConfig>> = {
     ENVIRONMENT: "development",
   },
   staging: {
-    API_BASE_URL: "/api", // Use relative path for API calls
+    API_BASE_URL: "", // Use empty string for staging since nginx adds /api prefix
     WS_BASE_URL: "", // WebSocket not needed in staging
     ENABLE_ANALYTICS: false,
     ENABLE_DEVTOOLS: true, // Keep devtools for debugging

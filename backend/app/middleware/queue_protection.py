@@ -221,7 +221,7 @@ class QueueDosProtection:
             )
 
     def check_burst_detection(
-        self, ip_behavior: IPBehavior, client_ip: str
+        self, ip_behavior: IPBehavior, client_ip: str, request_method: str = "GET"
     ) -> Tuple[bool, Optional[str]]:
         """Check for request bursts from IP"""
         now = time.time()
@@ -240,24 +240,31 @@ class QueueDosProtection:
         # Add current request time
         ip_behavior.request_times.append(now)
 
+        # Use different thresholds for GET vs POST requests
+        # GET requests (like job polling) are more lenient
+        if request_method == "GET":
+            max_requests = RateLimits.MAX_BURST_REQUESTS + 5  # Allow more GET requests
+            penalty_minutes = 1  # Shorter penalty for GET requests
+        else:
+            max_requests = RateLimits.MAX_BURST_REQUESTS
+            penalty_minutes = RateLimits.BURST_PENALTY_MINUTES
+
         # Only check burst if we have enough samples
-        if len(ip_behavior.request_times) >= RateLimits.MAX_BURST_REQUESTS:
-            window_start = ip_behavior.request_times[-RateLimits.MAX_BURST_REQUESTS]
+        if len(ip_behavior.request_times) >= max_requests:
+            window_start = ip_behavior.request_times[-max_requests]
             time_diff = now - window_start
 
             if time_diff < RateLimits.BURST_DETECTION_WINDOW:
                 ip_behavior.burst_violations += 1
                 ip_behavior.last_burst_time = now
-                ip_behavior.penalty_until = now + (
-                    RateLimits.BURST_PENALTY_MINUTES * 60
-                )
+                ip_behavior.penalty_until = now + (penalty_minutes * 60)
 
                 logger.warning(
-                    f"Burst detected for IP {client_ip}: {RateLimits.MAX_BURST_REQUESTS} requests in {time_diff:.1f}s"
+                    f"Burst detected for IP {client_ip}: {max_requests} {request_method} requests in {time_diff:.1f}s"
                 )
                 return (
                     False,
-                    f"Burst detected: {RateLimits.MAX_BURST_REQUESTS} requests in {int(time_diff)} seconds",
+                    f"Burst detected: {max_requests} {request_method} requests in {int(time_diff)} seconds",
                 )
 
         return True, None
@@ -356,7 +363,10 @@ class QueueDosProtection:
             }
 
         # Check for request bursts
-        can_proceed, burst_error = self.check_burst_detection(ip_behavior, client_ip)
+        is_job_request = request.url.path.endswith("/jobs") and request.method == "POST"
+        can_proceed, burst_error = self.check_burst_detection(
+            ip_behavior, client_ip, request.method
+        )
         if not can_proceed:
             return False, {
                 "detail": burst_error,
@@ -364,7 +374,6 @@ class QueueDosProtection:
             }
 
         # Check job limits
-        is_job_request = request.url.path.endswith("/jobs") and request.method == "POST"
         can_proceed, limit_error = self.check_job_limits(
             ip_behavior, client_ip, is_job_request
         )

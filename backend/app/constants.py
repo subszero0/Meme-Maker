@@ -120,14 +120,14 @@ class StorageConfig:
 class RateLimits:
     """Rate limiting configuration with T-003 Queue DoS protection"""
 
-    # Global limits (per IP) - Reduced for DoS protection
-    REQUESTS_PER_MINUTE = 30  # Reduced from 60
-    REQUESTS_PER_HOUR = 200  # Reduced from 1000
+    # Global limits (per IP) - Adjusted for normal frontend usage
+    REQUESTS_PER_MINUTE = 50  # Increased from 30 to 50 for job polling
+    REQUESTS_PER_HOUR = 400  # Increased from 200 to 400
 
     # 🚨 T-003 CRITICAL PROTECTION: Enhanced job limits
-    JOBS_PER_HOUR = 5  # CRITICAL: Reduced from 50 to 5 jobs/IP/hour
-    JOBS_PER_DAY = 20  # NEW: Daily limit per IP
-    METADATA_REQUESTS_PER_MINUTE = 10  # Reduced from 30
+    JOBS_PER_HOUR = 10  # Increased from 5 to 10 jobs/IP/hour
+    JOBS_PER_DAY = 30  # Increased from 20 to 30 daily limit per IP
+    METADATA_REQUESTS_PER_MINUTE = 15  # Increased from 10 to 15
 
     # 🚨 T-003 QUEUE PROTECTION: Queue monitoring limits
     MAX_QUEUE_DEPTH = 15  # Reduced from 20 for circuit breaker
@@ -151,8 +151,8 @@ class RateLimits:
 
     # 🚨 T-003 EMERGENCY PROTECTION: Burst limits
     BURST_DETECTION_WINDOW = 10  # seconds
-    MAX_BURST_REQUESTS = 5  # Max 5 requests in 10 seconds
-    BURST_PENALTY_MINUTES = 15  # 15 minute penalty for burst detection
+    MAX_BURST_REQUESTS = 8  # Increased from 5 to 8 requests in 10 seconds for job polling
+    BURST_PENALTY_MINUTES = 2  # Reduced from 15 to 2 minutes penalty for burst detection
 
 
 class MetricsConfig:
