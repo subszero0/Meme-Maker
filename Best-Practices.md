@@ -1280,5 +1280,153 @@ After each debugging session:
 33. **Implement comprehensive change propagation analysis** - When making architectural changes, systematically identify and update ALL affected components in a single session to prevent progressive error discovery
 34. **Distinguish media streaming from API request debugging** - Verify the entire chain, especially the final `Content-Type` header, as a successful network status is not enough.
 35. **Understand development proxy limitations for streaming content** - Bypass the dev proxy for media in development by connecting directly to the backend to avoid interception issues.
+36. **Systematic git pipeline diagnosis and resolution** - Use the "Git State Trinity" (status, branch -a, log) to diagnose git issues systematically and apply pattern-based solutions for branch mismatches, staging conflicts, and pre-commit hook problems.
+
+### **BP #36: Systematic Git Pipeline Diagnosis and Resolution**
+**Principle**: Git pipeline issues are recurring problems that follow predictable patterns. Use systematic diagnosis to identify and resolve git state inconsistencies, branch mismatches, and commit staging issues quickly.
+
+**Implementation**:
+
+**Step 1: Comprehensive Git State Analysis**
+```bash
+# The "Git State Trinity" - Run these 3 commands FIRST for any git issue
+git status                    # Check working directory and staging area
+git branch -a                 # Check local vs remote branch alignment  
+git log --oneline -3          # Check recent commit history and HEAD position
+```
+
+**Step 2: Identify Common Git Pipeline Problems**
+
+**Pattern A: Branch Mismatch**
+- **Symptoms**: `error: src refspec BRANCH does not match any`
+- **Diagnosis**: Local branch name doesn't match intended remote branch
+- **Resolution**: 
+  ```bash
+  git branch -a                    # Verify branch exists
+  git checkout CORRECT_BRANCH      # Switch to correct branch
+  git pull origin CORRECT_BRANCH   # Sync with remote
+  ```
+
+**Pattern B: Staged vs Unstaged Conflicts**
+- **Symptoms**: `Changes to be committed` AND `Changes not staged for commit` for same file
+- **Diagnosis**: File has both staged and unstaged changes simultaneously
+- **Resolution**:
+  ```bash
+  git add FILENAME                 # Stage all changes to file
+  git status                       # Verify clean staging
+  git commit -m "Clear message"    # Commit cleanly
+  ```
+
+**Pattern C: Pre-commit Hook Blocking**
+- **Symptoms**: `No .pre-commit-config.yaml file was found` preventing commits
+- **Diagnosis**: Pre-commit hooks installed but no configuration file
+- **Resolution**:
+  ```bash
+  # Option 1: Bypass for single commit
+  PRE_COMMIT_ALLOW_NO_CONFIG=1 git commit -m "Message"
+  
+  # Option 2: PowerShell syntax
+  $env:PRE_COMMIT_ALLOW_NO_CONFIG=1; git commit -m "Message"
+  
+  # Option 3: Permanent solution
+  pre-commit uninstall             # Remove pre-commit hooks
+  ```
+
+**Pattern D: "Everything up-to-date" When Changes Exist**
+- **Symptoms**: `git push` says "Everything up-to-date" but changes aren't reflected
+- **Diagnosis**: Changes committed locally but HEAD not advanced
+- **Resolution**:
+  ```bash
+  git log --oneline -1             # Check if commit actually happened
+  git status                       # Check for uncommitted changes
+  git commit --amend               # Fix previous commit if needed
+  git push origin BRANCH           # Force push if necessary
+  ```
+
+**Step 3: Git Environment Considerations**
+
+**PowerShell vs Bash Syntax**
+- **PowerShell**: Use `;` instead of `&&` for command chaining
+- **PowerShell**: Use `$env:VARIABLE=value; command` for environment variables
+- **Command Separation**: Never use `&&` in PowerShell environments
+
+**Multi-Repository Confusion**
+- **Local vs Server**: Ensure you're operating in the correct repository
+- **Branch Sync**: Verify local branch matches the intended remote branch
+- **Working Directory**: Always `pwd` or check current directory before git operations
+
+**Step 4: Systematic Commit and Push Workflow**
+
+**The "Commit Pipeline Checklist"**
+```bash
+# 1. Verify clean working state
+git status                       # Should show only intended changes
+
+# 2. Stage all intended changes
+git add FILE1 FILE2              # Explicit file staging preferred
+# OR git add .                   # Only if you want ALL changes
+
+# 3. Verify staging is correct
+git diff --staged                # Review exactly what will be committed
+
+# 4. Commit with clear message
+git commit -m "Clear, descriptive message explaining the change"
+
+# 5. Verify commit succeeded
+git log --oneline -1             # Confirm new commit is HEAD
+
+# 6. Push to correct remote branch
+git push origin BRANCH_NAME      # Explicit branch name preferred
+```
+
+**Step 5: Common Resolution Commands**
+
+**Reset Staging Area**
+```bash
+git reset HEAD                   # Unstage all staged changes
+git reset HEAD FILENAME          # Unstage specific file
+```
+
+**Fix Last Commit Message**
+```bash
+git commit --amend -m "New message"  # Change last commit message
+```
+
+**Force Clean State**
+```bash
+git stash                        # Save uncommitted changes
+git reset --hard HEAD           # Reset to last commit
+git clean -fd                   # Remove untracked files/directories
+```
+
+**Emergency Recovery**
+```bash
+git reflog                       # Find lost commits
+git reset --hard COMMIT_HASH    # Reset to specific commit
+git cherry-pick COMMIT_HASH     # Apply specific commit
+```
+
+**Real-World Example from This Session**:
+- **Problem**: Trying to push to `security-testing-staging` but getting "src refspec does not match"
+- **Root Cause**: Was on `master` branch on server but `security-testing-staging` branch locally
+- **Discovery Process**: 
+  1. `git branch -a` revealed branch mismatch
+  2. `git status` showed staged/unstaged conflicts for same file
+  3. Pre-commit hooks were blocking commits
+- **Resolution**: 
+  1. Confirmed correct branch with `git branch -a`
+  2. Staged all changes with `git add docker-compose.staging.yml`
+  3. Bypassed pre-commit with `$env:PRE_COMMIT_ALLOW_NO_CONFIG=1`
+  4. Committed successfully and pushed to remote
+
+**Why It Matters**: 
+Git pipeline issues can consume significant debugging time and create frustration. Having a systematic diagnosis approach prevents repeated troubleshooting of the same patterns and ensures consistent resolution across different environments and team members.
+
+**Prevention Strategies**:
+- Always run the "Git State Trinity" before diagnosing any git issue
+- Use explicit branch names in push commands
+- Verify staging state before committing
+- Document environment-specific git syntax differences
+- Maintain clean working directories between major changes
 
 These practices work together to create a systematic, safe, and effective approach to production problem resolution that minimizes system disruption while maximizing learning and long-term stability. Future investigations should use systematic layer-by-layer approaches to distinguish platform behavior from infrastructure issues. 
