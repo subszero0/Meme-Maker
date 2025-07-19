@@ -78,7 +78,9 @@ services:
         condition: service_healthy
     environment:
       - REDIS_URL=redis://redis:6379
+      - ENVIRONMENT=production
       - CLIPS_DIR=/app/clips
+      - BASE_URL=https://memeit.pro
       - INSTAGRAM_COOKIES_B64=${INSTAGRAM_COOKIES_B64}
     volumes:
       - ./storage:/app/clips
