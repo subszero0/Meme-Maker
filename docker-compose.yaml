@@ -30,7 +30,7 @@ services:
       - CORS_ORIGINS=["https://memeit.pro", "https://www.memeit.pro", "http://memeit.pro", "http://13.126.173.223"]
       - INSTAGRAM_COOKIES_B64=${INSTAGRAM_COOKIES_B64}
     ports:
-      - "8000:8000"  # Expose backend on host port 8000 to match health check
+      - "8000:8000"  # Backend exposed on host port 8000 for system nginx proxy
     volumes:
       - ./storage:/app/clips
     command: >
@@ -52,14 +52,14 @@ services:
     container_name: meme-maker-frontend
     restart: unless-stopped
     ports:
-      - "8080:3000"    # FIXED: Map to container's nginx port 3000
+      - "8080:80"    # Frontend exposed on host port 8080 for system nginx proxy
     environment:
       - NODE_ENV=production
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]  # FIXED: Use correct port and health endpoint
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]  # Check internal container port
       interval: 30s
       timeout: 10s
       retries: 3
@@ -72,17 +72,14 @@ services:
     container_name: meme-maker-worker
     restart: unless-stopped
     depends_on:
-      redis:
-        condition: service_healthy
       backend:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       - REDIS_URL=redis://redis:6379
       - CLIPS_DIR=/app/clips
-      - BASE_URL=https://memeit.pro
-      - ENVIRONMENT=production
       - INSTAGRAM_COOKIES_B64=${INSTAGRAM_COOKIES_B64}
-
     volumes:
       - ./storage:/app/clips
 
