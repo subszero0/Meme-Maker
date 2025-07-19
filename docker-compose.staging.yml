@@ -79,7 +79,9 @@ services:
       context: frontend-new
       dockerfile: Dockerfile.staging
       args:
-        - VITE_API_BASE_URL=http://13.126.173.223:8001 # Corrected port
+        # CRITICAL: Use "/" for relative URLs so nginx proxy works properly
+        # Direct external URLs bypass nginx and cause connection failures  
+        - VITE_API_BASE_URL=/ # Force axios to use relative URLs ("/api/…") - REBUILD TRIGGER
         - VITE_MODE=staging
     ports:
       - "8082:80" # Nginx runs on port 80
