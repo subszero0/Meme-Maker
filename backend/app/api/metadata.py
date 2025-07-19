@@ -92,9 +92,9 @@ def _process_formats_for_audio(formats: List[Dict]) -> List[Dict]:
         processed_formats = []
         for f in video_only_formats:
             # Mark clearly that this requires merging
-            f[
-                "format_note"
-            ] = f"{f.get('format_note', '')} (DASH video-only - audio merging required)"
+            f["format_note"] = (
+                f"{f.get('format_note', '')} (DASH video-only - audio merging required)"
+            )
             processed_formats.append(f)
 
         # Also include ONE representative audio-only stream (smallest filesize) for frontend audio merge
@@ -379,9 +379,7 @@ async def extract_metadata_with_fallback(url: str) -> Dict:
 
                     # If this is the last config and not the last retry, wait before retrying
                     if i == len(configs) - 1 and retry_attempt < max_retries - 1:
-                        wait_time = base_wait_time * (
-                            2**retry_attempt
-                        )  # 30s, then 60s
+                        wait_time = base_wait_time * (2**retry_attempt)  # 30s, then 60s
                         logger.info(
                             f"🕒 YouTube rate limit detected. Waiting {wait_time}s before retry {retry_attempt + 2}/{max_retries}..."
                         )

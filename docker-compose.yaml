@@ -52,14 +52,14 @@ services:
     container_name: meme-maker-frontend
     restart: unless-stopped
     ports:
-      - "8080:80"    # Frontend exposed on port 8080, nginx handles reverse proxy routing
+      - "8080:3000"    # FIXED: Map to container's nginx port 3000
     environment:
       - NODE_ENV=production
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]  # FIXED: Use correct port and health endpoint
       interval: 30s
       timeout: 10s
       retries: 3

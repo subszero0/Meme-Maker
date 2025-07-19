@@ -2,6 +2,7 @@
 Storage factory for runtime storage backend selection.
 Implements factory pattern for pluggable storage strategies.
 """
+
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path

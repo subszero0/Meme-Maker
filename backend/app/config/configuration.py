@@ -2,6 +2,7 @@
 Centralized configuration management with validation.
 All configuration parameters are defined here with proper validation.
 """
+
 import json
 import os
 import sys
@@ -53,6 +54,11 @@ class Settings(BaseSettings):
     )
     base_url: str = Field(
         default="http://localhost:8000", description="Base URL for the application"
+    )
+
+    # Security settings
+    admin_api_key: str = Field(
+        default="", description="API key for administrative endpoints"
     )
 
     # CORS settings

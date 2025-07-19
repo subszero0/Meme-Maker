@@ -4,12 +4,18 @@ services:
   redis-staging:
     image: redis:alpine
     ports:
-      - "6380:6379"  # Different port from production
+      - "6381:6379"  # Different port from production (6380 used by security-test)
     volumes:
       - staging_redis_data:/data
     command: redis-server --appendonly yes
     networks:
       - staging-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
 
   backend-staging:
     build:
@@ -25,16 +31,22 @@ services:
       - CLIPS_DIR=/app/storage/clips
       - INSTAGRAM_COOKIES_PATH=/app/cookies/instagram_cookies.txt
     volumes:
-      - ./.env:/app/.env:ro                    # Mount .env file
+      - ./.env.staging:/app/.env:ro           # Mount staging env file for security testing
       - ./storage:/app/storage                # Storage mount
       - ./cookies:/app/cookies:ro             # Cookies mount
     depends_on:
-      - redis-staging
+      redis-staging:
+        condition: service_healthy
     networks:
       - staging-network
     restart: unless-stopped
-    # Ensure proper permissions for storage
-    user: "1000:1000"
+    # Remove user override to use Dockerfile's app user setup
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 10s  # Increased timeout
+      retries: 5    # More retries
+      start_period: 60s  # Longer start period
 
   worker-staging:
     build:
@@ -47,31 +59,42 @@ services:
       - CLIPS_DIR=/app/storage/clips
       - INSTAGRAM_COOKIES_PATH=/app/cookies/instagram_cookies.txt
     volumes:
-      - ./.env:/app/.env:ro                    # Mount .env file for worker
+      - ./.env.staging:/app/.env:ro           # Mount staging env file for worker
       - ./storage:/app/storage                # Storage mount with proper permissions
       - ./cookies:/app/cookies:ro             # Cookies mount
     depends_on:
-      - redis-staging
-      - backend-staging
+      redis-staging:
+        condition: service_healthy
+      backend-staging:
+        condition: service_healthy
     networks:
       - staging-network
     restart: unless-stopped
-    # Ensure proper permissions for storage
-    user: "1000:1000"
+    # Remove user override to use Dockerfile's setup
 
   frontend-staging:
     build:
       context: frontend-new
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.staging
       args:
-        - VITE_API_BASE_URL=http://staging.memeit.pro:8081/api
+        # CRITICAL: Use "/" for relative URLs so nginx proxy works properly
+        # Direct external URLs bypass nginx and cause connection failures  
+        - VITE_API_BASE_URL=/ # Force axios to use relative URLs ("/api/…") - REBUILD TRIGGER
+        - VITE_MODE=staging
     ports:
-      - "8082:3000"  # Fixed: Frontend dev server runs on port 3000, not 80
+      - "8082:80" # Nginx runs on port 80
     depends_on:
-      - backend-staging
+      backend-staging:
+        condition: service_healthy
     networks:
       - staging-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"] # Nginx serves health on /health
+      interval: 15s
+      timeout: 10s  # Increased timeout
+      retries: 5    # More retries  
+      start_period: 60s  # Longer start period
 
 networks:
   staging-network:

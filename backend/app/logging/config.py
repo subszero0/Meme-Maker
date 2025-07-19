@@ -2,6 +2,7 @@
 Structured logging configuration with JSON formatting and correlation IDs.
 Provides centralized logging setup for the application.
 """
+
 import logging
 import logging.config
 import sys
@@ -133,9 +134,9 @@ def setup_logging() -> None:
                 "class": "logging.StreamHandler",
                 "formatter": settings.log_format,
                 "stream": sys.stdout,
-                "filters": ["correlation_id"]
-                if settings.enable_correlation_ids
-                else [],
+                "filters": (
+                    ["correlation_id"] if settings.enable_correlation_ids else []
+                ),
             },
             "error_file": {
                 "class": "logging.handlers.RotatingFileHandler",
@@ -144,9 +145,9 @@ def setup_logging() -> None:
                 "backupCount": 5,
                 "formatter": settings.log_format,
                 "level": "ERROR",
-                "filters": ["correlation_id"]
-                if settings.enable_correlation_ids
-                else [],
+                "filters": (
+                    ["correlation_id"] if settings.enable_correlation_ids else []
+                ),
             },
         },
         "loggers": {

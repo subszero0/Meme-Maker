@@ -6,6 +6,7 @@ Integration tests for Phase 3 components:
 - Rate limiting
 - Factory patterns
 """
+
 from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -138,8 +139,9 @@ class TestCleanupManager:
     async def test_cleanup_temporary_files(self, cleanup_manager):
         """Test temporary file cleanup"""
         # Mock both _cleanup_directory and Path.exists() to ensure directories are found
-        with patch.object(cleanup_manager, "_cleanup_directory") as mock_cleanup, patch(
-            "pathlib.Path.exists", return_value=True
+        with (
+            patch.object(cleanup_manager, "_cleanup_directory") as mock_cleanup,
+            patch("pathlib.Path.exists", return_value=True),
         ):
             # Mock async method to return files deleted
             mock_cleanup.return_value = {"files_deleted": 10, "size_freed": 1024 * 1024}
