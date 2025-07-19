@@ -40,14 +40,13 @@ services:
     networks:
       - staging-network
     restart: unless-stopped
-    # Ensure proper permissions for storage
-    user: "1000:1000"
+    # Remove user override to use Dockerfile's app user setup
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 40s
+      timeout: 10s  # Increased timeout
+      retries: 5    # More retries
+      start_period: 60s  # Longer start period
 
   worker-staging:
     build:
@@ -71,8 +70,7 @@ services:
     networks:
       - staging-network
     restart: unless-stopped
-    # Ensure proper permissions for storage
-    user: "1000:1000"
+    # Remove user override to use Dockerfile's setup
 
   frontend-staging:
     build:
@@ -94,9 +92,9 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"] # Nginx serves health on /health
       interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 40s
+      timeout: 10s  # Increased timeout
+      retries: 5    # More retries  
+      start_period: 60s  # Longer start period
 
 networks:
   staging-network:
