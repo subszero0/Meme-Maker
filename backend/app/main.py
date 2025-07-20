@@ -185,58 +185,59 @@ async def root() -> dict[str, str]:
     }
 
 
-@app.get("/debug/cors", tags=["debug"])
-async def debug_cors() -> dict:
-    """Debug endpoint to check CORS configuration"""
-    return {
-        "cors_origins": settings.cors_origins,
-        "debug": settings.debug,
-        "environment_variables": {
-            "CORS_ORIGINS": os.getenv("CORS_ORIGINS", "Not set"),
-            "DEBUG": os.getenv("DEBUG", "Not set"),
-        },
-        "middleware_info": "CORS middleware should allow requests from configured origins",
-    }
+# Debug endpoints - only available in development/staging environments
+if settings.environment != "production":
+    @app.get("/debug/cors", tags=["debug"])
+    async def debug_cors() -> dict:
+        """Debug endpoint to check CORS configuration"""
+        return {
+            "cors_origins": settings.cors_origins,
+            "debug": settings.debug,
+            "environment_variables": {
+                "CORS_ORIGINS": os.getenv("CORS_ORIGINS", "Not set"),
+                "DEBUG": os.getenv("DEBUG", "Not set"),
+            },
+            "middleware_info": "CORS middleware should allow requests from configured origins",
+        }
 
+    @app.get("/debug/redis", tags=["debug"])
+    async def debug_redis() -> dict:
+        """Debug endpoint to check Redis connection status"""
+        from . import init_redis, redis
 
-@app.get("/debug/redis", tags=["debug"])
-async def debug_redis() -> dict:
-    """Debug endpoint to check Redis connection status"""
-    from . import init_redis, redis
+        # Try to initialize Redis if not already done
+        if redis is None:
+            try:
+                init_redis()
+            except Exception as e:
+                return {
+                    "redis_status": "initialization_failed",
+                    "error": str(e),
+                    "redis_object": str(type(redis)),
+                }
 
-    # Try to initialize Redis if not already done
-    if redis is None:
+        # Test Redis connection
         try:
-            init_redis()
+            if redis is not None:
+                redis.ping()
+                return {
+                    "redis_status": "connected",
+                    "redis_object": str(type(redis)),
+                    "ping_successful": True,
+                }
+            else:
+                return {
+                    "redis_status": "not_initialized",
+                    "redis_object": str(type(redis)),
+                    "ping_successful": False,
+                }
         except Exception as e:
             return {
-                "redis_status": "initialization_failed",
-                "error": str(e),
-                "redis_object": str(type(redis)),
-            }
-
-    # Test Redis connection
-    try:
-        if redis is not None:
-            redis.ping()
-            return {
-                "redis_status": "connected",
-                "redis_object": str(type(redis)),
-                "ping_successful": True,
-            }
-        else:
-            return {
-                "redis_status": "not_initialized",
+                "redis_status": "connection_failed",
                 "redis_object": str(type(redis)),
                 "ping_successful": False,
+                "error": str(e),
             }
-    except Exception as e:
-        return {
-            "redis_status": "connection_failed",
-            "redis_object": str(type(redis)),
-            "ping_successful": False,
-            "error": str(e),
-        }
 
 
 @app.get("/api/v1/storage/metrics", tags=["monitoring"])

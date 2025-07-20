@@ -1,6 +1,6 @@
 services:
   redis:
-    image: redis:7.2.6-alpine
+    image: redis:7.2.5-alpine
     container_name: meme-maker-redis
     restart: always
     ports:
@@ -52,8 +52,7 @@ services:
     container_name: meme-maker-frontend
     restart: unless-stopped
     ports:
-      - "80:80"      # Updated for security deployment    # FIXED: Map to container's nginx port 3000
-      - "443:443"     # HTTPS port for security headers
+      - "8080:3000"    # FIXED: Map to container's nginx port 3000
     environment:
       - NODE_ENV=production
     depends_on:

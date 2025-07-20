@@ -1,12 +1,94 @@
 import logging
+import ipaddress
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 
+from ..config.configuration import get_settings
+
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 router = APIRouter()
+
+def validate_url_for_ssrf(url: str) -> bool:
+    """
+    Comprehensive SSRF protection for video proxy URLs
+    """
+    try:
+        parsed = urlparse(url)
+        
+        # Must be HTTPS
+        if parsed.scheme != "https":
+            logger.warning(f"❌ SSRF Protection: Non-HTTPS scheme rejected: {parsed.scheme}")
+            return False
+        
+        # Must have a hostname
+        if not parsed.hostname:
+            logger.warning(f"❌ SSRF Protection: No hostname in URL")
+            return False
+        
+        # Block private/local IP addresses
+        try:
+            ip = ipaddress.ip_address(parsed.hostname)
+            if ip.is_private or ip.is_loopback or ip.is_link_local:
+                logger.warning(f"❌ SSRF Protection: Private/local IP rejected: {ip}")
+                return False
+        except ValueError:
+            # Not an IP address, continue with domain validation
+            pass
+        
+        # Block localhost and local domains
+        blocked_hostnames = [
+            "localhost", "127.0.0.1", "0.0.0.0", "[::]", "[::1]",
+            "metadata.google.internal", "169.254.169.254",  # Cloud metadata
+            "internal", "local", ".local"
+        ]
+        
+        hostname_lower = parsed.hostname.lower()
+        for blocked in blocked_hostnames:
+            if blocked in hostname_lower:
+                logger.warning(f"❌ SSRF Protection: Blocked hostname: {hostname_lower}")
+                return False
+        
+        # Only allow specific trusted domains for video content
+        allowed_domains = [
+            "instagram.com", "www.instagram.com",
+            "facebook.com", "www.facebook.com", "fb.watch",
+            "scontent.cdninstagram.com", "scontent-", # Instagram CDN
+            "fbcdn.net", "lookaside.fbsbx.com",  # Facebook CDN
+            "youtube.com", "www.youtube.com", "youtu.be", # YouTube (if needed)
+            "googlevideo.com"  # YouTube CDN
+        ]
+        
+        # Check if hostname matches allowed domains
+        hostname_allowed = False
+        for domain in allowed_domains:
+            if domain.startswith("scontent-"):  # Special case for Instagram CDN
+                if hostname_lower.startswith("scontent-") and ".cdninstagram.com" in hostname_lower:
+                    hostname_allowed = True
+                    break
+            elif hostname_lower == domain or hostname_lower.endswith("." + domain):
+                hostname_allowed = True
+                break
+        
+        if not hostname_allowed:
+            logger.warning(f"❌ SSRF Protection: Domain not in allowlist: {hostname_lower}")
+            return False
+        
+        # Additional checks for port (should be standard HTTPS)
+        if parsed.port and parsed.port != 443:
+            logger.warning(f"❌ SSRF Protection: Non-standard port rejected: {parsed.port}")
+            return False
+        
+        logger.info(f"✅ SSRF Protection: URL validated successfully: {hostname_lower}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ SSRF Protection: URL validation error: {e}")
+        return False
 
 
 @router.get("/proxy")
@@ -19,32 +101,15 @@ async def proxy_video(url: str, request: Request):
     logger.info(f"🔍 Video proxy request received for URL: {url[:100]}...")
 
     try:
-        # Validate URL (basic security check) - Updated for Instagram and Facebook CDN domains
-        allowed_domains = (
-            "https://instagram.",
-            "https://www.instagram.",
-            "https://fb.watch/",
-            "https://facebook.",
-            "https://www.facebook.",
-            "https://scontent.",
-            "https://scontent-",  # Instagram/Facebook CDN (scontent-lax3-1.cdninstagram.com, etc.)
-            "https://video-",  # Instagram/Facebook video CDN
-            "https://instagramstatic-",  # Instagram static CDN
-            "https://instagram.f",  # Instagram fbcdn.net CDN (instagram.fdel8-2.fna.fbcdn.net, etc.)
-            "https://lookaside.fbsbx.com/",  # Facebook image/video CDN
-            "https://video.",  # Facebook video CDN (video.xx.fbcdn.net)
-            "https://video.f",  # Facebook video CDN (video.fxxx-x.fna.fbcdn.net)
-            "https://external-",  # Facebook external CDN
-            "https://fbcdn.net/",  # Facebook CDN domains
-            "https://graph.facebook.com/",  # Facebook Graph API
-        )
+        # Comprehensive SSRF protection
+        if not validate_url_for_ssrf(url):
+            logger.warning(f"❌ SSRF Protection: URL validation failed: {url[:100]}")
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid video URL: URL failed security validation"
+            )
 
-        logger.info(f"🔍 Checking domain validation for: {url[:50]}...")
-        if not url.startswith(allowed_domains):
-            logger.warning(f"❌ Rejected URL with invalid domain: {url[:100]}")
-            raise HTTPException(status_code=400, detail="Invalid video URL domain")
-
-        logger.info(f"✅ Accepted URL for proxying: {url[:100]}...")
+        logger.info(f"✅ URL passed SSRF validation: {url[:100]}...")
 
         # Set up headers to mimic a legitimate request
         headers = {
@@ -132,11 +197,13 @@ async def proxy_video(url: str, request: Request):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/test")
-async def test_proxy():
-    """Simple test endpoint to verify the proxy router is working"""
-    logger.info("🧪 Test endpoint called")
-    return {"message": "Video proxy router is working", "status": "ok"}
+# Test endpoint - only available in development/staging environments
+if settings.environment != "production":
+    @router.get("/test")
+    async def test_proxy():
+        """Simple test endpoint to verify the proxy router is working"""
+        logger.info("🧪 Test endpoint called")
+        return {"message": "Video proxy router is working", "status": "ok"}
 
 
 @router.options("/proxy")

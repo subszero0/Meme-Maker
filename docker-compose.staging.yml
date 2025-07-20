@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   redis-staging:
-    image: redis:alpine
+    image: redis:7.2.6-alpine
     ports:
       - "6381:6379"  # Different port from production (6380 used by security-test)
     volumes:
