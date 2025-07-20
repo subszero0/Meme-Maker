@@ -1,5 +1,4 @@
 # Import Redis and Job model to get video title
-import os
 import re
 import sys
 import urllib.parse
@@ -26,57 +25,69 @@ def validate_filename_security(filename: str) -> bool:
     # Basic checks
     if not filename:
         return False
-    
+
     # Must end with .mp4
     if not filename.endswith(".mp4"):
         return False
-    
+
     # Check for directory traversal patterns
     dangerous_patterns = [
-        "..", "/", "\\", ":", "*", "?", '"', "<", ">", "|",
-        "\x00", "\n", "\r", "\t"  # Null bytes and control characters
+        "..",
+        "/",
+        "\\",
+        ":",
+        "*",
+        "?",
+        '"',
+        "<",
+        ">",
+        "|",
+        "\x00",
+        "\n",
+        "\r",
+        "\t",  # Null bytes and control characters
     ]
-    
+
     for pattern in dangerous_patterns:
         if pattern in filename:
             return False
-    
+
     # Only allow alphanumeric, hyphens, underscores, spaces, and dots (but not ..)
-    if not re.match(r'^[a-zA-Z0-9\-_\s\.]+\.mp4$', filename):
+    if not re.match(r"^[a-zA-Z0-9\-_\s\.]+\.mp4$", filename):
         return False
-    
+
     # Prevent hidden files
-    if filename.startswith('.'):
+    if filename.startswith("."):
         return False
-    
+
     # Length check (reasonable filename length)
     if len(filename) > 255:
         return False
-    
+
     # Ensure the filename doesn't resolve to a path outside clips directory
     try:
         clip_path = CLIPS_DIR / filename
         resolved_path = clip_path.resolve()
         clips_dir_resolved = CLIPS_DIR.resolve()
-        
+
         # Check if the resolved path is within the clips directory
         if not str(resolved_path).startswith(str(clips_dir_resolved)):
             return False
     except (OSError, ValueError):
         return False
-    
+
     return True
 
 
 @router.get("/clips/{filename}")
 async def download_clip(filename: str):
     """Download a processed video clip"""
-    
+
     # Comprehensive security validation
     if not validate_filename_security(filename):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Invalid filename: filename failed security validation"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename: filename failed security validation",
         )
 
     clip_path = CLIPS_DIR / filename

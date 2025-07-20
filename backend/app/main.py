@@ -187,6 +187,7 @@ async def root() -> dict[str, str]:
 
 # Debug endpoints - only available in development/staging environments
 if settings.environment != "production":
+
     @app.get("/debug/cors", tags=["debug"])
     async def debug_cors() -> dict:
         """Debug endpoint to check CORS configuration"""

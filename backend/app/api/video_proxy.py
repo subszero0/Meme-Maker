@@ -1,5 +1,5 @@
-import logging
 import ipaddress
+import logging
 from urllib.parse import urlparse
 
 import httpx
@@ -13,23 +13,26 @@ settings = get_settings()
 
 router = APIRouter()
 
+
 def validate_url_for_ssrf(url: str) -> bool:
     """
     Comprehensive SSRF protection for video proxy URLs
     """
     try:
         parsed = urlparse(url)
-        
+
         # Must be HTTPS
         if parsed.scheme != "https":
-            logger.warning(f"❌ SSRF Protection: Non-HTTPS scheme rejected: {parsed.scheme}")
+            logger.warning(
+                f"❌ SSRF Protection: Non-HTTPS scheme rejected: {parsed.scheme}"
+            )
             return False
-        
+
         # Must have a hostname
         if not parsed.hostname:
-            logger.warning(f"❌ SSRF Protection: No hostname in URL")
+            logger.warning("❌ SSRF Protection: No hostname in URL")
             return False
-        
+
         # Block private/local IP addresses
         try:
             ip = ipaddress.ip_address(parsed.hostname)
@@ -39,53 +42,76 @@ def validate_url_for_ssrf(url: str) -> bool:
         except ValueError:
             # Not an IP address, continue with domain validation
             pass
-        
+
         # Block localhost and local domains
         blocked_hostnames = [
-            "localhost", "127.0.0.1", "0.0.0.0", "[::]", "[::1]",
-            "metadata.google.internal", "169.254.169.254",  # Cloud metadata
-            "internal", "local", ".local"
+            "localhost",
+            "127.0.0.1",
+            "0.0.0.0",
+            "[::]",
+            "[::1]",
+            "metadata.google.internal",
+            "169.254.169.254",  # Cloud metadata
+            "internal",
+            "local",
+            ".local",
         ]
-        
+
         hostname_lower = parsed.hostname.lower()
         for blocked in blocked_hostnames:
             if blocked in hostname_lower:
-                logger.warning(f"❌ SSRF Protection: Blocked hostname: {hostname_lower}")
+                logger.warning(
+                    f"❌ SSRF Protection: Blocked hostname: {hostname_lower}"
+                )
                 return False
-        
+
         # Only allow specific trusted domains for video content
         allowed_domains = [
-            "instagram.com", "www.instagram.com",
-            "facebook.com", "www.facebook.com", "fb.watch",
-            "scontent.cdninstagram.com", "scontent-", # Instagram CDN
-            "fbcdn.net", "lookaside.fbsbx.com",  # Facebook CDN
-            "youtube.com", "www.youtube.com", "youtu.be", # YouTube (if needed)
-            "googlevideo.com"  # YouTube CDN
+            "instagram.com",
+            "www.instagram.com",
+            "facebook.com",
+            "www.facebook.com",
+            "fb.watch",
+            "scontent.cdninstagram.com",
+            "scontent-",  # Instagram CDN
+            "fbcdn.net",
+            "lookaside.fbsbx.com",  # Facebook CDN
+            "youtube.com",
+            "www.youtube.com",
+            "youtu.be",  # YouTube (if needed)
+            "googlevideo.com",  # YouTube CDN
         ]
-        
+
         # Check if hostname matches allowed domains
         hostname_allowed = False
         for domain in allowed_domains:
             if domain.startswith("scontent-"):  # Special case for Instagram CDN
-                if hostname_lower.startswith("scontent-") and ".cdninstagram.com" in hostname_lower:
+                if (
+                    hostname_lower.startswith("scontent-")
+                    and ".cdninstagram.com" in hostname_lower
+                ):
                     hostname_allowed = True
                     break
             elif hostname_lower == domain or hostname_lower.endswith("." + domain):
                 hostname_allowed = True
                 break
-        
+
         if not hostname_allowed:
-            logger.warning(f"❌ SSRF Protection: Domain not in allowlist: {hostname_lower}")
+            logger.warning(
+                f"❌ SSRF Protection: Domain not in allowlist: {hostname_lower}"
+            )
             return False
-        
+
         # Additional checks for port (should be standard HTTPS)
         if parsed.port and parsed.port != 443:
-            logger.warning(f"❌ SSRF Protection: Non-standard port rejected: {parsed.port}")
+            logger.warning(
+                f"❌ SSRF Protection: Non-standard port rejected: {parsed.port}"
+            )
             return False
-        
+
         logger.info(f"✅ SSRF Protection: URL validated successfully: {hostname_lower}")
         return True
-        
+
     except Exception as e:
         logger.error(f"❌ SSRF Protection: URL validation error: {e}")
         return False
@@ -105,8 +131,8 @@ async def proxy_video(url: str, request: Request):
         if not validate_url_for_ssrf(url):
             logger.warning(f"❌ SSRF Protection: URL validation failed: {url[:100]}")
             raise HTTPException(
-                status_code=400, 
-                detail="Invalid video URL: URL failed security validation"
+                status_code=400,
+                detail="Invalid video URL: URL failed security validation",
             )
 
         logger.info(f"✅ URL passed SSRF validation: {url[:100]}...")
@@ -199,6 +225,7 @@ async def proxy_video(url: str, request: Request):
 
 # Test endpoint - only available in development/staging environments
 if settings.environment != "production":
+
     @router.get("/test")
     async def test_proxy():
         """Simple test endpoint to verify the proxy router is working"""
