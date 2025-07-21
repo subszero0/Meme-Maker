@@ -44,7 +44,7 @@ export const useWebShare = (): UseWebShareState & UseWebShareActions => {
       } else {
         absoluteUrl = new URL(downloadUrl, window.location.origin).href;
       }
-      
+
       if (
         window.location.protocol === "https:" &&
         absoluteUrl.startsWith("http://")
@@ -129,7 +129,7 @@ export const useWebShare = (): UseWebShareState & UseWebShareActions => {
       } else {
         absoluteUrl = new URL(downloadUrl, window.location.origin).href;
       }
-      
+
       if (
         window.location.protocol === "https:" &&
         absoluteUrl.startsWith("http://")

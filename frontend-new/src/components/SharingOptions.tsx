@@ -271,7 +271,7 @@ export const SharingOptions: React.FC<SharingOptionsProps> = ({
           </button>
         </div>
       </div>
-              <DownloadModal
+      <DownloadModal
         isOpen={showDownloadModal}
         onClose={() => setShowDownloadModal(false)}
         downloadUrl={absoluteDownloadUrl}

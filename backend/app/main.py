@@ -148,14 +148,17 @@ app.add_middleware(
 if PROMETHEUS_AVAILABLE:
     instrumentator = Instrumentator()
     instrumentator.instrument(app).expose(app, endpoint="/metrics")
-    
+
     # Import and initialize custom metrics at startup
     try:
-        from .metrics import clip_jobs_queued_total, clip_jobs_inflight, clip_job_latency_seconds
+        from .metrics import (
+            clip_jobs_inflight,
+            clip_jobs_queued_total,
+        )
+
         # Initialize metrics with zero values to make them appear in the registry
         clip_jobs_queued_total._value._value = 0  # Initialize counter
-        clip_jobs_inflight.set(0)                 # Initialize gauge
-        # Latency histogram will appear after first use
+        clip_jobs_inflight.set(0)  # Initialize gauge
         print("✅ Custom Prometheus metrics loaded and initialized successfully")
     except ImportError as e:
         print(f"❌ Failed to import custom metrics: {e}")
