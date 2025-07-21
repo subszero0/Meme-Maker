@@ -151,10 +151,7 @@ if PROMETHEUS_AVAILABLE:
 
     # Import and initialize custom metrics at startup
     try:
-        from .metrics import (
-            clip_jobs_inflight,
-            clip_jobs_queued_total,
-        )
+        from .metrics import clip_jobs_inflight, clip_jobs_queued_total
 
         # Initialize metrics with zero values to make them appear in the registry
         clip_jobs_queued_total._value._value = 0  # Initialize counter
