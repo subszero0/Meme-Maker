@@ -1,0 +1,162 @@
+# Staging monitoring configuration - Production-like with moderate limits
+services:
+  # Add monitoring network to existing services
+  backend:
+    networks:
+      - default
+      - monitoring
+      
+  redis:
+    networks:
+      - default
+      - monitoring
+
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: meme-maker-prometheus-staging
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=15d'
+      - '--storage.tsdb.retention.size=5GB'
+    volumes:
+      - prometheus_data:/prometheus
+      - ./infra/prometheus/prometheus.staging.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/prometheus/rules:/etc/prometheus/rules:ro
+    ports:
+      - "9090:9090"  # Keep exposed for staging validation
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 768MB      # Moderate limits for staging
+          cpus: '0.4'
+        reservations:
+          memory: 384MB
+          cpus: '0.2'
+    
+  grafana:
+    image: grafana/grafana-oss:10.2.3
+    container_name: meme-maker-grafana-staging
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_SECURITY_SECRET_KEY=${GRAFANA_SECRET_KEY}
+      - GF_LOG_LEVEL=warn    # Reduce logging for staging
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"          # Keep exposed for staging validation
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 384MB      # Moderate limits for staging
+          cpus: '0.25'
+        reservations:
+          memory: 192MB
+          cpus: '0.1'
+
+  # Apply moderate resource limits to exporters
+  redis_exporter:
+    image: oliver006/redis_exporter:v1.55.0
+    container_name: meme-maker-redis-exporter-staging
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    ports:
+      - "9121:9121"
+    networks:
+      - monitoring
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 64MB
+          cpus: '0.1'
+        reservations:
+          memory: 32MB
+          cpus: '0.05'
+
+  node_exporter:
+    image: prom/node-exporter:v1.6.1
+    container_name: meme-maker-node-exporter-staging
+    restart: unless-stopped
+    command:
+      - '--path.rootfs=/host'
+    ports:
+      - "9100:9100"
+    networks:
+      - monitoring
+    volumes:
+      - '/:/host:ro,rslave'
+    deploy:
+      resources:
+        limits:
+          memory: 64MB
+          cpus: '0.1'
+        reservations:
+          memory: 32MB
+          cpus: '0.05'
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: meme-maker-cadvisor-staging
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    networks:
+      - monitoring
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+    privileged: true
+    deploy:
+      resources:
+        limits:
+          memory: 128MB
+          cpus: '0.15'
+        reservations:
+          memory: 64MB
+          cpus: '0.1'
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local 

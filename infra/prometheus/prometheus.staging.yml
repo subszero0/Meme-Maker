@@ -1,0 +1,37 @@
+global:
+  scrape_interval: 15s        # Production-like interval
+  evaluation_interval: 15s    # Production-like interval
+  external_labels:
+    cluster: 'meme-maker-staging'
+    environment: 'staging'
+
+rule_files:
+  - "rules/*.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+
+  - job_name: 'meme-maker-backend'
+    static_configs:
+      - targets: ['backend:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 15s        # Production-like for staging
+    scrape_timeout: 10s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis_exporter:9121']
+    scrape_interval: 30s        # Production-like for staging
+
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node_exporter:9100']
+    scrape_interval: 60s
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 30s 

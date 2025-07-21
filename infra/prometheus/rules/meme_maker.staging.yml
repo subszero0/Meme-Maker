@@ -1,0 +1,83 @@
+groups:
+  - name: meme_maker_staging_alerts
+    rules:
+      # Production-like thresholds for staging validation
+      - alert: QueueDepthHigh_Staging
+        expr: redis_queue_length{queue="clips"} > 15
+        for: 5m
+        labels:
+          severity: warning
+          environment: staging
+        annotations:
+          summary: "Staging: High queue depth detected"
+          description: "Queue depth {{ $value }} exceeds threshold for 5 minutes"
+
+      - alert: QueueDepthCritical_Staging
+        expr: redis_queue_length{queue="clips"} > 25
+        for: 2m
+        labels:
+          severity: critical
+          environment: staging
+        annotations:
+          summary: "Staging: Critical queue depth"
+          description: "Queue depth {{ $value }} is critically high"
+
+      - alert: HighJobLatency_Staging
+        expr: histogram_quantile(0.95, rate(clip_job_latency_seconds_bucket[5m])) > 120
+        for: 3m
+        labels:
+          severity: warning
+          environment: staging
+        annotations:
+          summary: "Staging: High job processing latency"
+          description: "95th percentile latency: {{ $value }}s"
+
+      - alert: HighErrorRate_Staging
+        expr: rate(clip_job_latency_seconds_count{status="error"}[5m]) / rate(clip_job_latency_seconds_count[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          environment: staging
+        annotations:
+          summary: "Staging: High error rate detected"
+          description: "Error rate: {{ $value | humanizePercentage }}"
+
+      - alert: BackendDown_Staging
+        expr: up{job="meme-maker-backend"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          environment: staging
+        annotations:
+          summary: "Staging: Backend service is down"
+          description: "Backend service has been down for more than 30 seconds"
+
+      - alert: RedisDown_Staging
+        expr: up{job="redis"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          environment: staging
+        annotations:
+          summary: "Staging: Redis service is down"
+          description: "Redis service has been down for more than 30 seconds"
+
+      - alert: HighMemoryUsage_Staging
+        expr: (container_memory_usage_bytes{name=~"meme-maker-.*"} / container_spec_memory_limit_bytes{name=~"meme-maker-.*"}) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          environment: staging
+        annotations:
+          summary: "Staging: High memory usage detected"
+          description: "Container {{ $labels.name }} memory usage is {{ $value | humanizePercentage }}"
+
+      - alert: HighCPUUsage_Staging
+        expr: rate(container_cpu_usage_seconds_total{name=~"meme-maker-.*"}[5m]) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          environment: staging
+        annotations:
+          summary: "Staging: High CPU usage detected"
+          description: "Container {{ $labels.name }} CPU usage is {{ $value | humanizePercentage }}" 
