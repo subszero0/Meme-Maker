@@ -18,7 +18,8 @@ export const useSmartShare = () => {
     setError(null);
 
     // FIXED: Ensure URL is absolute using correct API base URL
-    let { url, title, text } = shareData;
+    let { url } = shareData;
+    const { title, text } = shareData;
     if (!url.startsWith("http")) {
       const apiBaseUrl = config.API_BASE_URL || window.location.origin;
       url = `${apiBaseUrl}${url}`;
@@ -78,7 +79,7 @@ export const useSmartShare = () => {
     } finally {
       setIsSharing(false);
     }
-  }, []);
+  }, [isSharing]);
 
   return { share, isSharing, error };
 };
