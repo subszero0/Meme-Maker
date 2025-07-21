@@ -1,0 +1,31 @@
+# Multi-stage build for secure, distroless Redis
+# This eliminates gosu vulnerabilities by using Google's distroless base
+
+# Stage 1: Extract Redis from official image
+FROM redis:7.2.6-alpine AS redis-source
+
+# Stage 2: Create distroless Redis container  
+FROM gcr.io/distroless/base-debian12
+
+# Copy Redis binary and essential libraries
+COPY --from=redis-source /usr/local/bin/redis-server /usr/local/bin/redis-server
+COPY --from=redis-source /usr/local/bin/redis-cli /usr/local/bin/redis-cli
+
+# Copy essential shared libraries
+COPY --from=redis-source /lib/ld-musl-x86_64.so.1 /lib/ld-musl-x86_64.so.1
+COPY --from=redis-source /usr/lib/libssl.so.3 /usr/lib/libssl.so.3
+COPY --from=redis-source /usr/lib/libcrypto.so.3 /usr/lib/libcrypto.so.3
+
+# Create redis user (distroless includes basic user management)
+COPY --from=redis-source /etc/passwd /etc/passwd
+COPY --from=redis-source /etc/group /etc/group
+
+# Set non-root user
+USER redis
+
+# Expose Redis port
+EXPOSE 6379
+
+# Use redis-server as entrypoint  
+ENTRYPOINT ["/usr/local/bin/redis-server"]
+CMD ["--protected-mode", "no", "--bind", "0.0.0.0"] 

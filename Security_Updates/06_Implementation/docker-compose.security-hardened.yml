@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  redis-secure:
+    build:
+      context: .
+      dockerfile: Dockerfile.redis-secure
+    container_name: meme-maker-redis-secure
+    restart: always
+    ports:
+      - "6379:6379"
+    # Enhanced security measures
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:unconfined  # Will be replaced with custom profile
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+      - /var/run:noexec,nosuid,size=10m
+    # User namespace remapping (requires Docker daemon config)
+    user: "999:999"  # redis user
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    networks:
+      - secure-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: meme-maker-backend-secure
+    restart: unless-stopped
+    depends_on:
+      redis-secure:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis://redis-secure:6379
+      - ENVIRONMENT=production
+      - CLIPS_DIR=/app/clips
+      - BASE_URL=https://memeit.pro
+      - CORS_ORIGINS=["https://memeit.pro", "https://www.memeit.pro"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage:/app/clips:rw
+    # Enhanced security for backend
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+      - /var/tmp:noexec,nosuid,size=50m
+    command: >
+      sh -c "
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 || 
+        (echo '❌ Backend failed to start. Review logs above for errors.' && exit 1)
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - secure-network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: meme-maker-worker-secure
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis-secure:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis://redis-secure:6379
+      - ENVIRONMENT=production
+      - CLIPS_DIR=/app/clips
+      - BASE_URL=https://memeit.pro
+    volumes:
+      - ./storage:/app/clips:rw
+    # Enhanced security for worker (video processing)
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:./seccomp-profiles/worker-seccomp.json
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+    # Limited read-write access for video processing
+    tmpfs:
+      - /tmp:noexec,nosuid,size=500m
+    # Resource limits for video processing
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+    networks:
+      - secure-network 

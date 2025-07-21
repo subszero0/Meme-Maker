@@ -1,0 +1,42 @@
+global:
+  scrape_interval: 10s        # Faster for development
+  evaluation_interval: 10s    # Faster for development
+  external_labels:
+    cluster: 'meme-maker-development'
+    environment: 'development'
+
+rule_files:
+  - "rules/*.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+
+  - job_name: 'meme-maker-backend'
+    static_configs:
+      - targets: ['backend:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 5s         # Faster for development
+    scrape_timeout: 3s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis_exporter:9121']
+    scrape_interval: 10s        # Faster for development
+
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node_exporter:9100']
+    scrape_interval: 30s
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+
+# Note: retention settings are configured via command line arguments in docker-compose
+# storage:
+#   tsdb:
+#     path: /prometheus 

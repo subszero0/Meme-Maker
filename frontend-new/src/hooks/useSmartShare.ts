@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
+import { config } from "../config/environment";
 
 interface SmartShareProps {
   title: string;
@@ -11,10 +12,17 @@ export const useSmartShare = () => {
   const [error, setError] = useState<string | null>(null);
 
   const share = useCallback(async (shareData: SmartShareProps) => {
+    if (isSharing) return;
+
     setIsSharing(true);
     setError(null);
 
-    const { title, text, url } = shareData;
+    // FIXED: Ensure URL is absolute using correct API base URL
+    let { url, title, text } = shareData;
+    if (!url.startsWith("http")) {
+      const apiBaseUrl = config.API_BASE_URL || window.location.origin;
+      url = `${apiBaseUrl}${url}`;
+    }
 
     // Check for Web Share API support first
     if (!navigator.share) {

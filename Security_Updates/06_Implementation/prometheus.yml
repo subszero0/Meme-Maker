@@ -1,0 +1,46 @@
+# Prometheus configuration for Meme Maker Security Monitoring
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Backend API metrics
+  - job_name: 'meme-maker-backend'
+    static_configs:
+      - targets: ['backend:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Frontend metrics (if available)
+  - job_name: 'meme-maker-frontend'
+    static_configs:
+      - targets: ['frontend:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Redis metrics (via redis_exporter if configured)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+
+  # System metrics (node_exporter if configured)
+  # - job_name: 'node'
+  #   static_configs:
+  #     - targets: ['node-exporter:9100']
+
+# Alerting configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093 

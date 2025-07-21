@@ -1,0 +1,43 @@
+groups:
+  - name: meme_maker_development_alerts
+    rules:
+      # Relaxed thresholds for development
+      - alert: QueueDepthHigh_Dev
+        expr: redis_queue_length{queue="clips"} > 5  # Lower threshold
+        for: 2m                                       # Shorter duration
+        labels:
+          severity: warning
+          environment: development
+        annotations:
+          summary: "Development: High queue depth"
+          description: "Queue depth {{ $value }} in development"
+
+      - alert: HighJobLatency_Dev
+        expr: histogram_quantile(0.95, rate(clip_job_latency_seconds_bucket[2m])) > 60
+        for: 1m                                       # Shorter duration
+        labels:
+          severity: warning
+          environment: development
+        annotations:
+          summary: "Development: High job latency"
+          description: "95th percentile latency: {{ $value }}s"
+
+      - alert: BackendDown_Dev
+        expr: up{job="meme-maker-backend"} == 0
+        for: 30s                                      # Very short for development
+        labels:
+          severity: critical
+          environment: development
+        annotations:
+          summary: "Development: Backend service down"
+          description: "Backend service has been down for 30 seconds"
+
+      - alert: RedisDown_Dev
+        expr: up{job="redis"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          environment: development
+        annotations:
+          summary: "Development: Redis service down"
+          description: "Redis service has been down for 30 seconds" 

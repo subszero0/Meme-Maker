@@ -1,0 +1,143 @@
+# Development monitoring override
+services:
+  # Add monitoring network to existing services
+  backend:
+    networks:
+      - default
+      - monitoring
+      
+  redis:
+    networks:
+      - default
+      - monitoring
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: meme-maker-prometheus-dev
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=7d'
+      - '--storage.tsdb.retention.size=2GB'
+    volumes:
+      - prometheus_data:/prometheus
+      - ./infra/prometheus/prometheus.dev.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/prometheus/rules:/etc/prometheus/rules:ro
+    ports:
+      - "9090:9090"  # Expose for development
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # Development-only: disable resource limits
+    deploy:
+      resources: {}
+    
+  grafana:
+    image: grafana/grafana-oss:10.2.3
+    container_name: meme-maker-grafana-dev
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=dev_admin_2025
+      - GF_SECURITY_SECRET_KEY=${GRAFANA_SECRET_KEY}
+      - GF_LOG_LEVEL=debug
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"  # Expose for development
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # Development-only: disable resource limits
+    deploy:
+      resources: {}
+
+  redis_exporter:
+    image: oliver006/redis_exporter:v1.55.0
+    container_name: meme-maker-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+    ports:
+      - "9121:9121"  # Expose for development debugging
+    networks:
+      - default  # Use default network where Redis is located
+      - monitoring
+    depends_on:
+      - redis
+    # Development-only: disable resource limits
+    deploy:
+      resources: {}
+  
+  node_exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: meme-maker-node-exporter
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"  # Expose for development debugging
+    networks:
+      - monitoring
+    # Development-only: disable resource limits
+    deploy:
+      resources: {}
+      
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.0
+    container_name: meme-maker-cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8081:8080"  # Expose for development debugging
+    networks:
+      - monitoring
+    # Development-only: disable resource limits
+    deploy:
+      resources: {}
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  monitoring:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 

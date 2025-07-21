@@ -55,6 +55,7 @@ services:
       - "8080:80"    # Frontend exposed on host port 8080 for system nginx proxy
     environment:
       - NODE_ENV=production
+      - VITE_API_BASE_URL=http://localhost:8000  # Development: Direct backend connection
     depends_on:
       backend:
         condition: service_healthy

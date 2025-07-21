@@ -1,0 +1,365 @@
+{
+  "external": {
+    "public_endpoints": [
+      {
+        "endpoint": "/",
+        "status": 200,
+        "content_type": "text/html",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 1519
+      },
+      {
+        "endpoint": "/health",
+        "status": 200,
+        "content_type": "application/json",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 15
+      },
+      {
+        "endpoint": "/api",
+        "status": 301,
+        "content_type": "text/html",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 178
+      },
+      {
+        "endpoint": "/api/v1/metadata",
+        "status": 405,
+        "content_type": "application/json",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 31
+      },
+      {
+        "endpoint": "/api/v1/jobs",
+        "status": 405,
+        "content_type": "application/json",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 31
+      },
+      {
+        "endpoint": "/api/v1/video/proxy",
+        "status": 422,
+        "content_type": "application/json",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 57
+      },
+      {
+        "endpoint": "/docs",
+        "status": 200,
+        "content_type": "text/html",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 1519
+      },
+      {
+        "endpoint": "/redoc",
+        "status": 200,
+        "content_type": "text/html",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 1519
+      },
+      {
+        "endpoint": "/openapi.json",
+        "status": 200,
+        "content_type": "text/html",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 1519
+      },
+      {
+        "endpoint": "/admin",
+        "status": 200,
+        "content_type": "text/html",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 1519
+      },
+      {
+        "endpoint": "/status",
+        "status": 200,
+        "content_type": "text/html",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 1519
+      },
+      {
+        "endpoint": "/metrics",
+        "status": 200,
+        "content_type": "text/html",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 1519
+      },
+      {
+        "endpoint": "/favicon.ico",
+        "status": 200,
+        "content_type": "image/x-icon",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 7239
+      },
+      {
+        "endpoint": "/robots.txt",
+        "status": 200,
+        "content_type": "text/plain",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 160
+      },
+      {
+        "endpoint": "/sitemap.xml",
+        "status": 200,
+        "content_type": "text/html",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 1519
+      },
+      {
+        "endpoint": "/.well-known/security.txt",
+        "status": 200,
+        "content_type": "text/html",
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "content_length": 1519
+      }
+    ],
+    "open_ports": [
+      25,
+      80,
+      110,
+      143,
+      443,
+      993,
+      995
+    ],
+    "services": {
+      "80/http": {
+        "status": 200,
+        "server": "nginx/1.18.0 (Ubuntu)",
+        "powered_by": "Not disclosed",
+        "content_type": "text/html"
+      }
+    },
+    "api_endpoints": [
+      {
+        "endpoint": "/api/v1/metadata",
+        "status": 405,
+        "methods": [
+          "POST"
+        ],
+        "content_type": "application/json"
+      },
+      {
+        "endpoint": "/api/v1/jobs",
+        "status": 405,
+        "methods": [
+          "POST"
+        ],
+        "content_type": "application/json"
+      },
+      {
+        "endpoint": "/docs",
+        "status": 200,
+        "type": "documentation",
+        "content_type": "text/html"
+      },
+      {
+        "endpoint": "/redoc",
+        "status": 200,
+        "type": "documentation",
+        "content_type": "text/html"
+      },
+      {
+        "endpoint": "/openapi.json",
+        "status": 200,
+        "type": "documentation",
+        "content_type": "text/html"
+      },
+      {
+        "endpoint": "/swagger.json",
+        "status": 200,
+        "type": "documentation",
+        "content_type": "text/html"
+      },
+      {
+        "endpoint": "/api-docs",
+        "status": 200,
+        "type": "documentation",
+        "content_type": "text/html"
+      }
+    ],
+    "public_files": [
+      {
+        "file": "robots.txt",
+        "size": 160,
+        "content_type": "text/plain"
+      },
+      {
+        "file": "sitemap.xml",
+        "size": 1519,
+        "content_type": "text/html"
+      },
+      {
+        "file": "security.txt",
+        "size": 1519,
+        "content_type": "text/html"
+      },
+      {
+        "file": ".well-known/security.txt",
+        "size": 1519,
+        "content_type": "text/html"
+      },
+      {
+        "file": "favicon.ico",
+        "size": 7239,
+        "content_type": "image/x-icon"
+      },
+      {
+        "file": "crossdomain.xml",
+        "size": 1519,
+        "content_type": "text/html"
+      },
+      {
+        "file": "clientaccesspolicy.xml",
+        "size": 1519,
+        "content_type": "text/html"
+      },
+      {
+        "file": "google-site-verification.html",
+        "size": 1519,
+        "content_type": "text/html"
+      },
+      {
+        "file": "BingSiteAuth.xml",
+        "size": 1519,
+        "content_type": "text/html"
+      }
+    ]
+  },
+  "internal": {
+    "docker_networks": [
+      {
+        "name": "bridge",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "host",
+        "driver": "host",
+        "scope": "local"
+      },
+      {
+        "name": "meme-maker_default",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "meme-maker_security-test-network",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "none",
+        "driver": "null",
+        "scope": "local"
+      }
+    ],
+    "service_communication": {
+      "frontend": {
+        "communicates_with": [
+          "backend"
+        ],
+        "protocols": [
+          "HTTP/HTTPS"
+        ],
+        "ports": [
+          "8000"
+        ]
+      },
+      "backend": {
+        "communicates_with": [
+          "redis",
+          "worker"
+        ],
+        "protocols": [
+          "HTTP",
+          "Redis Protocol"
+        ],
+        "ports": [
+          "6379"
+        ]
+      },
+      "worker": {
+        "communicates_with": [
+          "redis"
+        ],
+        "protocols": [
+          "Redis Protocol"
+        ],
+        "ports": [
+          "6379"
+        ]
+      },
+      "redis": {
+        "communicates_with": [
+          "backend",
+          "worker"
+        ],
+        "protocols": [
+          "Redis Protocol"
+        ],
+        "ports": [
+          "6379"
+        ]
+      }
+    },
+    "internal_ports": [
+      {
+        "port": 8000,
+        "service": "Backend API"
+      },
+      {
+        "port": 8001,
+        "service": "Security Test Backend"
+      }
+    ],
+    "file_system_access": {
+      "volume_mounts": [
+        {
+          "path": "./storage:/app/clips",
+          "purpose": "Video storage",
+          "access": "read/write"
+        },
+        {
+          "path": "./logs:/app/logs",
+          "purpose": "Application logs",
+          "access": "read/write"
+        }
+      ],
+      "config_files": [
+        {
+          "file": "docker-compose.yaml",
+          "sensitivity": "medium"
+        },
+        {
+          "file": ".env",
+          "sensitivity": "high"
+        },
+        {
+          "file": "backend/app/main.py",
+          "sensitivity": "high"
+        }
+      ],
+      "temporary_directories": [
+        {
+          "path": "/tmp",
+          "purpose": "Temporary processing"
+        },
+        {
+          "path": "/app/clips",
+          "purpose": "Video storage"
+        }
+      ]
+    }
+  },
+  "summary": {
+    "external_endpoints": 16,
+    "open_ports": 7,
+    "api_endpoints": 7,
+    "accessible_files": 9,
+    "docker_networks": 5,
+    "internal_ports": 2,
+    "risk_assessment": "CRITICAL"
+  }
+}

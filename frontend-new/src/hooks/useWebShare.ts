@@ -5,6 +5,7 @@ import {
   detectPlatformCapabilities,
 } from "../lib/webShareService";
 import { useToast } from "./use-toast";
+import { config } from "../config/environment";
 
 export interface UseWebShareState {
   isSharing: boolean;
@@ -35,7 +36,15 @@ export const useWebShare = (): UseWebShareState & UseWebShareActions => {
 
   const shareVideoFile = useCallback(
     async (downloadUrl: string, videoTitle: string) => {
-      let absoluteUrl = new URL(downloadUrl, window.location.origin).href;
+      // FIXED: Use correct API base URL instead of window.location.origin
+      let absoluteUrl = downloadUrl;
+      if (!downloadUrl.startsWith("http")) {
+        const apiBaseUrl = config.API_BASE_URL || window.location.origin;
+        absoluteUrl = `${apiBaseUrl}${downloadUrl}`;
+      } else {
+        absoluteUrl = new URL(downloadUrl, window.location.origin).href;
+      }
+      
       if (
         window.location.protocol === "https:" &&
         absoluteUrl.startsWith("http://")
@@ -112,7 +121,15 @@ export const useWebShare = (): UseWebShareState & UseWebShareActions => {
 
   const shareAsLink = useCallback(
     async (downloadUrl: string, videoTitle: string) => {
-      let absoluteUrl = new URL(downloadUrl, window.location.origin).href;
+      // FIXED: Use correct API base URL instead of window.location.origin
+      let absoluteUrl = downloadUrl;
+      if (!downloadUrl.startsWith("http")) {
+        const apiBaseUrl = config.API_BASE_URL || window.location.origin;
+        absoluteUrl = `${apiBaseUrl}${downloadUrl}`;
+      } else {
+        absoluteUrl = new URL(downloadUrl, window.location.origin).href;
+      }
+      
       if (
         window.location.protocol === "https:" &&
         absoluteUrl.startsWith("http://")

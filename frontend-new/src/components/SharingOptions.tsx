@@ -13,6 +13,7 @@ import {
 import { useDeleteClip } from "@/hooks/useApi";
 import { useSmartShare } from "@/hooks/useSmartShare";
 import { NativeShareButton } from "./NativeShareButton";
+import { config } from "@/config/environment";
 
 interface SharingOptionsProps {
   downloadUrl: string;
@@ -145,15 +146,16 @@ export const SharingOptions: React.FC<SharingOptionsProps> = ({
   const { share, isSharing, error } = useSmartShare();
   const deleteClipMutation = useDeleteClip();
 
-  // The downloadUrl from the backend is now the single source of truth.
+  // FIXED: Use correct API base URL instead of window.location.origin
   const absoluteDownloadUrl = useMemo(() => {
     // If the URL is already absolute, use it directly.
     if (downloadUrl.startsWith("http")) {
       return downloadUrl;
     }
-    // Otherwise, construct the full URL from the relative path.
-    const baseUrl = window.location.origin;
-    return `${baseUrl}${downloadUrl}`;
+    // FIXED: Use API_BASE_URL from config instead of window.location.origin
+    // This ensures downloads go to the backend API server, not the frontend static server
+    const apiBaseUrl = config.API_BASE_URL || window.location.origin;
+    return `${apiBaseUrl}${downloadUrl}`;
   }, [downloadUrl]);
 
   const handleSmartShare = useCallback(() => {
@@ -269,10 +271,10 @@ export const SharingOptions: React.FC<SharingOptionsProps> = ({
           </button>
         </div>
       </div>
-      <DownloadModal
+              <DownloadModal
         isOpen={showDownloadModal}
         onClose={() => setShowDownloadModal(false)}
-        downloadUrl={downloadUrl}
+        downloadUrl={absoluteDownloadUrl}
         videoTitle={videoTitle}
       />
     </>

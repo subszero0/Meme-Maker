@@ -35,8 +35,22 @@ from worker.utils.ytdlp_options import (
 
 # Redis will be passed as parameter from main worker
 worker_redis = None
-# Simplified metrics - avoid Prometheus import issues in worker
-# from app.metrics import clip_job_latency_seconds, clip_jobs_inflight
+# Import metrics for monitoring (with fallback if not available)
+try:
+    sys.path.append("/app/backend")
+    from app.metrics import clip_job_latency_seconds, clip_jobs_inflight
+    METRICS_AVAILABLE = True
+except ImportError:
+    METRICS_AVAILABLE = False
+    print("Warning: Metrics not available in worker")
+    # Create dummy functions to avoid errors
+    class DummyMetric:
+        def inc(self): pass
+        def dec(self): pass
+        def labels(self, *args, **kwargs): return self
+        def observe(self, value): pass
+    clip_job_latency_seconds = DummyMetric()
+    clip_jobs_inflight = DummyMetric()
 
 logger = logging.getLogger(__name__)
 
@@ -347,6 +361,10 @@ def process_clip(
     worker_redis = redis_connection
 
     job_start_time = time.time()
+    
+    # 📊 Update metrics: Job started
+    if METRICS_AVAILABLE:
+        clip_jobs_inflight.inc()
 
     # Log initial job parameters
     logger.info(
@@ -673,15 +691,32 @@ def process_clip(
                 )
 
                 logger.info(f"🎬 Worker: Job {job_id} completed successfully")
+                
+                # 📊 Update metrics: Job completed successfully
+                job_processing_time = time.time() - job_start_time
+                if METRICS_AVAILABLE:
+                    clip_job_latency_seconds.labels(status="done").observe(job_processing_time)
+                    clip_jobs_inflight.dec()
 
             except Exception as upload_error:
                 logger.error(f"❌ Upload failed for job {job_id}: {upload_error}")
+                # 📊 Update metrics: Job failed
+                job_processing_time = time.time() - job_start_time
+                if METRICS_AVAILABLE:
+                    clip_job_latency_seconds.labels(status="error").observe(job_processing_time)
+                    clip_jobs_inflight.dec()
                 raise Exception(f"Upload failed: {upload_error}")
 
         except Exception as e:
             logger.error(f"❌ Job {job_id} failed during processing: {e}")
             logger.error(traceback.format_exc())
             update_job_error(job_id, "PROCESSING_FAILED", str(e))
+            
+            # 📊 Update metrics: Job failed  
+            job_processing_time = time.time() - job_start_time
+            if METRICS_AVAILABLE:
+                clip_job_latency_seconds.labels(status="error").observe(job_processing_time)
+                clip_jobs_inflight.dec()
 
         finally:
             # Cleanup is handled by TemporaryDirectory context manager

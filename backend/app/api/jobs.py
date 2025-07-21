@@ -57,6 +57,9 @@ async def create_job(
     clips_queue: Queue = Depends(get_clips_queue),
 ):
     """Create a new video processing job"""
+    
+    # Import metrics at the top of function to avoid circular imports
+    from ..metrics import clip_jobs_queued_total, clip_jobs_inflight
 
     if not redis:
         raise HTTPException(
@@ -117,6 +120,9 @@ async def create_job(
         result_ttl=86400,  # Keep result for 1 day
     )
 
+    # 📊 Update metrics for monitoring
+    clip_jobs_queued_total.inc()
+    
     logger.info(f"Created and queued job {job_id} for URL: {request.url}")
 
     return JobResponse(
