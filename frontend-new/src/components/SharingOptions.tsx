@@ -159,7 +159,7 @@ export const SharingOptions: React.FC<SharingOptionsProps> = ({
   const handleSmartShare = useCallback(() => {
     share({
       title: videoTitle,
-      text: "Check out this video clip I made!",
+      text: "Check out this video clip I made with memeit.pro!",
       url: absoluteDownloadUrl,
     });
   }, [share, videoTitle, absoluteDownloadUrl]);
