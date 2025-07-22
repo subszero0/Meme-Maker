@@ -161,8 +161,8 @@ def main():
     print("")
     print_warning("⚠️  IMPORTANT: Restart containers after timeout fixes!")
     print("Run these commands on the server:")
-    print("1. docker-compose -f docker-compose.yaml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging restart backend worker")
-    print("2. docker-compose -f docker-compose.yaml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging logs -f worker")
+    print("1. docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging restart backend-staging worker-staging")
+    print("2. docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging logs -f worker-staging")
     
     print("")
     print_success("🎉 Timeout fixes applied!")

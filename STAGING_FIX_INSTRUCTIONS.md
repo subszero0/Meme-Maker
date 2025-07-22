@@ -16,10 +16,13 @@ ssh ubuntu@13.126.173.223
 cd ~/Meme-Maker-Staging
 ```
 
-### **Step 1: Fix Container Conflicts & Restart Services**
+### **Step 1: Fix Script Permissions & Container Conflicts**
 ```bash
 # Download latest fixes
 git pull origin monitoring-staging
+
+# Fix script permissions first
+chmod +x scripts/fix_staging_deployment.sh scripts/fix_staging_firewall.sh scripts/fix_job_timeout.py
 
 # Run comprehensive deployment fix
 ./scripts/fix_staging_deployment.sh
@@ -62,10 +65,10 @@ git pull origin monitoring-staging
 python3 scripts/fix_job_timeout.py
 
 # Restart backend and worker with new timeouts
-docker-compose -f docker-compose.yaml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging restart backend worker
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging restart backend-staging worker-staging
 
 # Monitor worker logs
-docker-compose -f docker-compose.yaml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging logs -f worker
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging logs -f worker-staging
 ```
 
 **This script will:**
@@ -80,8 +83,8 @@ docker-compose -f docker-compose.yaml -f docker-compose.staging.monitoring.yml -
 
 ### **✅ Application Access**
 ```
-✅ Frontend: http://13.126.173.223:8081/
-✅ Backend Health: http://13.126.173.223:8000/health
+✅ Frontend: http://13.126.173.223:8082/
+✅ Backend Health: http://13.126.173.223:8001/health
 ```
 
 ### **✅ Monitoring Access** 
@@ -103,16 +106,16 @@ docker-compose -f docker-compose.yaml -f docker-compose.staging.monitoring.yml -
 
 ### **Check All Container Status:**
 ```bash
-docker-compose -f docker-compose.yaml -f docker-compose.staging.monitoring.yml ps
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml ps
 ```
 
 ### **Test All Health Endpoints:**
 ```bash
 # Backend
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 
 # Frontend  
-curl http://localhost:8081/
+curl http://localhost:8082/
 
 # Prometheus
 curl http://localhost:9090/-/healthy
