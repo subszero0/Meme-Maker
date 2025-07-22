@@ -35,6 +35,10 @@ except ImportError:
 
         def set(self, *args, **kwargs):
             pass
+        
+        def labels(self, *args, **kwargs):
+            # Return self to support chaining like .labels().observe()
+            return self
 
     clip_job_latency_seconds: "Histogram" = DummyMetric()  # type: ignore
     clip_jobs_inflight: "Gauge" = DummyMetric()  # type: ignore
