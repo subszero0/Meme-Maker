@@ -24,6 +24,21 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
       
+      - name: 🔧 Debug SSH Configuration
+        run: |
+          echo "🔍 Debugging SSH configuration..."
+          echo "Staging server IP: ${{ secrets.STAGING_SERVER_IP }}"
+          # Test SSH connectivity
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} "echo 'SSH connection successful'" || {
+            echo "❌ SSH connection failed!"
+            echo "Please verify:"
+            echo "1. STAGING_SERVER_IP secret is set correctly"
+            echo "2. STAGING_SSH_KEY secret contains valid private key"
+            echo "3. Server firewall allows SSH on port 22"
+            exit 1
+          }
+      
       - name: 📋 Create Recovery Scripts on Server
         run: |
           # Copy recovery scripts to server

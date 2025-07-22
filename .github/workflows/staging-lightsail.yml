@@ -5,7 +5,7 @@ name: "Staging Environment (Lightsail Instance)"
 
 on:
   push:
-    branches: [ fix-audio-playback-investigation, security-testing-staging, monitoring-staging ]
+    branches: [ fix-audio-playback-investigation, security-testing-staging ] # monitoring-staging removed to prevent conflicts
   workflow_dispatch:
     inputs:
       branch:
