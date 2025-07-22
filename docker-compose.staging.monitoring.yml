@@ -145,7 +145,7 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
-      - "8080:8080"
+      - "8081:8080"
     networks:
       - staging-network  # Use existing staging network
     deploy:

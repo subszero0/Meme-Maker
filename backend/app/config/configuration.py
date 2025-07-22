@@ -114,12 +114,20 @@ class Settings(BaseSettings):
     instagram_cookies_b64: str = Field(
         default="", description="Base64 encoded Instagram cookies"
     )
+    instagram_cookies_path: str = Field(
+        default="", description="Path to Instagram cookies file"
+    )
+
+    # Staging/production mode settings
+    mode: str = Field(default="development", description="Application mode")
+    storage_type: str = Field(default="local", description="Storage type")
 
     # Pydantic settings configuration
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",  # Ignore extra fields to prevent validation errors
     )
 
     @field_validator("cors_origins", mode="before")

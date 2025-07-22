@@ -1,7 +1,7 @@
 {
   "dashboard": {
     "id": null,
-    "title": "Meme Maker - Development Overview",
+    "title": "Meme Maker - Staging Overview",
     "tags": ["meme-maker", "development"],
     "style": "dark",
     "timezone": "browser",
