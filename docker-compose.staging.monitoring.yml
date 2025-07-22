@@ -1,15 +1,16 @@
 # Staging monitoring configuration - Production-like with moderate limits
+# FIXED: Use existing staging-network to avoid conflicts
 services:
-  # Add monitoring network to existing services
+  # Add staging network to existing services
   backend:
     networks:
       - default
-      - monitoring
+      - staging-network  # Use existing staging network
       
   redis:
     networks:
       - default
-      - monitoring
+      - staging-network  # Use existing staging network
 
   prometheus:
     image: prom/prometheus:v2.48.1
@@ -30,7 +31,7 @@ services:
     ports:
       - "9090:9090"  # Keep exposed for staging validation
     networks:
-      - monitoring
+      - staging-network  # Use existing staging network
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
       interval: 30s
@@ -66,7 +67,7 @@ services:
     ports:
       - "3001:3000"          # Keep exposed for staging validation
     networks:
-      - monitoring
+      - staging-network  # Use existing staging network
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
       interval: 30s
@@ -92,7 +93,7 @@ services:
     ports:
       - "9121:9121"
     networks:
-      - monitoring
+      - staging-network  # Use existing staging network
     depends_on:
       - redis
     deploy:
@@ -105,17 +106,22 @@ services:
           cpus: '0.05'
 
   node_exporter:
-    image: prom/node-exporter:v1.6.1
+    image: prom/node-exporter:v1.7.0
     container_name: meme-maker-node-exporter-staging
     restart: unless-stopped
     command:
-      - '--path.rootfs=/host'
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
     ports:
       - "9100:9100"
     networks:
-      - monitoring
-    volumes:
-      - '/:/host:ro,rslave'
+      - staging-network  # Use existing staging network
     deploy:
       resources:
         limits:
@@ -126,22 +132,22 @@ services:
           cpus: '0.05'
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    image: gcr.io/cadvisor/cadvisor:v0.48.1
     container_name: meme-maker-cadvisor-staging
     restart: unless-stopped
-    ports:
-      - "8081:8080"
-    networks:
-      - monitoring
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-    devices:
-      - /dev/kmsg
-    privileged: true
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8080:8080"
+    networks:
+      - staging-network  # Use existing staging network
     deploy:
       resources:
         limits:
@@ -151,9 +157,11 @@ services:
           memory: 64MB
           cpus: '0.1'
 
+# DO NOT define networks here - use external staging-network
 networks:
-  monitoring:
-    driver: bridge
+  staging-network:
+    external: true
+    name: meme-maker-staging_staging-network
 
 volumes:
   prometheus_data:

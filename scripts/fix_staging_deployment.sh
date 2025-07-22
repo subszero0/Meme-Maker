@@ -22,15 +22,15 @@ print_warning() {
 }
 
 # Check if we're in the right directory
-if [ ! -f "docker-compose.yaml" ] || [ ! -f "docker-compose.staging.monitoring.yml" ]; then
+if [ ! -f "docker-compose.staging.yml" ] || [ ! -f "docker-compose.staging.monitoring.yml" ]; then
     print_error "Not in correct directory! Please run from Meme-Maker-Staging root."
     exit 1
 fi
 
 print_status "Step 1: Cleaning up conflicting containers..."
 
-# Stop all containers (including orphaned ones)
-docker-compose -f docker-compose.yaml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging down --remove-orphans || {
+# Stop all containers (including orphaned ones) with ALL staging files
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging down --remove-orphans || {
     print_warning "Normal compose down failed, trying force cleanup..."
     
     # Force stop and remove conflicting containers
@@ -50,7 +50,7 @@ print_status "Step 2: Checking required files..."
 
 # Verify all required files exist
 REQUIRED_FILES=(
-    "docker-compose.yaml"
+    "docker-compose.staging.yml"
     "docker-compose.staging.monitoring.yml" 
     ".env.monitoring.staging"
     "infra/prometheus/prometheus.staging.yml"
@@ -77,8 +77,8 @@ print_success "Directories created"
 
 print_status "Step 4: Starting services with correct configuration..."
 
-# Start services with correct compose files and environment
-docker-compose -f docker-compose.yaml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging up -d
+# Start services with correct compose files and environment (staging + monitoring)
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging up -d
 
 print_success "Services started"
 
@@ -92,24 +92,24 @@ print_status "Step 6: Checking service health..."
 # Check container status
 echo "Container Status:"
 echo "=================="
-docker-compose -f docker-compose.yaml -f docker-compose.staging.monitoring.yml ps
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml ps
 
 echo ""
 echo "Service Health Checks:"
 echo "====================="
 
-# Check backend health
-if curl -f http://localhost:8000/health >/dev/null 2>&1; then
-    print_success "Backend healthy (port 8000)"
+# Check backend health (staging port 8001)
+if curl -f http://localhost:8001/health >/dev/null 2>&1; then
+    print_success "Backend healthy (port 8001)"
 else
-    print_error "Backend not responding (port 8000)"
+    print_error "Backend not responding (port 8001)"
 fi
 
-# Check frontend
-if curl -f http://localhost:8081/ >/dev/null 2>&1; then
-    print_success "Frontend healthy (port 8081)"
+# Check frontend (staging port 8082)
+if curl -f http://localhost:8082/ >/dev/null 2>&1; then
+    print_success "Frontend healthy (port 8082)"
 else
-    print_error "Frontend not responding (port 8081)"
+    print_error "Frontend not responding (port 8082)"
 fi
 
 # Check Prometheus
@@ -139,16 +139,16 @@ echo ""
 echo "Recent Container Logs:"
 echo "====================="
 echo "Backend logs (last 10 lines):"
-docker-compose -f docker-compose.yaml -f docker-compose.staging.monitoring.yml logs --tail=10 backend || true
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml logs --tail=10 backend-staging || true
 echo ""
 echo "Worker logs (last 10 lines):"
-docker-compose -f docker-compose.yaml -f docker-compose.staging.monitoring.yml logs --tail=10 worker || true
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml logs --tail=10 worker-staging || true
 echo ""
 echo "Prometheus logs (last 5 lines):"
-docker-compose -f docker-compose.yaml -f docker-compose.staging.monitoring.yml logs --tail=5 prometheus || true
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml logs --tail=5 prometheus || true
 echo ""
 echo "Grafana logs (last 5 lines):"
-docker-compose -f docker-compose.yaml -f docker-compose.staging.monitoring.yml logs --tail=5 grafana || true
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml logs --tail=5 grafana || true
 
 print_status "Step 8: Testing job processing..."
 
@@ -158,7 +158,7 @@ echo "Testing Job Processing:"
 echo "======================="
 echo "Sending test job to backend..."
 
-TEST_RESPONSE=$(curl -s -X POST http://localhost:8000/api/clips/start \
+TEST_RESPONSE=$(curl -s -X POST http://localhost:8001/api/clips/start \
   -H "Content-Type: application/json" \
   -d '{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "start_time": 0, "end_time": 10}' || echo "FAILED")
 
@@ -175,7 +175,7 @@ echo "🎉 STAGING DEPLOYMENT FIX COMPLETED!"
 echo "===================================="
 echo ""
 echo "📊 Monitoring Access URLs:"
-echo "  Application: http://13.126.173.223:8081/"
+echo "  Application: http://13.126.173.223:8082/"
 echo "  Prometheus:  http://13.126.173.223:9090/"
 echo "  Grafana:     http://13.126.173.223:3001/"
 echo "    Username: admin"
