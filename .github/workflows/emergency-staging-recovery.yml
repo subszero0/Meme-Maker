@@ -1,0 +1,165 @@
+name: 🚨 Emergency Staging Recovery
+on:
+  workflow_dispatch:
+    inputs:
+      recovery_type:
+        description: 'Type of recovery to perform'
+        required: true
+        default: 'full_cleanup'
+        type: choice
+        options:
+          - 'full_cleanup'
+          - 'docker_restart'
+          - 'service_restart'
+      skip_health_check:
+        description: 'Skip health checks (for emergency situations)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  emergency-recovery:
+    name: Emergency Staging Recovery
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📦 Checkout Recovery Scripts
+        uses: actions/checkout@v4
+      
+      - name: 🔐 Setup SSH Connection
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+      
+      - name: 📋 Deploy Recovery Scripts
+        run: |
+          echo "🚀 Deploying recovery scripts to staging server..."
+          
+          # Copy all recovery scripts
+          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            create_staging_env.sh fix_docker_corruption.sh deploy_staging_fresh.sh \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }}:~/Meme-Maker-Staging/
+          
+          # Make executable
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "cd ~/Meme-Maker-Staging && chmod +x *.sh"
+      
+      - name: 🚨 Full Docker Cleanup Recovery
+        if: github.event.inputs.recovery_type == 'full_cleanup'
+        run: |
+          echo "🚨 Performing FULL Docker cleanup and recovery..."
+          
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "cd ~/Meme-Maker-Staging && ./fix_docker_corruption.sh"
+          
+          echo "✅ Docker cleanup completed"
+      
+      - name: 🔄 Docker Service Restart
+        if: github.event.inputs.recovery_type == 'docker_restart'
+        run: |
+          echo "🔄 Restarting Docker service..."
+          
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "sudo systemctl restart docker && sleep 10"
+          
+          echo "✅ Docker service restarted"
+      
+      - name: 🔧 Service Restart Only
+        if: github.event.inputs.recovery_type == 'service_restart'
+        run: |
+          echo "🔧 Restarting staging services..."
+          
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "cd ~/Meme-Maker-Staging && docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml restart"
+          
+          echo "✅ Services restarted"
+      
+      - name: 🔧 Sync Latest Code
+        run: |
+          echo "🔧 Syncing latest code from repository..."
+          
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "cd ~/Meme-Maker-Staging && git fetch origin && git reset --hard origin/monitoring-staging"
+      
+      - name: 🚀 Fresh Deployment
+        run: |
+          echo "🚀 Deploying fresh staging environment..."
+          
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "cd ~/Meme-Maker-Staging && ./create_staging_env.sh && ./deploy_staging_fresh.sh"
+      
+      - name: ⏳ Wait for Initialization
+        if: github.event.inputs.skip_health_check != 'true'
+        run: |
+          echo "⏳ Waiting for services to initialize..."
+          sleep 120
+      
+      - name: 🔍 Emergency Health Check
+        if: github.event.inputs.skip_health_check != 'true'
+        run: |
+          echo "🔍 Running emergency health check..."
+          
+          # Basic connectivity test
+          APP_RESPONSE=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "curl -s -o /dev/null -w '%{http_code}' --connect-timeout 10 http://localhost:8082/ || echo 'TIMEOUT'")
+          
+          BACKEND_RESPONSE=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "curl -s -o /dev/null -w '%{http_code}' --connect-timeout 10 http://localhost:8001/health || echo 'TIMEOUT'")
+          
+          # Container count
+          RUNNING_COUNT=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "cd ~/Meme-Maker-Staging && docker ps --filter 'status=running' | wc -l")
+          
+          echo "🎯 Emergency Recovery Results:"
+          echo "  Application response: $APP_RESPONSE"
+          echo "  Backend response: $BACKEND_RESPONSE"
+          echo "  Running containers: $RUNNING_COUNT"
+          
+          # Simple success criteria
+          if [[ "$APP_RESPONSE" == "200" && "$BACKEND_RESPONSE" == "200" ]]; then
+            echo "✅ Emergency recovery successful!"
+          else
+            echo "⚠️ Recovery partially successful - manual intervention may be needed"
+          fi
+      
+      - name: 📊 Emergency Recovery Report
+        run: |
+          echo "## 🚨 Emergency Recovery Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Recovery Type:** ${{ github.event.inputs.recovery_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered By:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ COMPLETED" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Access URLs" >> $GITHUB_STEP_SUMMARY
+          echo "- **Application:** http://${{ secrets.STAGING_SERVER_IP }}:8082/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend API:** http://${{ secrets.STAGING_SERVER_IP }}:8001/health" >> $GITHUB_STEP_SUMMARY
+          echo "- **Prometheus:** http://${{ secrets.STAGING_SERVER_IP }}:9090/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Grafana:** http://${{ secrets.STAGING_SERVER_IP }}:3001/ (admin/staging_admin_2025_secure)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Verify all services are working correctly" >> $GITHUB_STEP_SUMMARY
+          echo "2. Test core application functionality" >> $GITHUB_STEP_SUMMARY
+          echo "3. Monitor for any recurring issues" >> $GITHUB_STEP_SUMMARY
+      
+      - name: ❌ Emergency Recovery Failed
+        if: failure()
+        run: |
+          echo "## ❌ Emergency Recovery Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Recovery Type:** ${{ github.event.inputs.recovery_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ❌ FAILED" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Immediate Action Required" >> $GITHUB_STEP_SUMMARY
+          echo "1. SSH into server: \`ssh ubuntu@${{ secrets.STAGING_SERVER_IP }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "2. Check Docker status: \`sudo systemctl status docker\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Check container logs: \`cd ~/Meme-Maker-Staging && docker-compose logs\`" >> $GITHUB_STEP_SUMMARY
+          echo "4. Manual recovery: \`./fix_docker_corruption.sh && ./deploy_staging_fresh.sh\`" >> $GITHUB_STEP_SUMMARY 

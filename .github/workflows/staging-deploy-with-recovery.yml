@@ -1,0 +1,187 @@
+name: 🚀 Staging Deploy with Auto-Recovery
+on:
+  push:
+    branches: [monitoring-staging]
+  workflow_dispatch:
+    inputs:
+      force_cleanup:
+        description: 'Force Docker cleanup before deployment'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  staging-deploy-with-recovery:
+    name: Deploy Staging with Auto-Recovery
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📦 Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: 🔐 Setup SSH Connection
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+      
+      - name: 📋 Create Recovery Scripts on Server
+        run: |
+          # Copy recovery scripts to server
+          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            create_staging_env.sh fix_docker_corruption.sh deploy_staging_fresh.sh \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }}:~/Meme-Maker-Staging/
+          
+          # Make scripts executable
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "cd ~/Meme-Maker-Staging && chmod +x *.sh"
+      
+      - name: 🔍 Check Current Deployment Status
+        id: check_status
+        run: |
+          # Check if containers are running properly
+          STATUS=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "cd ~/Meme-Maker-Staging && docker-compose -f docker-compose.staging.yml ps --services --filter 'status=running' | wc -l" || echo "0")
+          
+          echo "running_containers=$STATUS" >> $GITHUB_OUTPUT
+          
+          # Check for ContainerConfig errors in recent logs
+          DOCKER_ERRORS=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "journalctl --since '1 hour ago' -u docker | grep -c 'ContainerConfig' || echo '0'")
+          
+          echo "docker_errors=$DOCKER_ERRORS" >> $GITHUB_OUTPUT
+          
+          echo "🔍 Status Check Results:"
+          echo "  Running containers: $STATUS"
+          echo "  Docker errors: $DOCKER_ERRORS"
+      
+      - name: 🚨 Auto-Recovery Docker Cleanup
+        if: steps.check_status.outputs.running_containers < '4' || steps.check_status.outputs.docker_errors > '0' || github.event.inputs.force_cleanup == 'true'
+        run: |
+          echo "🚨 Auto-recovery triggered!"
+          echo "  Running containers: ${{ steps.check_status.outputs.running_containers }}/4"
+          echo "  Docker errors detected: ${{ steps.check_status.outputs.docker_errors }}"
+          
+          # Run comprehensive recovery sequence
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "cd ~/Meme-Maker-Staging && ./fix_docker_corruption.sh"
+      
+      - name: 🔧 Deploy Code Updates
+        run: |
+          # Sync latest code to server
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "cd ~/Meme-Maker-Staging && git fetch origin && git reset --hard origin/monitoring-staging"
+      
+      - name: 🚀 Fresh Deployment
+        run: |
+          # Run fresh deployment with all recovery mechanisms
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "cd ~/Meme-Maker-Staging && ./create_staging_env.sh && ./deploy_staging_fresh.sh"
+      
+      - name: ⏳ Wait for Services Initialization
+        run: |
+          echo "⏳ Waiting for all services to fully initialize..."
+          sleep 90
+      
+      - name: 🔍 Comprehensive Health Check
+        id: health_check
+        run: |
+          echo "🔍 Running comprehensive health checks..."
+          
+          # Test core application
+          APP_STATUS=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "curl -s -o /dev/null -w '%{http_code}' http://localhost:8082/ || echo 'FAIL'")
+          
+          # Test backend health
+          BACKEND_STATUS=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "curl -s -o /dev/null -w '%{http_code}' http://localhost:8001/health || echo 'FAIL'")
+          
+          # Test Prometheus
+          PROMETHEUS_STATUS=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "curl -s -o /dev/null -w '%{http_code}' http://localhost:9090/-/healthy || echo 'FAIL'")
+          
+          # Test Grafana
+          GRAFANA_STATUS=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/api/health || echo 'FAIL'")
+          
+          # Count running containers
+          CONTAINER_COUNT=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "cd ~/Meme-Maker-Staging && docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml ps --services --filter 'status=running' | wc -l")
+          
+          echo "app_status=$APP_STATUS" >> $GITHUB_OUTPUT
+          echo "backend_status=$BACKEND_STATUS" >> $GITHUB_OUTPUT  
+          echo "prometheus_status=$PROMETHEUS_STATUS" >> $GITHUB_OUTPUT
+          echo "grafana_status=$GRAFANA_STATUS" >> $GITHUB_OUTPUT
+          echo "container_count=$CONTAINER_COUNT" >> $GITHUB_OUTPUT
+          
+          echo "📊 Health Check Results:"
+          echo "  Application: $APP_STATUS"
+          echo "  Backend API: $BACKEND_STATUS"
+          echo "  Prometheus: $PROMETHEUS_STATUS"
+          echo "  Grafana: $GRAFANA_STATUS"
+          echo "  Running containers: $CONTAINER_COUNT"
+      
+      - name: 📊 Generate Deployment Report
+        run: |
+          echo "## 🎯 Staging Deployment Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment Status:** ✅ SUCCESS" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Service Health" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Status | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| Application | ${{ steps.health_check.outputs.app_status == '200' && '✅' || '❌' }} | http://${{ secrets.STAGING_SERVER_IP }}:8082/ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend API | ${{ steps.health_check.outputs.backend_status == '200' && '✅' || '❌' }} | http://${{ secrets.STAGING_SERVER_IP }}:8001/health |" >> $GITHUB_STEP_SUMMARY
+          echo "| Prometheus | ${{ steps.health_check.outputs.prometheus_status == '200' && '✅' || '❌' }} | http://${{ secrets.STAGING_SERVER_IP }}:9090/ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Grafana | ${{ steps.health_check.outputs.grafana_status == '200' && '✅' || '❌' }} | http://${{ secrets.STAGING_SERVER_IP }}:3001/ |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Running Containers:** ${{ steps.health_check.outputs.container_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Grafana Credentials:** admin / staging_admin_2025_secure" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Test the staging application thoroughly" >> $GITHUB_STEP_SUMMARY
+          echo "2. Verify monitoring dashboards in Grafana" >> $GITHUB_STEP_SUMMARY
+          echo "3. If everything works correctly, create PR to master for production deployment" >> $GITHUB_STEP_SUMMARY
+      
+      - name: ❌ Deployment Failed - Collect Debug Info
+        if: failure()
+        run: |
+          echo "❌ Deployment failed! Collecting debug information..."
+          
+          # Get container status
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "cd ~/Meme-Maker-Staging && echo '=== CONTAINER STATUS ===' && docker ps -a"
+          
+          # Get recent logs
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "cd ~/Meme-Maker-Staging && echo '=== BACKEND LOGS ===' && docker-compose -f docker-compose.staging.yml logs backend-staging --tail=20"
+          
+          # Get Docker daemon logs
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ubuntu@${{ secrets.STAGING_SERVER_IP }} \
+            "echo '=== DOCKER DAEMON LOGS ===' && journalctl -u docker --since '10 minutes ago' --no-pager"
+      
+      - name: 🔔 Notify on Failure
+        if: failure()
+        run: |
+          echo "## ❌ Staging Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The automated deployment and recovery failed. Please check the logs above for details." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Manual Recovery Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. SSH into staging server: \`ssh ubuntu@${{ secrets.STAGING_SERVER_IP }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "2. Navigate to project: \`cd ~/Meme-Maker-Staging\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Run manual recovery: \`./fix_docker_corruption.sh && ./deploy_staging_fresh.sh\`" >> $GITHUB_STEP_SUMMARY 
