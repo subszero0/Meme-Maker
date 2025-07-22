@@ -45,7 +45,7 @@ services:
           cpus: '0.4'
         reservations:
           memory: 384MB
-          cpus: '0.2'
+          # cpus reservations not supported in docker-compose
     
   grafana:
     image: grafana/grafana-oss:10.2.3
@@ -81,7 +81,7 @@ services:
           cpus: '0.25'
         reservations:
           memory: 192MB
-          cpus: '0.1'
+          # cpus reservations not supported in docker-compose
 
   # Apply moderate resource limits to exporters
   redis_exporter:
@@ -103,7 +103,7 @@ services:
           cpus: '0.1'
         reservations:
           memory: 32MB
-          cpus: '0.05'
+          # cpus reservations not supported in docker-compose
 
   node_exporter:
     image: prom/node-exporter:v1.7.0
@@ -129,7 +129,7 @@ services:
           cpus: '0.1'
         reservations:
           memory: 32MB
-          cpus: '0.05'
+          # cpus reservations not supported in docker-compose
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.48.1
@@ -155,7 +155,7 @@ services:
           cpus: '0.15'
         reservations:
           memory: 64MB
-          cpus: '0.1'
+          # cpus reservations not supported in docker-compose
 
 # DO NOT define networks here - use external staging-network
 networks:
