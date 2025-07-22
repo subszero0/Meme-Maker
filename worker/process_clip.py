@@ -47,7 +47,9 @@ except ImportError:
     class DummyMetric:
         def inc(self): pass
         def dec(self): pass
-        def labels(self, *args, **kwargs): return self
+        def labels(self, *args, **kwargs): 
+            # Return self to support chaining like .labels().observe()
+            return self
         def observe(self, value): pass
     clip_job_latency_seconds = DummyMetric()
     clip_jobs_inflight = DummyMetric()
