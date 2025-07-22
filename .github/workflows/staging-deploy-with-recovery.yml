@@ -182,6 +182,7 @@ jobs:
           echo "The automated deployment and recovery failed. Please check the logs above for details." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Manual Recovery Steps" >> $GITHUB_STEP_SUMMARY
-          echo "1. SSH into staging server: \`ssh ubuntu@${{ secrets.STAGING_SERVER_IP }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "1. SSH into Lightsail server: \`ssh ubuntu@${{ secrets.STAGING_SERVER_IP }}\`" >> $GITHUB_STEP_SUMMARY
           echo "2. Navigate to project: \`cd ~/Meme-Maker-Staging\`" >> $GITHUB_STEP_SUMMARY
-          echo "3. Run manual recovery: \`./fix_docker_corruption.sh && ./deploy_staging_fresh.sh\`" >> $GITHUB_STEP_SUMMARY 
+          echo "3. Run manual recovery: \`./fix_docker_corruption.sh && ./deploy_staging_fresh.sh\`" >> $GITHUB_STEP_SUMMARY
+          echo "4. Check Lightsail firewall rules if external access fails" >> $GITHUB_STEP_SUMMARY 

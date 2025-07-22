@@ -159,7 +159,8 @@ jobs:
           echo "**Status:** ❌ FAILED" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Immediate Action Required" >> $GITHUB_STEP_SUMMARY
-          echo "1. SSH into server: \`ssh ubuntu@${{ secrets.STAGING_SERVER_IP }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "2. Check Docker status: \`sudo systemctl status docker\`" >> $GITHUB_STEP_SUMMARY
-          echo "3. Check container logs: \`cd ~/Meme-Maker-Staging && docker-compose logs\`" >> $GITHUB_STEP_SUMMARY
-          echo "4. Manual recovery: \`./fix_docker_corruption.sh && ./deploy_staging_fresh.sh\`" >> $GITHUB_STEP_SUMMARY 
+                     echo "1. SSH into Lightsail server: \`ssh ubuntu@${{ secrets.STAGING_SERVER_IP }}\`" >> $GITHUB_STEP_SUMMARY
+           echo "2. Check Docker status: \`sudo systemctl status docker\`" >> $GITHUB_STEP_SUMMARY
+           echo "3. Check container logs: \`cd ~/Meme-Maker-Staging && docker-compose logs\`" >> $GITHUB_STEP_SUMMARY
+           echo "4. Manual recovery: \`./fix_docker_corruption.sh && ./deploy_staging_fresh.sh\`" >> $GITHUB_STEP_SUMMARY
+           echo "5. Check Lightsail firewall rules if external access fails" >> $GITHUB_STEP_SUMMARY 
