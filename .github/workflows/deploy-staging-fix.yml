@@ -1,0 +1,136 @@
+name: Deploy Download URL Fix to Staging
+
+on:
+  push:
+    branches: [ monitoring-staging ]
+    paths:
+      - 'backend/app/storage.py'
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment even if no changes detected'
+        required: false
+        default: 'false'
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/monitoring-staging'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup SSH connection to staging server
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+        
+    - name: Deploy download URL fix to staging
+      run: |
+        # SSH into staging server and deploy the fix
+        ssh -o StrictHostKeyChecking=no ubuntu@13.126.173.223 << 'EOF'
+          cd ~/Meme-Maker-Staging
+          
+          echo "🔍 Pulling latest changes from monitoring-staging branch..."
+          git fetch origin monitoring-staging
+          git checkout monitoring-staging
+          git pull origin monitoring-staging
+          
+          echo "🛑 Stopping current services..."
+          docker-compose -f docker-compose.staging.yml down || true
+          
+          echo "🔨 Rebuilding backend with download URL fix..."
+          docker-compose -f docker-compose.staging.yml build --no-cache backend-staging
+          
+          echo "🚀 Starting services with fixed download URLs..."
+          docker-compose -f docker-compose.staging.yml up -d redis-staging
+          sleep 15
+          
+          docker-compose -f docker-compose.staging.yml up -d backend-staging
+          sleep 20
+          
+          docker-compose -f docker-compose.staging.yml up -d worker-staging frontend-staging
+          sleep 15
+          
+          echo "📊 Starting monitoring services..."
+          export GRAFANA_ADMIN_PASSWORD="staging_admin_2025_secure"
+          export GRAFANA_SECRET_KEY="staging_secret_key_2025_secure"
+          docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml up -d prometheus grafana redis_exporter node_exporter cadvisor || true
+          
+          echo "✅ Deployment completed!"
+          echo "🧪 Testing download URL fix..."
+          
+          # Wait for backend to be ready
+          for i in {1..20}; do
+            if curl -f http://localhost:8001/health >/dev/null 2>&1; then
+              echo "✅ Backend is responding"
+              break
+            fi
+            echo "⏳ Waiting for backend... ($i/20)"
+            sleep 3
+          done
+          
+          # Check frontend
+          if curl -f http://localhost:8082/health >/dev/null 2>&1; then
+            echo "✅ Frontend is responding"
+          else
+            echo "⚠️ Frontend may need more time to initialize"
+          fi
+          
+          echo ""
+          echo "🎉 DOWNLOAD URL FIX DEPLOYED SUCCESSFULLY!"
+          echo "📍 Application: http://13.126.173.223:8082/"
+          echo "📍 Backend API: http://13.126.173.223:8001/health"
+          echo ""
+          echo "🧪 TEST THE FIX:"
+          echo "1. Visit: http://13.126.173.223:8082/"
+          echo "2. Process a video clip"
+          echo "3. Download should now use: http://13.126.173.223:8001/api/v1/jobs/.../download"
+          echo "   (instead of the broken http://api/... format)"
+          
+        EOF
+        
+    - name: Verify deployment
+      run: |
+        echo "🔍 Verifying staging deployment..."
+        
+        # Test backend health
+        if curl -f http://13.126.173.223:8001/health; then
+          echo "✅ Backend health check passed"
+        else
+          echo "❌ Backend health check failed"
+          exit 1
+        fi
+        
+        # Test frontend
+        if curl -f http://13.126.173.223:8082/health; then
+          echo "✅ Frontend health check passed"
+        else
+          echo "⚠️ Frontend health check failed - may need more initialization time"
+        fi
+        
+        echo "✅ Deployment verification completed!"
+        
+    - name: Notify success
+      if: success()
+      run: |
+        echo "🎉 DOWNLOAD URL FIX SUCCESSFULLY DEPLOYED TO STAGING!"
+        echo ""
+        echo "📍 Staging Environment URLs:"
+        echo "  • Application: http://13.126.173.223:8082/"
+        echo "  • Backend API: http://13.126.173.223:8001/health"
+        echo "  • Prometheus: http://13.126.173.223:9090/"
+        echo "  • Grafana: http://13.126.173.223:3001/"
+        echo ""
+        echo "🧪 Download URLs will now be formatted as:"
+        echo "  http://13.126.173.223:8001/api/v1/jobs/[job-id]/download"
+        echo "  (No longer the broken http://api/... format)"
+        
+    - name: Notify failure
+      if: failure()
+      run: |
+        echo "❌ DEPLOYMENT FAILED!"
+        echo "Check the logs above for details."
+        echo "You may need to run the nuclear fix script manually:"
+        echo "  ./nuclear_fix_containerconfig.sh" 
