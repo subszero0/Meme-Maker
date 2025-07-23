@@ -94,10 +94,10 @@ fi
 print_success "Monitoring docker-compose file exists"
 
 # Verify cAdvisor version is updated
-if grep -q "gcr.io/cadvisor/cadvisor:v0.53.0" docker-compose.staging.monitoring.yml; then
-    print_success "cAdvisor version updated to v0.53.0"
+if grep -q "gcr.io/cadvisor/cadvisor:v0.52.1" docker-compose.staging.monitoring.yml; then
+    print_success "cAdvisor version updated to v0.52.1"
 else
-    print_error "cAdvisor version not updated! Please update to v0.53.0"
+    print_error "cAdvisor version not updated! Please update to v0.52.1"
     exit 1
 fi
 
@@ -196,7 +196,7 @@ echo ""
 echo "🎉 STAGING DEPLOYMENT SUCCESSFUL!"
 echo "================================="
 echo ""
-print_success "All services are running with the updated cAdvisor v0.53.0"
+print_success "All services are running with the updated cAdvisor v0.52.1"
 echo ""
 echo "📊 ACCESS URLS:"
 echo "  Application:  http://13.126.173.223:8082/"
