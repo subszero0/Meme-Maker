@@ -5,9 +5,6 @@ Ensures that BASE_URL is properly used for staging/production environments
 
 from unittest.mock import Mock, patch
 
-import pytest
-
-from backend.app.config.configuration import Settings
 from backend.app.storage import LocalStorageManager
 
 
