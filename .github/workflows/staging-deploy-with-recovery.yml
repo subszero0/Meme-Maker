@@ -46,15 +46,15 @@ jobs:
       
       - name: 📋 Create Recovery Scripts on Server
         run: |
-          # Copy recovery scripts to server
+          # Copy recovery scripts to server with executable permissions
           scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             create_staging_env.sh fix_docker_corruption.sh deploy_staging_fresh.sh \
             ubuntu@${{ secrets.STAGING_SERVER_IP }}:~/Meme-Maker-Staging/
           
-          # Make scripts executable
+          # Ensure scripts are executable (fix permission issue)
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             ubuntu@${{ secrets.STAGING_SERVER_IP }} \
-            "cd ~/Meme-Maker-Staging && chmod +x *.sh"
+            "cd ~/Meme-Maker-Staging && chmod +x *.sh && ls -la *.sh"
       
       - name: 🔍 Check Current Deployment Status
         id: check_status
@@ -100,7 +100,7 @@ jobs:
           # Sync latest code to server
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             ubuntu@${{ secrets.STAGING_SERVER_IP }} \
-            "cd ~/Meme-Maker-Staging && git fetch origin && git reset --hard origin/monitoring-staging"
+            "cd ~/Meme-Maker-Staging && git fetch origin && git reset --hard origin/${{ github.ref_name }}"
       
       - name: 🚀 Fresh Deployment
         run: |
