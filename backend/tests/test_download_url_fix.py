@@ -3,6 +3,8 @@ Test for download URL generation fix
 Ensures that BASE_URL is properly used for staging/production environments
 """
 
+import tempfile
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from backend.app.storage import LocalStorageManager
@@ -11,12 +13,22 @@ from backend.app.storage import LocalStorageManager
 class TestDownloadURLFix:
     """Test download URL generation with proper BASE_URL handling"""
 
+    def setup_method(self):
+        """Set up temporary directory for each test"""
+        self.temp_dir = tempfile.mkdtemp()
+        self.temp_path = Path(self.temp_dir)
+
+    def teardown_method(self):
+        """Clean up temporary directory after each test"""
+        import shutil
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
     def test_download_url_with_staging_base_url(self):
         """Test that staging BASE_URL is used correctly"""
         # Mock settings with staging BASE_URL
         mock_settings = Mock()
         mock_settings.base_url = "http://13.126.173.223:8001"
-        mock_settings.clips_dir = "/app/storage/clips"
+        mock_settings.clips_dir = str(self.temp_path)
 
         with patch("backend.app.storage.settings", mock_settings):
             storage = LocalStorageManager()
@@ -37,7 +49,7 @@ class TestDownloadURLFix:
         # Mock settings with production BASE_URL
         mock_settings = Mock()
         mock_settings.base_url = "https://memeit.pro"
-        mock_settings.clips_dir = "/app/storage/clips"
+        mock_settings.clips_dir = str(self.temp_path)
 
         with patch("backend.app.storage.settings", mock_settings):
             storage = LocalStorageManager()
@@ -56,7 +68,7 @@ class TestDownloadURLFix:
         # Mock settings with localhost BASE_URL
         mock_settings = Mock()
         mock_settings.base_url = "http://localhost:8000"
-        mock_settings.clips_dir = "/app/storage/clips"
+        mock_settings.clips_dir = str(self.temp_path)
 
         with patch("backend.app.storage.settings", mock_settings):
             storage = LocalStorageManager()
@@ -75,7 +87,7 @@ class TestDownloadURLFix:
         # Mock settings with empty BASE_URL
         mock_settings = Mock()
         mock_settings.base_url = ""
-        mock_settings.clips_dir = "/app/storage/clips"
+        mock_settings.clips_dir = str(self.temp_path)
 
         with patch("backend.app.storage.settings", mock_settings):
             storage = LocalStorageManager()
@@ -94,7 +106,7 @@ class TestDownloadURLFix:
         # Mock settings with None BASE_URL
         mock_settings = Mock()
         mock_settings.base_url = None
-        mock_settings.clips_dir = "/app/storage/clips"
+        mock_settings.clips_dir = str(self.temp_path)
 
         with patch("backend.app.storage.settings", mock_settings):
             storage = LocalStorageManager()
@@ -115,7 +127,7 @@ class TestDownloadURLFix:
 
         mock_settings = Mock()
         mock_settings.base_url = "http://13.126.173.223:8001"  # Staging URL
-        mock_settings.clips_dir = "/app/storage/clips"
+        mock_settings.clips_dir = str(self.temp_path)
 
         with patch("backend.app.storage.settings", mock_settings):
             storage = LocalStorageManager()
