@@ -21,6 +21,7 @@ class TestDownloadURLFix:
     def teardown_method(self):
         """Clean up temporary directory after each test"""
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_download_url_with_staging_base_url(self):
