@@ -1,17 +1,6 @@
 # Staging monitoring configuration - Production-like with moderate limits
-# FIXED: Use existing staging-network to avoid conflicts
+# FIXED: Remove network overrides to avoid DNS conflicts - services use staging-network from base file
 services:
-  # Add staging network to existing services (use correct staging service names)
-  backend-staging:
-    networks:
-      - default
-      - staging-network  # Use existing staging network
-      
-  redis-staging:
-    networks:
-      - default
-      - staging-network  # Use existing staging network
-
   prometheus:
     image: prom/prometheus:v2.48.1
     container_name: meme-maker-prometheus-staging
