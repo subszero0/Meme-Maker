@@ -132,7 +132,7 @@ services:
           # cpus reservations not supported in docker-compose
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.52.1
+    image: gcr.io/cadvisor/cadvisor:v0.48.1
     container_name: meme-maker-cadvisor-staging
     restart: unless-stopped
     privileged: true
@@ -143,16 +143,22 @@ services:
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /cgroup:/cgroup:ro
     ports:
-      - "8081:8080"
+      - "8083:8080"  # FIXED: Changed from 8081 to 8083 to avoid conflict
     networks:
-      - staging-network  # Use existing staging network
+      - staging-network
+    command:
+      - '--housekeeping_interval=10s'
+      - '--docker_only=true'
+      - '--disable_metrics=accelerator,cpu_topology,disk,memory_numa,tcp,udp,percpu,sched,process,hugetlb,referenced_memory,resctrl,cpuset,advtcp,memory_numa'
+      - '--enable_metrics=cpu,diskIO,memory,network'
+      - '--store_container_labels=false'
     deploy:
       resources:
         limits:
-          memory: 128MB
-          cpus: '0.15'
+          memory: 128MB      # Light resource usage for staging
+          cpus: '0.1'
         reservations:
           memory: 64MB
           # cpus reservations not supported in docker-compose

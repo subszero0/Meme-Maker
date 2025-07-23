@@ -1,44 +1,60 @@
-# 🚨 IMMEDIATE FIX COMMANDS
+# 🚨 IMMEDIATE FIX COMMANDS - UPDATED
 
 ## **Run These Commands NOW on Your Server**
 
-You're already SSH'd into the server. Run these commands in sequence:
+### **1. CRITICAL: Stop Conflicting Services**
+```bash
+# Stop everything first to resolve port conflicts
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml down --remove-orphans
 
-### **1. Fix Script Permissions (CRITICAL)**
+# Check what's using port 8081
+sudo netstat -tulpn | grep :8081
+
+# If something is still running on 8081, kill it:
+sudo lsof -ti:8081 | xargs -r sudo kill -9
+```
+
+### **2. Fix Port Conflicts in Monitoring**
+```bash
+# Change cAdvisor port from 8081 to 8083 (8081 conflicts with staging app)
+sed -i 's/"8081:8080"/"8083:8080"/g' docker-compose.staging.monitoring.yml
+
+# Verify the change
+grep -n "8083:8080" docker-compose.staging.monitoring.yml
+```
+
+### **3. Fix Script Permissions**
 ```bash
 chmod +x scripts/fix_staging_deployment.sh scripts/fix_staging_firewall.sh scripts/fix_job_timeout.py
 ```
 
-### **2. Restart Containers with Timeout Fixes (YOU DID TIMEOUT FIXES)**
+### **4. Restart Everything with Fixed Ports**
 ```bash
-# Restart backend and worker with new timeout settings
-docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging restart backend-staging worker-staging
+# Build with no cache to ensure latest changes
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging build --no-cache
 
-# Wait for restart
-sleep 10
+# Start services
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml --env-file .env.monitoring.staging up -d
 
-# Check if containers are running
+# Wait for startup
+sleep 15
+
+# Check all services are running
 docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml ps
 ```
 
-### **3. Fix Staging Deployment & Monitoring (NETWORK CONFLICT FIXED)**
+### **5. Open Firewall Ports**
 ```bash
-# This should now work (network conflict resolved)
-./scripts/fix_staging_deployment.sh
-```
-
-### **4. Fix Firewall for Prometheus/Grafana Access**
-```bash
-# Open firewall ports
+# Open necessary ports
 ./scripts/fix_staging_firewall.sh
 ```
 
-### **5. Test Everything**
+### **6. Test All Services**
 ```bash
-# Test staging application (NEW PORT 8082)
+# Test staging application
 curl http://localhost:8082/
 
-# Test backend health (NEW PORT 8001)  
+# Test backend health  
 curl http://localhost:8001/health
 
 # Test Prometheus
@@ -47,46 +63,51 @@ curl http://localhost:9090/-/healthy
 # Test Grafana
 curl http://localhost:3001/api/health
 
-# Check all container status
-docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml ps
+# Test cAdvisor (NEW PORT)
+curl http://localhost:8083/healthz
 ```
 
 ---
 
-## **Expected Results After Fixes**
+## **✅ Expected Results After Fixes**
 
-✅ **Application**: http://13.126.173.223:8082/ (NEW PORT)
+✅ **Application**: http://13.126.173.223:8082/
 ✅ **Prometheus**: http://13.126.173.223:9090/
 ✅ **Grafana**: http://13.126.173.223:3001/ (admin / staging_admin_2025_secure)
-✅ **Jobs complete beyond 40%** (timeout increased to 15 minutes)
+✅ **cAdvisor**: http://13.126.173.223:8083/ (NEW PORT - no more conflict)
 
 ---
 
-## **If Still Issues**
+## **🔧 GITHUB ACTIONS FIXES**
 
-### **Check Container Logs**
+The parallel workflow issue and SSH key problems need to be fixed:
+
+### **Issues Found:**
+1. **Missing SSH Key**: The `ssh-private-key` secret is not configured
+2. **Parallel Workflows**: Two workflows running simultaneously causing conflicts
+
+---
+
+## **🆘 If Still Issues**
+
+### **Check Container Status**
 ```bash
-# Backend logs
-docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml logs backend-staging --tail=20
+# Check what's running
+docker ps -a
 
-# Worker logs  
-docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml logs worker-staging --tail=20
+# Check port usage
+sudo netstat -tulpn | grep -E ':(8001|8082|8083|9090|3001)'
 
-# Prometheus logs
-docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml logs prometheus --tail=10
-
-# Grafana logs
-docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml logs grafana --tail=10
+# Check logs if services fail
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml logs --tail=20
 ```
 
-### **Force Cleanup (Last Resort)**
+### **Complete Reset (Last Resort)**
 ```bash
-# Stop everything
-docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml down --remove-orphans
+# Nuclear option - complete cleanup
+docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml down --remove-orphans --volumes
+docker system prune -af
+docker volume prune -f
 
-# Clean up
-docker system prune -f
-
-# Restart
-./scripts/fix_staging_deployment.sh
+# Then restart from step 2
 ``` 

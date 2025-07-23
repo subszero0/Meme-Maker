@@ -5,13 +5,18 @@ name: "Staging Environment (Lightsail Instance)"
 
 on:
   push:
-    branches: [ fix-audio-playback-investigation, security-testing-staging ] # monitoring-staging removed to prevent conflicts
+    branches: [ monitoring-staging, fix-audio-playback-investigation, security-testing-staging ] # MAIN staging workflow
   workflow_dispatch:
     inputs:
       branch:
         description: 'Branch to deploy to staging'
         required: true
         default: 'security-testing-staging'
+
+# FIXED: Add concurrency control to prevent parallel runs
+concurrency:
+  group: staging-deployment
+  cancel-in-progress: true
 
 jobs:
   lint-test-staging:
