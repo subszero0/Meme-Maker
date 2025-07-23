@@ -3,10 +3,12 @@ Test for download URL generation fix
 Ensures that BASE_URL is properly used for staging/production environments
 """
 
-import pytest
 from unittest.mock import Mock, patch
-from backend.app.storage import LocalStorageManager
+
+import pytest
+
 from backend.app.config.configuration import Settings
+from backend.app.storage import LocalStorageManager
 
 
 class TestDownloadURLFix:
