@@ -132,7 +132,7 @@ services:
           # cpus reservations not supported in docker-compose
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.48.1
+    image: gcr.io/cadvisor/cadvisor:v0.53.0
     container_name: meme-maker-cadvisor-staging
     restart: unless-stopped
     privileged: true
@@ -154,6 +154,12 @@ services:
       - '--disable_metrics=accelerator,cpu_topology,disk,memory_numa,tcp,udp,percpu,sched,process,hugetlb,referenced_memory,resctrl,cpuset,advtcp,memory_numa'
       - '--enable_metrics=cpu,diskIO,memory,network'
       - '--store_container_labels=false'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     deploy:
       resources:
         limits:
