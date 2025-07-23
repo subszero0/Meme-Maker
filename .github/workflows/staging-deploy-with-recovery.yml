@@ -1,14 +1,19 @@
 name: 🚀 Staging Deploy with Auto-Recovery
 on:
   push:
-    branches: [monitoring-staging]
+    branches: [] # FIXED: Removed monitoring-staging to prevent conflicts with main staging workflow
   workflow_dispatch:
     inputs:
       force_cleanup:
         description: 'Force Docker cleanup before deployment'
         required: false
-        default: 'false'
+        default: false
         type: boolean
+
+# FIXED: Add concurrency control to prevent parallel runs
+concurrency:
+  group: staging-deployment
+  cancel-in-progress: true
 
 jobs:
   staging-deploy-with-recovery:
@@ -57,23 +62,29 @@ jobs:
           # Check if containers are running properly
           STATUS=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             ubuntu@${{ secrets.STAGING_SERVER_IP }} \
-            "cd ~/Meme-Maker-Staging && docker-compose -f docker-compose.staging.yml ps --services --filter 'status=running' | wc -l" || echo "0")
+            "cd ~/Meme-Maker-Staging && docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml ps --services --filter 'status=running' | wc -l" 2>/dev/null || echo "0")
           
-          echo "running_containers=$STATUS" >> $GITHUB_OUTPUT
+          # Clean the output (remove any extra whitespace)
+          STATUS=$(echo "$STATUS" | tr -d ' \t\n\r')
+          
+          echo "running_containers=${STATUS}" >> $GITHUB_OUTPUT
           
           # Check for ContainerConfig errors in recent logs
           DOCKER_ERRORS=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             ubuntu@${{ secrets.STAGING_SERVER_IP }} \
-            "journalctl --since '1 hour ago' -u docker | grep -c 'ContainerConfig' || echo '0'")
+            "journalctl --since '1 hour ago' -u docker | grep -c 'ContainerConfig'" 2>/dev/null || echo "0")
           
-          echo "docker_errors=$DOCKER_ERRORS" >> $GITHUB_OUTPUT
+          # Clean the output
+          DOCKER_ERRORS=$(echo "$DOCKER_ERRORS" | tr -d ' \t\n\r')
+          
+          echo "docker_errors=${DOCKER_ERRORS}" >> $GITHUB_OUTPUT
           
           echo "🔍 Status Check Results:"
           echo "  Running containers: $STATUS"
           echo "  Docker errors: $DOCKER_ERRORS"
       
       - name: 🚨 Auto-Recovery Docker Cleanup
-        if: steps.check_status.outputs.running_containers < '4' || steps.check_status.outputs.docker_errors > '0' || github.event.inputs.force_cleanup == 'true'
+        if: steps.check_status.outputs.running_containers < '8' || steps.check_status.outputs.docker_errors > '0' || github.event.inputs.force_cleanup == 'true'
         run: |
           echo "🚨 Auto-recovery triggered!"
           echo "  Running containers: ${{ steps.check_status.outputs.running_containers }}/4"
@@ -131,7 +142,10 @@ jobs:
           # Count running containers
           CONTAINER_COUNT=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             ubuntu@${{ secrets.STAGING_SERVER_IP }} \
-            "cd ~/Meme-Maker-Staging && docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml ps --services --filter 'status=running' | wc -l")
+            "cd ~/Meme-Maker-Staging && docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml ps --services --filter 'status=running' | wc -l" 2>/dev/null || echo "0")
+          
+          # Clean the output
+          CONTAINER_COUNT=$(echo "$CONTAINER_COUNT" | tr -d ' \t\n\r')
           
           echo "app_status=$APP_STATUS" >> $GITHUB_OUTPUT
           echo "backend_status=$BACKEND_STATUS" >> $GITHUB_OUTPUT  
@@ -182,7 +196,7 @@ jobs:
           # Get recent logs
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             ubuntu@${{ secrets.STAGING_SERVER_IP }} \
-            "cd ~/Meme-Maker-Staging && echo '=== BACKEND LOGS ===' && docker-compose -f docker-compose.staging.yml logs backend-staging --tail=20"
+            "cd ~/Meme-Maker-Staging && echo '=== BACKEND LOGS ===' && docker-compose -f docker-compose.staging.yml -f docker-compose.staging.monitoring.yml logs --tail=20 backend-staging"
           
           # Get Docker daemon logs
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
