@@ -26,10 +26,11 @@ services:
     environment:
       - MODE=production
       - REDIS_URL=redis://redis-staging:6379
-      - CORS_ORIGINS=http://localhost:8082,http://staging.memeit.pro:8081
+      - CORS_ORIGINS=http://localhost:8082,http://13.126.173.223:8082,http://staging.memeit.pro:8081
       - STORAGE_TYPE=local
       - CLIPS_DIR=/app/storage/clips
       - INSTAGRAM_COOKIES_PATH=/app/cookies/instagram_cookies.txt
+      - BASE_URL=http://13.126.173.223:8001  # FIXED: Use external staging server URL for download links
     volumes:
       - ./.env.staging:/app/.env:ro           # Mount staging env file for security testing
       - ./storage:/app/storage                # Storage mount
