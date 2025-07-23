@@ -45,12 +45,12 @@ except ImportError:
     print("Warning: Metrics not available in worker")
     # Create dummy functions to avoid errors
     class DummyMetric:
-        def inc(self): pass
-        def dec(self): pass
+        def inc(self, *args, **kwargs): pass
+        def dec(self, *args, **kwargs): pass
         def labels(self, *args, **kwargs): 
             # Return self to support chaining like .labels().observe()
             return self
-        def observe(self, value): pass
+        def observe(self, value, *args, **kwargs): pass
     clip_job_latency_seconds = DummyMetric()
     clip_jobs_inflight = DummyMetric()
 

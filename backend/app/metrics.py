@@ -30,6 +30,9 @@ except ImportError:
         def inc(self, *args, **kwargs):
             pass
 
+        def dec(self, *args, **kwargs):
+            pass
+
         def observe(self, *args, **kwargs):
             pass
 
