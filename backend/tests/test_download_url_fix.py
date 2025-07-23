@@ -5,7 +5,7 @@ Ensures that BASE_URL is properly used for staging/production environments
 
 from unittest.mock import Mock, patch
 
-from backend.app.storage import LocalStorageManager
+from app.storage import LocalStorageManager
 
 
 class TestDownloadURLFix:
