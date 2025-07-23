@@ -1,7 +1,7 @@
 name: 🚀 Staging Deploy with Auto-Recovery
 on:
-  push:
-    branches: [] # FIXED: Removed monitoring-staging to prevent conflicts with main staging workflow
+  # DISABLED: This workflow conflicts with main staging workflow
+  # Use workflow_dispatch only for manual emergency deployments
   workflow_dispatch:
     inputs:
       force_cleanup:
@@ -44,11 +44,11 @@ jobs:
             exit 1
           }
       
-      - name: 📋 Create Recovery Scripts on Server
+      - name: 🚀 Deploy Recovery Scripts
         run: |
           # Copy recovery scripts to server with executable permissions
           scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            create_staging_env.sh fix_docker_corruption.sh deploy_staging_fresh.sh \
+            create_staging_env.sh fix_cadvisor_and_deploy.sh deploy_staging_fresh.sh \
             ubuntu@${{ secrets.STAGING_SERVER_IP }}:~/Meme-Maker-Staging/
           
           # Ensure scripts are executable (fix permission issue)
@@ -107,7 +107,7 @@ jobs:
           # Run fresh deployment with all recovery mechanisms
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             ubuntu@${{ secrets.STAGING_SERVER_IP }} \
-            "cd ~/Meme-Maker-Staging && ./create_staging_env.sh && ./deploy_staging_fresh.sh"
+            "cd ~/Meme-Maker-Staging && chmod +x create_staging_env.sh fix_cadvisor_and_deploy.sh && ./create_staging_env.sh && ./fix_cadvisor_and_deploy.sh"
       
       - name: ⏳ Wait for Services Initialization
         run: |
